@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '../../contexts/AuthContext'
 import { ArrowRight, Mail, Shield, CheckCircle } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 
 const Login = () => {
   const [email, setEmail] = useState('')
@@ -81,8 +81,8 @@ const Login = () => {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               className={`p-4 rounded-xl mb-6 text-sm flex items-start ${message.includes('Error')
-                  ? 'bg-red-50 text-red-600'
-                  : 'bg-green-50 text-green-700'
+                ? 'bg-red-50 text-red-600'
+                : 'bg-green-50 text-green-700'
                 }`}
             >
               <div className="mr-3 mt-0.5">
@@ -173,9 +173,14 @@ const Login = () => {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-gray-500">
-          By continuing, you agree to our Terms of Service and Privacy Policy.
-        </p>
+        <div className="text-center space-y-4">
+          <Link to="/" className="text-sm font-medium text-indigo-600 hover:text-indigo-500 hover:underline transition-colors flex items-center justify-center">
+            &larr; Back to Home
+          </Link>
+          <p className="text-xs text-gray-500">
+            By continuing, you agree to our Terms of Service and Privacy Policy.
+          </p>
+        </div>
       </motion.div>
     </div>
   )

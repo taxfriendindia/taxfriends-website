@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import {
-    LayoutDashboard, Users, FileText, LogOut, Menu, Shield, ChevronLeft, ChevronRight, Activity, PieChart
+    LayoutDashboard, Users, FileText, LogOut, Menu, Shield, ChevronLeft, ChevronRight, Activity, PieChart, Megaphone
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -52,6 +52,7 @@ const AdminLayout = () => {
                     <NavItem to="/admin/documents" icon={FileText} label="Documents" isOpen={isSidebarOpen} />
                     <NavItem to="/admin/services" icon={Activity} label="Services" isOpen={isSidebarOpen} />
                     <NavItem to="/admin/records" icon={PieChart} label="Records" isOpen={isSidebarOpen} />
+                    <NavItem to="/admin/announcements" icon={Megaphone} label="Broadcast" isOpen={isSidebarOpen} />
                 </nav>
 
                 <div className="absolute bottom-0 w-full p-4 border-t border-white/10">

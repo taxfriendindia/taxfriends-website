@@ -17,6 +17,8 @@ import AdminClients from './pages/Admin/AdminClients'
 import AdminRequests from './pages/Admin/AdminRequests'
 import AdminServices from './pages/Admin/AdminServices'
 import AdminRecords from './pages/Admin/AdminRecords'
+import AdminAnnouncements from './pages/Admin/AdminAnnouncements'
+import PublicServices from './pages/Services/Services'
 
 // Loading Spinner Component
 const LoadingScreen = () => (
@@ -63,6 +65,7 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
+          <Route path="/services" element={<PublicServices />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
@@ -85,6 +88,7 @@ function App() {
             <Route path="documents" element={<AdminRequests />} />
             <Route path="services" element={<AdminServices />} />
             <Route path="records" element={<AdminRecords />} />
+            <Route path="announcements" element={<AdminAnnouncements />} />
             <Route path="*" element={<div className="p-8 text-gray-500">Page Under Construction</div>} />
           </Route>
 

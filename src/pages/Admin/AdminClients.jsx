@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useOutletContext } from 'react-router-dom'
 import { Users, Search, Filter, MoreHorizontal, Eye, Mail, Phone, CheckCircle, Clock, Trash2, Download, Edit, AlertTriangle, ChevronDown } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import ClientDetailsModal from './ClientDetailsModal'
 
 const AdminClients = () => {
+    const { setSidebarOpen } = useOutletContext() || { setSidebarOpen: () => { } }
     const [clients, setClients] = useState([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
@@ -20,6 +22,13 @@ const AdminClients = () => {
     useEffect(() => {
         fetchClients()
     }, [])
+
+    // Auto-collapse sidebar when modal opens
+    useEffect(() => {
+        if (isDetailsOpen) {
+            setSidebarOpen(false)
+        }
+    }, [isDetailsOpen, setSidebarOpen])
 
     const fetchClients = async () => {
         try {
@@ -148,6 +157,7 @@ const AdminClients = () => {
         link.href = URL.createObjectURL(blob)
         link.download = `taxfriends_export_${new Date().toISOString().split('T')[0]}.csv`
         link.click()
+        document.body.removeChild(link)
     }
 
     return (
