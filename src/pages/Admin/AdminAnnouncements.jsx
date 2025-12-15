@@ -13,7 +13,11 @@ const AdminAnnouncements = () => {
     }, [])
 
     const fetchStats = async () => {
-        const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true })
+        // Fetch ALL profiles to get the accurate count
+        const { count, error } = await supabase.from('profiles').select('*', { count: 'exact', head: true })
+        if (error) {
+            console.error("Error counting users:", error)
+        }
         setStats(prev => ({ ...prev, totalUsers: count || 0 }))
     }
 
@@ -68,7 +72,7 @@ const AdminAnnouncements = () => {
             setTitle('')
         } catch (error) {
             console.error('Broadcast failed:', error)
-            alert('Failed to send broadcast.')
+            alert(`Failed to send broadcast: ${error.message || 'Unknown error. Check database permissions.'}`)
         } finally {
             setIsSending(false)
         }
