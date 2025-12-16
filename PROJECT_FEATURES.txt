@@ -1,0 +1,74 @@
+TAXFRIENDS PORTAL - PROJECT DOCUMENTATION & FEATURE OVERVIEW
+============================================================
+
+1. PROJECT ARCHITECTURE
+-----------------------
+- **Frontend**: React.js (Vite), Tailwind CSS, Framer Motion (Animations), Lucide React (Icons).
+- **Backend**: Supabase (PostgreSQL Database, Authentication, Storage, Real-time).
+- **Security**: Row Level Security (RLS) policies ensure users only access their own data, while Admins have elevated access.
+
+2. AUTHENTICATION & ROLES
+-------------------------
+- **Login System**: Secure Email/Password authentication.
+- **Roles**:
+  - **Client**: Can request services, view history, upload documents.
+  - **Admin**: Can view all client requests, update status (Approve/Reject), view client profiles.
+  - **Superuser**: Has full access, including deleting data and managing other admins (via DB).
+- **Security**: Hardcoded checks ensure critical accounts (e.g., specific emails) maintain Superuser status.
+
+3. CLIENT PORTAL (FEATURES)
+---------------------------
+- **Dashboard**: Provides a snapshot of active services and notifications.
+- **Services Page**: Clients can browse the catalog and "Request" a service.
+- **History**:
+  - Tracks the lifecycle of a request: Pending -> Processing -> Completed (or Rejected).
+  - Shows status badges and admin comments.
+- **Documents**:
+  - Clients can upload files (PDFs/Images) necessary for tax filing.
+  - **Cloud Storage**: Files are stored securely in Supabase Storage buckets, not on the server.
+- **Profile**: Clients can update their personal and business details.
+
+4. ADMIN PANEL (FEATURES)
+-------------------------
+A comprehensive interface for managing the business operations.
+
+A. SERVICES MANAGEMENT (New & Refactored)
+   - **Central Hub**: Unified view of all client requests.
+   - **Filtering**:
+     - **By Status**: Pending, Processing, Completed, Rejected.
+     - **By Service Type**: Filter specific services (e.g., GST Registration).
+     - **By Admin**: Track *who* is doing the work. Selecting an admin shows their specific performance.
+   - **Performance Tracking**:
+     - The system automatically stamps the `admin_id` on a request when an admin updates its status.
+     - **Stats Cards**: Displays Total, Approved, and Rejected counts dynamically based on the active filters.
+   - **Actions**:
+     - **Mark Processing/Completed**: Updates status and notifies client.
+     - **Reject**: Requires a reason, sends an immediate notification to the client.
+     - **Delete**: Permanently removes a request (Restricted to Admins/Superusers).
+
+B. CLIENT MANAGEMENT
+   - **Client List**: View all registered users with search functionality (Name, Email, Mobile).
+   - **Export**: Ability to export client data to CSV for external use.
+   - **Quick Actions**: View details, Edit profile, or Delete user (Superuser only).
+
+C. BROADCAST & ANNOUNCEMENTS
+   - Admins can send bulk notifications to all clients or specific groups.
+
+5. DATABASE SCHEMA & DATA FLOW
+------------------------------
+- **profiles**: Extended user data (Addresses, Business Name, etc.). Linked to Auth.
+- **user_services**: The core transaction table. Links Users to Services.
+  - *New Column*: `admin_id` (Tracks which admin processed the row).
+- **service_catalog**: Defines the list of available services.
+- **notifications**: Stores user alerts.
+- **storage**: Supabase Storage buckets for documents.
+
+6. RECENT UPDATES (SESSION LOG)
+-------------------------------
+- **Refactoring**: Merged the standalone "Manage Admins" page into the "Services" page for a cleaner workflow.
+- **Optimization**: Removed unused code (`AdminDetails.jsx`, `ManageAdmins.jsx`) to improve maintainability.
+- **Security**: Verified SQL files for secrets and created migration scripts (`05_admin_tracking.sql`) to enforce data integrity and admin permissions.
+- **Tracking**: Implemented logic to count admin contributions automatically during workflow processing.
+
+------------------------------------------------------------
+Documentation Generated: 2025-12-17
