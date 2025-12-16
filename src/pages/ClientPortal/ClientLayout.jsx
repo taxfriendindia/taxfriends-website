@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Bell, LogOut, Layout, FileText, Clock, User, ChevronRight, Briefcase, CheckCircle, AlertCircle, Shield } from 'lucide-react'
+import { Menu, X, Bell, LogOut, Layout, FileText, Clock, User, ChevronRight, Briefcase, CheckCircle, AlertCircle, Shield, Trash2 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 
@@ -13,6 +13,8 @@ const ClientLayout = () => {
     const [notifications, setNotifications] = useState([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [showNotifications, setShowNotifications] = useState(false)
+    const [imgError, setImgError] = useState(false)
+    const [toast, setToast] = useState(null)
 
     // Navigation Items
     const navItems = [
@@ -25,7 +27,33 @@ const ClientLayout = () => {
     useEffect(() => {
         if (user) {
             fetchNotifications()
-            // Optional: Subscribe to realtime notifications here
+
+            // Subscribe to realtime notifications
+            const channel = supabase
+                .channel('realtime:notifications')
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: 'notifications',
+                        filter: `user_id=eq.${user.id}`,
+                    },
+                    (payload) => {
+                        const newNotif = payload.new
+                        setNotifications(prev => [newNotif, ...prev])
+                        setUnreadCount(prev => prev + 1)
+                        setToast(newNotif)
+
+                        // Auto-hide toast after 5s
+                        setTimeout(() => setToast(null), 5000)
+                    }
+                )
+                .subscribe()
+
+            return () => {
+                supabase.removeChannel(channel)
+            }
         }
     }, [user])
 
@@ -39,13 +67,18 @@ const ClientLayout = () => {
             const { data, error } = await supabase
                 .from('notifications')
                 .select('*')
-                .eq('user_id', user.id)
+                // Fetch BOTH personal and broadcast
+                .or(`user_id.eq.${user.id},user_id.is.null`)
                 .order('created_at', { ascending: false })
-                .limit(10)
+                .limit(20)
 
             if (data) {
-                setNotifications(data)
-                setUnreadCount(data.filter(n => !n.is_read).length)
+                // Filter out locally dismissed broadcasts
+                const dismissed = JSON.parse(localStorage.getItem('dismissed_notifs') || '[]')
+                const visible = data.filter(n => !dismissed.includes(n.id))
+
+                setNotifications(visible)
+                setUnreadCount(visible.filter(n => !n.is_read).length)
             }
         } catch (error) {
             console.error('Error fetching notifications:', error)
@@ -54,10 +87,15 @@ const ClientLayout = () => {
 
     const markAsRead = async (id) => {
         try {
-            await supabase
-                .from('notifications')
-                .update({ is_read: true })
-                .eq('id', id)
+            // Only update DB if it's a personal notification
+            const notif = notifications.find(n => n.id === id)
+            if (notif && notif.user_id) {
+                await supabase
+                    .from('notifications')
+                    .update({ is_read: true })
+                    .eq('id', id)
+            }
+            // For broadcasts, we just mark locally read in state (persisting read state for broadcasts is harder without a separate table)
 
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
             setUnreadCount(prev => Math.max(0, prev - 1))
@@ -65,6 +103,86 @@ const ClientLayout = () => {
             console.error(error)
         }
     }
+
+    const deleteNotification = async (e, id) => {
+        e.stopPropagation()
+        const notif = notifications.find(n => n.id === id)
+
+        // Optimistic UI Update
+        setNotifications(prev => {
+            const newNotes = prev.filter(n => n.id !== id)
+            setUnreadCount(newNotes.filter(n => !n.is_read).length)
+            return newNotes
+        })
+
+        // Always dismiss locally to ensure it doesn't reappear on refresh
+        try {
+            const dismissed = JSON.parse(localStorage.getItem('dismissed_notifs') || '[]')
+            if (!dismissed.includes(id)) {
+                dismissed.push(id)
+                localStorage.setItem('dismissed_notifs', JSON.stringify(dismissed))
+            }
+
+            // If Personal, also try to delete from DB
+            if (notif && notif.user_id) {
+                const { error } = await supabase
+                    .from('notifications')
+                    .delete()
+                    .eq('id', id)
+                if (error) console.error('DB Delete Error:', error)
+            }
+        } catch (error) {
+            console.error('Error handling notification delete:', error)
+        }
+    }
+
+    const clearAllNotifications = async () => {
+        // 1. Identify Personal vs Broadcast
+        const personalIds = notifications.filter(n => n.user_id).map(n => n.id)
+        const broadcastIds = notifications.filter(n => !n.user_id).map(n => n.id)
+
+        // Optimistic Clear
+        setNotifications([])
+        setUnreadCount(0)
+
+        try {
+            // 2. Delete Personal from DB
+            if (personalIds.length > 0) {
+                await supabase
+                    .from('notifications')
+                    .delete()
+                    .in('id', personalIds)
+            }
+
+            // 3. Dismiss Broadcasts in LocalStorage
+            if (broadcastIds.length > 0) {
+                const dismissed = JSON.parse(localStorage.getItem('dismissed_notifs') || '[]')
+                const newDismissed = [...new Set([...dismissed, ...broadcastIds])]
+                localStorage.setItem('dismissed_notifs', JSON.stringify(newDismissed))
+            }
+        } catch (error) {
+            console.error('Error clearing notifications:', error)
+        }
+    }
+
+    // Auto-mark as read when dropdown opens
+    useEffect(() => {
+        if (showNotifications && unreadCount > 0) {
+            const markAllRead = async () => {
+                const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id)
+                if (unreadIds.length > 0) {
+                    await supabase
+                        .from('notifications')
+                        .update({ is_read: true })
+                        .in('id', unreadIds)
+
+                    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+                    setUnreadCount(0)
+                }
+            }
+            markAllRead()
+        }
+    }, [showNotifications])
 
     const handleLogout = async () => {
         await signOut()
@@ -108,8 +226,8 @@ const ClientLayout = () => {
                 </div>
 
                 <nav className="p-4 space-y-2">
-                    {/* Admin Switcher for Super Admin */}
-                    {user?.email === 'taxfriend.tax@gmail.com' && (
+                    {/* Admin Switcher for Super Admin & Admins */}
+                    {(user?.role === 'admin' || user?.role === 'superuser') && (
                         <NavLink
                             to="/admin/dashboard"
                             className="flex items-center space-x-3 px-4 py-3 rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all duration-200 mb-6 group"
@@ -171,9 +289,9 @@ const ClientLayout = () => {
                         <div className="relative">
                             <button
                                 onClick={() => setShowNotifications(!showNotifications)}
-                                className="p-2.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors relative"
+                                className="p-2.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors relative group"
                             >
-                                <Bell size={20} />
+                                <Bell size={20} className="group-hover:rotate-12 transition-transform duration-300" />
                                 {unreadCount > 0 && (
                                     <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800" />
                                 )}
@@ -194,10 +312,22 @@ const ClientLayout = () => {
                                             className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 z-40 overflow-hidden"
                                         >
                                             <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
-                                                <h3 className="font-bold text-gray-900 dark:text-white">Notifications</h3>
-                                                <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded-full">
-                                                    {unreadCount} New
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="font-bold text-gray-900 dark:text-white">Notifications</h3>
+                                                    {unreadCount > 0 && (
+                                                        <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded-full">
+                                                            {unreadCount} New
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {notifications.length > 0 && (
+                                                    <button
+                                                        onClick={clearAllNotifications}
+                                                        className="text-xs text-red-500 hover:text-red-700 font-medium flex items-center gap-1 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors"
+                                                    >
+                                                        Clear All
+                                                    </button>
+                                                )}
                                             </div>
                                             <div className="max-h-[60vh] overflow-y-auto">
                                                 {notifications.length === 0 ? (
@@ -211,18 +341,25 @@ const ClientLayout = () => {
                                                             <div
                                                                 key={notif.id}
                                                                 onClick={() => markAsRead(notif.id)}
-                                                                className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors ${!notif.is_read ? 'bg-blue-50/40 dark:bg-blue-900/10' : ''}`}
+                                                                className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors relative group ${!notif.is_read ? 'bg-blue-50/40 dark:bg-blue-900/10' : ''}`}
                                                             >
-                                                                <div className="flex items-start">
+                                                                <div className="flex items-start pr-6">
                                                                     <div className={`mt-1 w-2 h-2 rounded-full mr-3 flex-shrink-0 ${!notif.is_read ? 'bg-blue-500' : 'bg-transparent'}`} />
                                                                     <div>
                                                                         <p className="text-sm font-semibold text-gray-900 dark:text-white">{notif.title}</p>
-                                                                        <p className="text-sm text-gray-500 line-clamp-2 mt-0.5 break-all">{notif.message}</p>
+                                                                        <p className="text-sm text-gray-500 mt-0.5 break-words">{notif.message}</p>
                                                                         <p className="text-xs text-gray-400 mt-2">
                                                                             {new Date(notif.created_at).toLocaleString()}
                                                                         </p>
                                                                     </div>
                                                                 </div>
+                                                                <button
+                                                                    onClick={(e) => deleteNotification(e, notif.id)}
+                                                                    className="absolute top-4 right-4 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-red-50 rounded-full"
+                                                                    title="Delete"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -235,18 +372,27 @@ const ClientLayout = () => {
                         </div>
 
                         {/* User Profile Snippet (Desktop) */}
-                        <div className="hidden sm:flex items-center space-x-3 pl-4 border-l border-gray-200 dark:border-gray-700">
+                        {/* User Profile Snippet (Desktop) */}
+                        <Link
+                            to="/dashboard/profile"
+                            className="hidden sm:flex items-center space-x-3 pl-4 border-l border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 py-1 px-2 rounded-lg transition-colors group"
+                        >
                             <div className="text-right">
-                                <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight">
+                                <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight group-hover:text-blue-600 transition-colors">
                                     {user?.user_metadata?.full_name || 'User'}
                                 </p>
                                 <p className="text-xs text-gray-500 truncate max-w-[150px]">{user?.email}</p>
                             </div>
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-600 p-0.5">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-600 p-0.5 group-hover:from-blue-600 group-hover:to-purple-700 transition-all">
                                 <div className="w-full h-full rounded-full bg-white dark:bg-gray-800 flex items-center justify-center overflow-hidden">
                                     {/* Use avatar_url from metadata if available, else initial */}
-                                    {user?.user_metadata?.avatar_url ? (
-                                        <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                                    {user?.user_metadata?.avatar_url && !imgError ? (
+                                        <img
+                                            src={user.user_metadata.avatar_url}
+                                            alt="Profile"
+                                            className="w-full h-full object-cover"
+                                            onError={() => setImgError(true)}
+                                        />
                                     ) : (
                                         <span className="font-bold text-blue-600 text-lg">
                                             {user?.email?.charAt(0).toUpperCase()}
@@ -254,7 +400,7 @@ const ClientLayout = () => {
                                     )}
                                 </div>
                             </div>
-                        </div>
+                        </Link>
                     </div>
                 </header>
 
@@ -264,6 +410,29 @@ const ClientLayout = () => {
                 </main>
 
             </div>
+
+            {/* Realtime Toast Notification */}
+            <AnimatePresence>
+                {toast && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 50, x: 50 }}
+                        animate={{ opacity: 1, y: 0, x: 0 }}
+                        exit={{ opacity: 0, y: 20, x: 20 }}
+                        className="fixed bottom-6 right-6 z-50 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 p-4 max-w-sm flex items-start gap-4"
+                    >
+                        <div className="bg-blue-100 text-blue-600 p-2 rounded-full mt-1">
+                            <Bell size={20} />
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-bold text-gray-900 dark:text-white text-sm">{toast.title}</h4>
+                            <p className="text-gray-500 text-xs mt-1 line-clamp-2">{toast.message}</p>
+                        </div>
+                        <button onClick={() => setToast(null)} className="text-gray-400 hover:text-gray-600">
+                            <X size={16} />
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     )
 }

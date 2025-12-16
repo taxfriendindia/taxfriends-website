@@ -86,8 +86,16 @@ const History = () => {
         }
     }
 
-    const cancelRequest = async (id) => {
-        if (!confirm('Are you sure you want to cancel this request? TaxFriends team will be notified.')) return
+    // Modal State
+    const [cancelModal, setCancelModal] = useState({ isOpen: false, requestId: null })
+
+    const initiateCancel = (id) => {
+        setCancelModal({ isOpen: true, requestId: id })
+    }
+
+    const confirmCancel = async () => {
+        const id = cancelModal.requestId
+        if (!id) return
 
         try {
             const { error } = await supabase
@@ -101,7 +109,8 @@ const History = () => {
                 req.id === id ? { ...req, status: 'cancelled' } : req
             ))
 
-            alert('Request cancelled successfully.')
+            // Close modal
+            setCancelModal({ isOpen: false, requestId: null })
 
         } catch (error) {
             console.error('Error cancelling request:', error)
@@ -285,7 +294,7 @@ const History = () => {
                                                     {/* Cancel Request Button (Only for Pending) */}
                                                     {req.status === 'pending' && (
                                                         <button
-                                                            onClick={() => cancelRequest(req.id)}
+                                                            onClick={() => initiateCancel(req.id)}
                                                             className="flex items-center space-x-2 px-3 py-2 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors shadow-sm text-sm font-medium"
                                                         >
                                                             <Trash2 size={16} />
@@ -294,10 +303,13 @@ const History = () => {
                                                     )}
 
                                                     {req.status === 'completed' && (
-                                                        <button className="flex items-center space-x-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 hover:text-blue-600 transition-colors shadow-sm text-sm font-medium">
-                                                            <Download size={16} />
-                                                            <span>Download Final Docs</span>
-                                                        </button>
+                                                        <div className="w-full flex items-start space-x-3 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-sm">
+                                                            <CheckCircle2 size={18} className="mt-0.5 shrink-0" />
+                                                            <div>
+                                                                <p className="font-bold">Service Completed!</p>
+                                                                <p className="text-xs mt-1">Please connect with our team via Email or WhatsApp to collect your final documents.</p>
+                                                            </div>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
@@ -309,6 +321,44 @@ const History = () => {
                     )
                 })}
             </div>
+
+            {/* Cancel Confirmation Modal */}
+            <AnimatePresence>
+                {cancelModal.isOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full"
+                        >
+                            <div className="flex flex-col items-center text-center">
+                                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-600 mb-4">
+                                    <AlertCircle size={24} />
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-900 mb-2">Cancel Service Request?</h3>
+                                <p className="text-slate-500 text-sm mb-6">
+                                    Are you sure you want to cancel this request? This action cannot be undone.
+                                </p>
+                                <div className="flex gap-3 w-full">
+                                    <button
+                                        onClick={() => setCancelModal({ isOpen: false, requestId: null })}
+                                        className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                                    >
+                                        Back
+                                    </button>
+                                    <button
+                                        onClick={confirmCancel}
+                                        className="flex-1 px-4 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-500/30"
+                                    >
+                                        Yes, Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     )
 }

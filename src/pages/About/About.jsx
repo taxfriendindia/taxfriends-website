@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react'
-import { motion } from 'framer-motion'
+import React, { useEffect, useRef } from 'react'
+import { motion, useInView, useMotionValue, useTransform, animate } from 'framer-motion'
 import { Shield, Target, Users, Heart, MapPin, CheckCircle } from 'lucide-react'
 import Navbar from '../../components/Shared/Navbar'
 import Footer from '../../components/Shared/Footer'
@@ -237,21 +237,11 @@ const About = () => {
               </div>
               <div className="text-center md:text-right">
                 <div className="inline-grid grid-cols-2 gap-6">
-                  <div className="bg-white/10 p-6 rounded-xl backdrop-blur-sm">
-                    <div className="text-3xl font-bold">500+</div>
-                    <div className="text-sm opacity-80">Happy Clients</div>
-                  </div>
-                  <div className="bg-white/10 p-6 rounded-xl backdrop-blur-sm">
-                    <div className="text-3xl font-bold">95%</div>
-                    <div className="text-sm opacity-80">Success Rate</div>
-                  </div>
-                  <div className="bg-white/10 p-6 rounded-xl backdrop-blur-sm">
-                    <div className="text-3xl font-bold">50+</div>
-                    <div className="text-sm opacity-80">Cities Served</div>
-                  </div>
-                  <div className="bg-white/10 p-6 rounded-xl backdrop-blur-sm">
-                    <div className="text-3xl font-bold">10+</div>
-                    <div className="text-sm opacity-80">Years Experience</div>
+                  <div className="inline-grid grid-cols-2 gap-6">
+                    <AboutStatCounter number="500+" label="Happy Clients" />
+                    <AboutStatCounter number="95%" label="Success Rate" />
+                    <AboutStatCounter number="50+" label="Cities Served" />
+                    <AboutStatCounter number="10+" label="Years Experience" />
                   </div>
                 </div>
               </div>
@@ -261,6 +251,41 @@ const About = () => {
       </main>
       <Footer />
     </div>
+  )
+}
+
+const AboutStatCounter = ({ number, label }) => {
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: false, margin: "-50px" })
+  const count = useMotionValue(0)
+  const rounded = useTransform(count, Math.round)
+
+  useEffect(() => {
+    if (isInView) {
+      const numericValue = parseInt(number) || 0
+      const animation = animate(count, numericValue, { duration: 1.5, ease: "easeOut" })
+      return animation.stop
+    } else {
+      count.set(0)
+    }
+  }, [isInView, number, count])
+
+  const suffix = number.replace(/[0-9]/g, '')
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
+      transition={{ duration: 0.5 }}
+      className="bg-white/10 p-6 rounded-xl backdrop-blur-sm"
+    >
+      <div className="text-3xl font-bold flex justify-center md:justify-start items-center">
+        <motion.span>{rounded}</motion.span>
+        <span>{suffix}</span>
+      </div>
+      <div className="text-sm opacity-80">{label}</div>
+    </motion.div>
   )
 }
 

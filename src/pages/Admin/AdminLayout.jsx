@@ -53,6 +53,10 @@ const AdminLayout = () => {
                     <NavItem to="/admin/services" icon={Activity} label="Services" isOpen={isSidebarOpen} />
                     <NavItem to="/admin/records" icon={PieChart} label="Records" isOpen={isSidebarOpen} />
                     <NavItem to="/admin/announcements" icon={Megaphone} label="Broadcast" isOpen={isSidebarOpen} />
+
+                    <div className="pt-4 border-t border-white/10 mt-4">
+                        <NavItem to="/admin/profile" icon={Users} label="My Profile" isOpen={isSidebarOpen} />
+                    </div>
                 </nav>
 
                 <div className="absolute bottom-0 w-full p-4 border-t border-white/10">

@@ -1,104 +1,82 @@
 import React, { useState, useEffect } from 'react'
-import { Activity, ExternalLink, Filter, CheckCircle, XCircle, Clock, PlayCircle, ArrowDownUp, Search } from 'lucide-react'
+import { Activity, ExternalLink, Filter, CheckCircle, XCircle, Clock, PlayCircle, ArrowDownUp, Search, Trash2, Users, Shield } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { UserService } from '../../services/userService'
 import { useLocation } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
 
 const AdminServices = () => {
+    const { user } = useAuth()
     const location = useLocation()
     const [services, setServices] = useState([])
     const [loading, setLoading] = useState(true)
 
     // Filters State
-    const [statusFilter, setStatusFilter] = useState(location.state?.statusFilter || 'all') // 'all', 'pending', 'processing', 'completed', 'rejected'
-    const [serviceTypeFilter, setServiceTypeFilter] = useState('all') // 'all' or specific service title
-    const [sortBy, setSortBy] = useState('newest') // 'newest', 'oldest'
+    const [statusFilter, setStatusFilter] = useState(location.state?.statusFilter || 'all')
+    const [serviceTypeFilter, setServiceTypeFilter] = useState('all')
+    const [adminFilter, setAdminFilter] = useState('all') // New Admin Filter
+    const [sortBy, setSortBy] = useState('newest')
     const [searchQuery, setSearchQuery] = useState('')
 
     // Derived lists
     const [availableServiceTypes, setAvailableServiceTypes] = useState([])
+    const [admins, setAdmins] = useState([]) // List of admins
 
     useEffect(() => {
-        // If state updates later (e.g. navigation while mounted), we might want to listen, but for now init is enough.
-        // However, if coming from dashboard, we want to ensure fresh fetch.
-        fetchServices()
+        fetchServicesAndAdmins()
     }, [])
 
-    const fetchServices = async () => {
+    const fetchServicesAndAdmins = async () => {
         try {
             setLoading(true)
 
-            // 1. Fetch Services logic
+            // 1. Fetch Services
             const { data: servs, error } = await supabase
                 .from('user_services')
                 .select('*')
                 .order('created_at', { ascending: false })
 
-            if (error) {
-                console.warn("Error fetching services:", error)
-                setServices([])
-                return
-            }
+            if (error) throw error
 
-            if (!servs || servs.length === 0) {
-                setServices([])
-                return
-            }
+            // 2. Fetch Profiles (Users + Admins)
+            // Get unique user IDs
+            const userIds = [...new Set((servs || []).map(s => s.user_id))]
+            const serviceIds = [...new Set((servs || []).map(s => s.service_id))]
 
-            // 2. Fetch Profiles & Service Details
-            const userIds = [...new Set(servs.map(s => s.user_id))]
-            const serviceIds = [...new Set(servs.map(s => s.service_id))]
-
-            const [profilesResponse, catalogResponse] = await Promise.all([
-                supabase.from('profiles').select('id, full_name, email, mobile').in('id', userIds),
-                supabase.from('service_catalog').select('id, title').in('id', serviceIds)
+            const [profilesResponse, catalogResponse, adminsResponse] = await Promise.all([
+                supabase.from('profiles').select('id, full_name, email, mobile, role').in('id', userIds),
+                supabase.from('service_catalog').select('id, title').in('id', serviceIds),
+                supabase.from('profiles').select('id, full_name, role').in('role', ['admin', 'superuser']) // Fetch admins
             ])
 
             const profileMap = (profilesResponse.data || []).reduce((acc, p) => ({ ...acc, [p.id]: p }), {})
             const catalogMap = (catalogResponse.data || []).reduce((acc, item) => ({ ...acc, [item.id]: item }), {})
 
-            const joinedServices = servs.map(s => ({
-                ...s,
-                profile: profileMap[s.user_id] || { full_name: 'Unknown User', email: 'No Email' },
-                title: catalogMap[s.service_id]?.title || 'Unknown Service'
-            }))
+            setAdmins(adminsResponse.data || [])
+
+            const joinedServices = (servs || []).map(s => {
+                const p = profileMap[s.user_id]
+                return {
+                    ...s,
+                    profile: p ? {
+                        ...p,
+                        full_name: p.full_name || p.email?.split('@')[0] || 'Unknown User'
+                    } : { full_name: 'Unknown User', email: 'No Email', role: 'client' },
+                    title: catalogMap[s.service_id]?.title || 'Unknown Service'
+                }
+            })
 
             setServices(joinedServices)
 
-            // Extract unique service types for the filter dropdown
+            // Extract unique service types
             const types = [...new Set(joinedServices.map(s => s.title))]
             setAvailableServiceTypes(types.sort())
 
         } catch (err) {
             console.error(err)
+            setServices([])
         } finally {
             setLoading(false)
-        }
-    }
-
-    const handleStatusUpdate = async (id, newStatus) => {
-        try {
-            const { error } = await supabase
-                .from('user_services')
-                .update({ status: newStatus })
-                .eq('id', id)
-
-            if (error) throw error
-
-            setServices(services.map(s =>
-                s.id === id ? { ...s, status: newStatus } : s
-            ))
-        } catch (error) {
-            console.error('Error updating status:', error)
-            alert('Failed to update status')
-        }
-    }
-
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'completed': return 'bg-emerald-100 text-emerald-700 border-emerald-200'
-            case 'processing': return 'bg-blue-100 text-blue-700 border-blue-200'
-            case 'rejected': return 'bg-red-100 text-red-700 border-red-200'
-            default: return 'bg-amber-100 text-amber-700 border-amber-200'
         }
     }
 
@@ -110,7 +88,12 @@ const AdminServices = () => {
             // 2. Service Type Filter
             if (serviceTypeFilter !== 'all' && s.title !== serviceTypeFilter) return false
 
-            // 3. Search Query
+            // 3. Admin Filter 
+            if (adminFilter !== 'all') {
+                return s.admin_id === adminFilter
+            }
+
+            // 4. Search Query
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
                 return (
@@ -128,18 +111,130 @@ const AdminServices = () => {
             return sortBy === 'newest' ? dateB - dateA : dateA - dateB
         })
 
+    // Calculate Stats based on FILTERED services to show performace of selection
+    const stats = filteredServices.reduce((acc, s) => {
+        acc.total++
+        if (s.status === 'completed' || s.status === 'approved') acc.approved++
+        else if (s.status === 'rejected') acc.rejected++
+        else acc.pending++
+        return acc
+    }, { total: 0, approved: 0, rejected: 0, pending: 0 })
+
+    const handleStatusUpdate = async (id, newStatus) => {
+        try {
+            // We update the status AND the admin_id to track who performed the action
+            const { error } = await supabase
+                .from('user_services')
+                .update({
+                    status: newStatus,
+                    admin_id: user.id
+                })
+                .eq('id', id)
+
+            if (error) throw error
+
+            setServices(services.map(s =>
+                s.id === id ? { ...s, status: newStatus, admin_id: user.id } : s
+            ))
+        } catch (error) {
+            console.error('Error updating status:', error)
+            alert('Failed to update status. Ensure "admin_id" column exists in database.')
+        }
+    }
+
+    const deleteAllRejected = async () => {
+        if (!window.confirm('Are you sure you want to delete ALL rejected requests? This cannot be undone.')) return
+        try {
+            const { error } = await supabase.from('user_services').delete().eq('status', 'rejected')
+            if (error) throw error
+            setServices(prev => prev.filter(s => s.status !== 'rejected'))
+        } catch (error) {
+            console.error('Error deleting rejected:', error)
+            alert('Failed to delete requests')
+        }
+    }
+
+    const deleteServiceRequest = async (id) => {
+        if (!window.confirm('Delete this service request?')) return
+        try {
+            const { error } = await supabase.from('user_services').delete().eq('id', id)
+            if (error) throw error
+            setServices(prev => prev.filter(s => s.id !== id))
+        } catch (error) {
+            console.error('Error deleting:', error)
+            alert('Failed to delete')
+        }
+    }
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'completed': return 'bg-emerald-100 text-emerald-700 border-emerald-200'
+            case 'processing': return 'bg-blue-100 text-blue-700 border-blue-200'
+            case 'rejected': return 'bg-red-100 text-red-700 border-red-200'
+            default: return 'bg-amber-100 text-amber-700 border-amber-200'
+        }
+    }
+
     return (
-        <div className="space-y-8 font-sans text-slate-900">
+        <div className="space-y-6 font-sans text-slate-900">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Service Requests</h1>
-                    <p className="text-slate-500 mt-1">Manage and track client service requests.</p>
+                    <p className="text-slate-500 mt-1">Manage, filter, and track service performance.</p>
+                </div>
+                {services.some(s => s.status === 'rejected') && user?.role === 'superuser' && (
+                    <button
+                        onClick={deleteAllRejected}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors font-semibold text-xs border border-red-100"
+                    >
+                        <Trash2 size={14} />
+                        Clear Rejected
+                    </button>
+                )}
+            </div>
+
+            {/* Performance Stats Cards (Dynamic based on Filter) */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                    <div className="p-3 rounded-lg bg-indigo-50 text-indigo-600">
+                        <Activity size={24} />
+                    </div>
+                    <div>
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total</div>
+                        <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
+                    </div>
+                </div>
+                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                    <div className="p-3 rounded-lg bg-emerald-50 text-emerald-600">
+                        <CheckCircle size={24} />
+                    </div>
+                    <div>
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Approved</div>
+                        <div className="text-2xl font-bold text-slate-900">{stats.approved}</div>
+                    </div>
+                </div>
+                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                    <div className="p-3 rounded-lg bg-red-50 text-red-600">
+                        <XCircle size={24} />
+                    </div>
+                    <div>
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Rejected</div>
+                        <div className="text-2xl font-bold text-slate-900">{stats.rejected}</div>
+                    </div>
+                </div>
+                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                    <div className="p-3 rounded-lg bg-amber-50 text-amber-600">
+                        <Clock size={24} />
+                    </div>
+                    <div>
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pending</div>
+                        <div className="text-2xl font-bold text-slate-900">{stats.pending}</div>
+                    </div>
                 </div>
             </div>
 
             {/* Controls Bar */}
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4 md:space-y-0 md:flex md:items-center md:gap-4">
-
                 {/* Search */}
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -154,6 +249,23 @@ const AdminServices = () => {
 
                 {/* Filters Group */}
                 <div className="flex flex-wrap items-center gap-3">
+
+                    {/* Admin Filter - Replaces Manage Admins Page */}
+                    {(user?.role === 'superuser' || admins.length > 0) && (
+                        <div className="flex flex-col">
+                            <label className="text-[10px] uppercase font-bold text-slate-400 pl-1 mb-0.5">Filter by Admin</label>
+                            <select
+                                value={adminFilter}
+                                onChange={(e) => setAdminFilter(e.target.value)}
+                                className="px-3 py-2 border border-slate-200 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white cursor-pointer min-w-[160px]"
+                            >
+                                <option value="all">All Admins</option>
+                                {admins.map(adm => (
+                                    <option key={adm.id} value={adm.id}>{adm.full_name || adm.email}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     {/* Status Filter */}
                     <div className="flex flex-col">
@@ -195,7 +307,7 @@ const AdminServices = () => {
                             title="Toggle Sort Order"
                         >
                             <ArrowDownUp size={16} className="text-indigo-500" />
-                            <span>{sortBy === 'newest' ? 'Newest First' : 'Oldest First'}</span>
+                            <span>{sortBy === 'newest' ? 'Newest' : 'Oldest'}</span>
                         </button>
                     </div>
                 </div>
@@ -223,7 +335,14 @@ const AdminServices = () => {
                                 {filteredServices.map(item => (
                                     <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
                                         <td className="px-6 py-4">
-                                            <div className="font-semibold text-slate-900">{item.profile.full_name || 'Unknown'}</div>
+                                            <div className="font-semibold text-slate-900 flex items-center gap-2">
+                                                {item.profile.full_name || 'Unknown'}
+                                                {(item.profile.role === 'admin' || item.profile.role === 'superuser') && (
+                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase tracking-wide">
+                                                        Admin
+                                                    </span>
+                                                )}
+                                            </div>
                                             <div className="text-xs text-slate-500">{item.profile.email}</div>
                                             {item.profile.mobile && <div className="text-xs text-slate-400 font-mono mt-0.5">{item.profile.mobile}</div>}
                                         </td>
@@ -257,6 +376,7 @@ const AdminServices = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right space-x-2">
                                             {/* Action Buttons */}
+                                            {/* Action Buttons */}
                                             {item.status !== 'processing' && item.status !== 'completed' && (
                                                 <button
                                                     onClick={() => handleStatusUpdate(item.id, 'processing')}
@@ -279,13 +399,40 @@ const AdminServices = () => {
 
                                             {item.status !== 'rejected' && (
                                                 <button
-                                                    onClick={() => handleStatusUpdate(item.id, 'rejected')}
+                                                    onClick={async () => {
+                                                        const reason = prompt("Enter rejection reason:", "Information incomplete/incorrect")
+                                                        if (reason === null) return
+
+                                                        // Optimistic Update
+                                                        handleStatusUpdate(item.id, 'rejected')
+
+                                                        // Send Notification
+                                                        try {
+                                                            await UserService.createNotification(
+                                                                item.user_id,
+                                                                'Service Request Rejected',
+                                                                `Your request for '${item.title}' was rejected. Reason: ${reason}. Please contact support.`,
+                                                                'error'
+                                                            )
+                                                        } catch (e) {
+                                                            console.error("Notify failed", e)
+                                                        }
+                                                    }}
                                                     className="inline-flex items-center p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                                                    title="Reject"
+                                                    title="Reject & Notify"
                                                 >
                                                     <XCircle size={18} />
                                                 </button>
                                             )}
+
+                                            {/* Delete Option */}
+                                            <button
+                                                onClick={() => deleteServiceRequest(item.id)}
+                                                className="inline-flex items-center p-2 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
+                                                title="Delete Permanently"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}

@@ -51,7 +51,7 @@ const AdminAnnouncements = () => {
                 title: title,
                 message: message,
                 type: 'broadcast',
-                read: false,
+                is_read: false,
                 created_at: new Date()
             }))
 
@@ -82,11 +82,11 @@ const AdminAnnouncements = () => {
         <div className="space-y-8 max-w-4xl mx-auto">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
-                    <Megaphone className="text-indigo-600" size={32} />
+                <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                    <Megaphone className="text-indigo-600" size={24} />
                     Broadcast Announcements
                 </h1>
-                <p className="text-slate-500 mt-2">Send important updates, deadlines, or news to every registered user instantly.</p>
+                <p className="text-slate-500 text-sm mt-1">Send important updates, deadlines, or news to every registered user instantly.</p>
             </div>
 
             {/* Compose Card */}
@@ -120,14 +120,11 @@ const AdminAnnouncements = () => {
                         </p>
                     </div>
 
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-                        <AlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={20} />
-                        <div>
-                            <h4 className="font-bold text-amber-800 text-sm">Warning</h4>
-                            <p className="text-amber-700 text-xs mt-1">
-                                This will send a notification to <b>{stats.totalUsers} users</b> immediately. This action cannot be undone.
-                            </p>
-                        </div>
+                    <div className="bg-green-50 border-l-4 border-green-500 p-4 flex items-start gap-3 rounded-r-xl">
+                        <CheckCircle className="text-green-600 shrink-0 mt-0.5" size={20} />
+                        <p className="text-green-800 text-sm font-medium">
+                            The message regarding "<b>{title || '...'}</b>" written here will be broadcasted to <b>all users</b> immediately. This action cannot be unsent.
+                        </p>
                     </div>
 
                     <div className="flex justify-end pt-4">

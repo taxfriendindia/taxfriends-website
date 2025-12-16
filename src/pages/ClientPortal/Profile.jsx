@@ -13,6 +13,7 @@ const Profile = () => {
     const [error, setError] = useState(null)
     const [isEditing, setIsEditing] = useState(false)
     const [completionPercentage, setCompletionPercentage] = useState(0)
+    const [missingFields, setMissingFields] = useState([])
     const fileInputRef = useRef(null)
 
     const [formData, setFormData] = useState({
@@ -45,19 +46,24 @@ const Profile = () => {
     }, [formData])
 
     const calculateCompletion = () => {
-        const fields = [
-            formData.full_name,
-            formData.phone_number,
-            formData.residential_address,
-            formData.residential_city,
-            formData.residential_state,
-            formData.residential_pincode,
-            formData.business_name,
-            formData.dob,
-            formData.mothers_name
+        const required = [
+            { key: 'full_name', label: 'Full Name' },
+            { key: 'phone_number', label: 'Mobile' },
+            { key: 'dob', label: 'DOB' },
+            { key: 'mothers_name', label: "Mother's Name" },
+            { key: 'residential_address', label: 'Address' },
+            { key: 'residential_city', label: 'City' },
+            { key: 'residential_state', label: 'State' },
+            { key: 'residential_pincode', label: 'Pincode' },
+            { key: 'business_name', label: 'Business Name' },
+            { key: 'avatar_url', label: 'Profile Picture' }
         ]
-        const filled = fields.filter(f => f && f.toString().trim().length > 0).length
-        const total = fields.length
+
+        const missing = required.filter(f => !formData[f.key] || formData[f.key].toString().trim().length === 0).map(f => f.label)
+
+        setMissingFields(missing)
+        const filled = required.length - missing.length
+        const total = required.length
         setCompletionPercentage(Math.round((filled / total) * 100))
     }
 
@@ -75,7 +81,7 @@ const Profile = () => {
             if (data) {
                 setFormData({
                     full_name: data.full_name || '',
-                    phone_number: data.mobile || '',
+                    phone_number: data.mobile_number || '',
                     dob: data.dob || '',
                     mothers_name: data.mothers_name || '',
 
@@ -173,7 +179,7 @@ const Profile = () => {
                 id: user.id,
                 email: user.email, // Fix for "null value in column 'email'" error
                 full_name: formData.full_name,
-                mobile: formData.phone_number,
+                mobile_number: formData.phone_number,
                 dob: formData.dob || null,
                 mothers_name: formData.mothers_name,
 
@@ -229,10 +235,10 @@ const Profile = () => {
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Profile</h1>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 
                 {/* Left Column: Avatar & Completion Status */}
-                <div className="space-y-6 xl:col-span-1 xl:sticky xl:top-24">
+                <div className="space-y-6 lg:col-span-1 lg:sticky lg:top-24">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -253,7 +259,15 @@ const Profile = () => {
                                 {uploading ? (
                                     <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
                                 ) : formData.avatar_url ? (
-                                    <img src={formData.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                                    <img
+                                        src={formData.avatar_url}
+                                        alt="Profile"
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            setFormData({ ...formData, avatar_url: '' });
+                                        }}
+                                    />
                                 ) : (
                                     <User size={64} className="text-gray-400" />
                                 )}
@@ -305,7 +319,16 @@ const Profile = () => {
                         <p className="text-sm text-blue-100 leading-relaxed">
                             {completionPercentage === 100
                                 ? "Great job! Your profile is fully complete."
-                                : "Complete your profile to unlock faster processing."}
+                                : (
+                                    <span>
+                                        You need to complete: <br />
+                                        <span className="font-semibold text-white/90 text-xs">
+                                            {missingFields.slice(0, 3).join(', ')}
+                                            {missingFields.length > 3 && `, +${missingFields.length - 3} more`}
+                                        </span>
+                                    </span>
+                                )
+                            }
                         </p>
                     </motion.div>
                 </div>
@@ -315,7 +338,7 @@ const Profile = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="xl:col-span-2 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden"
+                    className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden"
                 >
                     <div className="p-8 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center">

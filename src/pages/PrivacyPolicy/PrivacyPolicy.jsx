@@ -132,16 +132,37 @@ const PrivacyPolicy = () => {
                     </div>
 
                     {/* 6 to 14 Combined Sections for Readability */}
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-gray-700 space-y-10 divide-y divide-gray-100 dark:divide-gray-700">
-                        <SectionBlock title="6. Your Rights" content="You have the right to access your data, request corrections, delete personal information (subject to legal retention), and opt-out of marketing communications." />
+                    {/* 6 to 10 Collapsible Sections */}
+                    <div className="space-y-4">
+                        <Accordion title="6. Your Rights">
+                            <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                                You have the right to access your data, request corrections, delete personal information (subject to legal retention), and opt-out of marketing communications.
+                            </p>
+                        </Accordion>
 
-                        <SectionBlock title="7. Data Retention" content="We retain active client data for 7 years and financial records for 10 years as per tax laws. Inactive data is securely deleted after 2 years." />
+                        <Accordion title="7. Data Retention">
+                            <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                                We retain active client data for 7 years and financial records for 10 years as per tax laws. Inactive data is securely deleted after 2 years.
+                            </p>
+                        </Accordion>
 
-                        <SectionBlock title="8. Cookies Policy" content="We use essential cookies for site functionality and anonymous analytics cookies to improve user experience. You can manage these in your browser settings." />
+                        <Accordion title="8. Cookies Policy">
+                            <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                                We use essential cookies for site functionality and anonymous analytics cookies to improve user experience. You can manage these in your browser settings.
+                            </p>
+                        </Accordion>
 
-                        <SectionBlock title="9. Breach Protocol" content="In the unlikely event of a breach, we follow a strict protocol: Immediate Containment -> Investigation -> Notification within 72 hours -> Remediation." />
+                        <Accordion title="9. Breach Protocol">
+                            <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                                In the unlikely event of a breach, we follow a strict protocol: Immediate Containment → Investigation → Notification within 72 hours → Remediation.
+                            </p>
+                        </Accordion>
 
-                        <SectionBlock title="10. International Transfers" content="Your data is primarily stored on secure servers within India. Any backups follow international security standards." />
+                        <Accordion title="10. International Transfers">
+                            <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                                Your data is primarily stored on secure servers within India. Any backups follow international security standards.
+                            </p>
+                        </Accordion>
                     </div>
 
                     {/* Contact for Privacy */}
@@ -151,9 +172,9 @@ const PrivacyPolicy = () => {
                             Contact our Data Protection Officer for any concerns regarding your personal information.
                         </p>
                         <div className="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-8">
-                            <a href="mailto:privacy@taxfriends.com" className="flex items-center text-blue-600 font-bold hover:underline bg-white dark:bg-gray-800 px-6 py-3 rounded-xl shadow-sm">
+                            <a href="mailto:taxfriend.tax@gmail.com" className="flex items-center text-blue-600 font-bold hover:underline bg-white dark:bg-gray-800 px-6 py-3 rounded-xl shadow-sm">
                                 <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">@</div>
-                                privacy@taxfriends.com
+                                taxfriend.tax@gmail.com
                             </a>
                             <a href="tel:8409847102" className="flex items-center text-gray-700 dark:text-gray-200 font-bold hover:text-blue-600 transition-colors">
                                 Call DPO: +91 8409847102

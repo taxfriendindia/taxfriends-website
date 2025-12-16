@@ -1,49 +1,25 @@
 import React, { useEffect, useState } from 'react'
-import { Users, FileText, Activity, Clock, TrendingUp, ArrowDown, BarChart2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { Users, FileText, Activity, Clock, TrendingUp, ArrowDown, BarChart2, XCircle } from 'lucide-react'
+import { AdminService } from '../../services/adminService'
 import { useNavigate } from 'react-router-dom'
-import { subDays, isAfter } from 'date-fns'
+
 
 const AdminDashboard = () => {
     const navigate = useNavigate()
     const [loading, setLoading] = useState(true)
     const [stats, setStats] = useState({ totalUsers: 0, newUsers: 0, totalReqs: 0, rejectedReqs: 0 })
     const [recentActivity, setRecentActivity] = useState([])
+    const [showRejectedModal, setShowRejectedModal] = useState(false)
 
     useEffect(() => {
         const load = async () => {
             try {
-                // 1. Optimized Stats Fetching (Count only, no data)
-                const { count: totalUsers } = await supabase.from('profiles').select('*', { count: 'exact', head: true })
-                const { count: totalReqs } = await supabase.from('user_services').select('*', { count: 'exact', head: true })
-                const { count: rejectedReqs } = await supabase.from('user_services').select('*', { count: 'exact', head: true }).in('status', ['rejected', 'cancelled'])
+                const statsData = await AdminService.getStats()
+                setStats(statsData)
 
-                // For "New Users" we need a date filter, so we can't use head:true easily without a filter, 
-                // but count with filter works efficiently in Supabase.
-                const recentTime = subDays(new Date(), 30).toISOString()
-                const { count: newUsers } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', recentTime)
-
-                setStats({
-                    totalUsers: totalUsers || 0,
-                    newUsers: newUsers || 0,
-                    totalReqs: totalReqs || 0,
-                    rejectedReqs: rejectedReqs || 0
-                })
-
-                // 2. Recent Activity Feed (Limit 3 is already efficient)
-                const { data: recentDocs } = await supabase.from('user_documents')
-                    .select('created_at, name, status').order('created_at', { ascending: false }).limit(3)
-
-                const { data: recentServs } = await supabase.from('user_services')
-                    .select('created_at, title, status').order('created_at', { ascending: false }).limit(3)
-
-                const feed = [
-                    ...(recentDocs || []).map(x => ({ type: 'doc', text: `Uploaded: ${x.name}`, date: x.created_at, status: x.status })),
-                    ...(recentServs || []).map(x => ({ type: 'service', text: `Service: ${x.title}`, date: x.created_at, status: x.status }))
-                ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5)
-
-                setRecentActivity(feed)
-
+                const activityFeed = await AdminService.getRecentActivity()
+                setRecentActivity(activityFeed)
             } catch (e) {
                 console.error(e)
             } finally {
@@ -84,7 +60,7 @@ const AdminDashboard = () => {
                     sub="Lost opportunities"
                     icon={ArrowDown}
                     color="bg-red-500"
-                    onClick={() => navigate('/admin/services', { state: { statusFilter: 'rejected' } })}
+                    onClick={() => setShowRejectedModal(true)}
                 />
                 <StatCard
                     title="Records & Data"
@@ -111,19 +87,28 @@ const AdminDashboard = () => {
                         recentActivity.map((item, idx) => (
                             <div
                                 key={idx}
-                                onClick={() => navigate(item.type === 'doc' ? '/admin/documents' : '/admin/services')}
+                                onClick={() => {
+                                    if (item.type === 'doc') navigate('/admin/documents')
+                                    else if (item.type === 'user') navigate('/admin/clients')
+                                    else navigate('/admin/services')
+                                }}
                                 className="p-4 hover:bg-slate-50 flex items-center justify-between transition-colors cursor-pointer"
                             >
                                 <div className="flex items-center">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 shadow-sm ${item.type === 'doc' ? 'bg-amber-100 text-amber-600' : 'bg-indigo-100 text-indigo-600'}`}>
-                                        {item.type === 'doc' ? <FileText size={18} /> : <Activity size={18} />}
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 shadow-sm ${item.type === 'doc' ? 'bg-amber-100 text-amber-600' :
+                                        item.type === 'user' ? 'bg-emerald-100 text-emerald-600' :
+                                            'bg-indigo-100 text-indigo-600'
+                                        }`}>
+                                        {item.type === 'doc' ? <FileText size={18} /> :
+                                            item.type === 'user' ? <Users size={18} /> :
+                                                <Activity size={18} />}
                                     </div>
                                     <div>
                                         <p className="text-sm font-semibold text-slate-900">{item.text}</p>
                                         <p className="text-xs text-slate-500">{new Date(item.date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</p>
                                     </div>
                                 </div>
-                                <span className={`text-xs px-2.5 py-1 rounded-full font-medium capitalize ${item.status === 'verified' ? 'bg-emerald-100 text-emerald-700' :
+                                <span className={`text-xs px-2.5 py-1 rounded-full font-medium capitalize ${item.status === 'verified' || item.status === 'joined' || item.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
                                     item.status === 'rejected' ? 'bg-red-100 text-red-700' :
                                         'bg-slate-100 text-slate-600'
                                     }`}>
@@ -134,6 +119,8 @@ const AdminDashboard = () => {
                     )}
                 </div>
             </div>
+
+            <RejectedBreakdownModal isOpen={showRejectedModal} onClose={() => setShowRejectedModal(false)} />
         </div>
     )
 }
@@ -155,5 +142,96 @@ const StatCard = ({ title, count, sub, icon: Icon, color, onClick }) => (
         </div>
     </div>
 )
+
+const RejectedBreakdownModal = ({ isOpen, onClose }) => {
+    const [rejections, setRejections] = useState([])
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        if (isOpen) fetchBreakdown()
+    }, [isOpen])
+
+    const fetchBreakdown = async () => {
+        setLoading(true)
+        try {
+            // Fetch rejected/cancelled services with joins
+            const { data, error } = await supabase
+                .from('user_services')
+                .select('*, profiles:user_id(full_name, email), service_catalog:service_id(title)')
+                .in('status', ['rejected', 'cancelled'])
+                .order('updated_at', { ascending: false })
+                .limit(20)
+
+            if (error) throw error
+
+            setRejections(data || [])
+
+        } catch (e) {
+            console.error(e)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    if (!isOpen) return null
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-red-50">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-red-100 p-2 rounded-lg text-red-600">
+                            <ArrowDown size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-slate-900 text-lg">Rejection Analysis</h3>
+                            <p className="text-xs text-red-600/80 font-medium">Recent Rejected Requests</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-red-100 rounded-full text-slate-400 hover:text-red-500 transition-colors">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <div className="p-0 max-h-[60vh] overflow-y-auto">
+                    {loading ? (
+                        <div className="p-6 space-y-4">
+                            {[1, 2, 3].map(i => <div key={i} className="h-16 bg-slate-50 rounded-xl animate-pulse" />)}
+                        </div>
+                    ) : rejections.length === 0 ? (
+                        <div className="p-12 text-center text-slate-400">
+                            <p>No rejected requests found.</p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-slate-100">
+                            {rejections.map((item) => (
+                                <div key={item.id} className="p-4 hover:bg-slate-50 transition-colors flex items-start gap-3">
+                                    <div className="mt-1 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold text-xs shrink-0">
+                                        <XCircle size={16} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-start">
+                                            <h4 className="font-bold text-slate-800 text-sm">{item.service_catalog?.title || 'Unknown Service'}</h4>
+                                            <span className="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100 font-bold uppercase">Rejected</span>
+                                        </div>
+                                        <p className="text-xs text-slate-500 mt-0.5">
+                                            Client: <span className="font-semibold text-slate-700">{item.profiles?.full_name || 'Unknown'}</span>
+                                        </p>
+                                        <p className="text-[10px] text-slate-400 mt-1">
+                                            Updated: {new Date(item.updated_at || item.created_at).toLocaleString()}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <div className="bg-slate-50 p-3 text-center border-t border-slate-100">
+                    <p className="text-[10px] text-slate-400">Showing latest {rejections.length} rejected/cancelled requests.</p>
+                </div>
+            </div>
+        </div>
+    )
+}
 
 export default AdminDashboard

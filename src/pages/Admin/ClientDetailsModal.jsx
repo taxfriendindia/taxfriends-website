@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, User, Briefcase, MessageSquare, Save, Mail, MapPin, Calendar, Clock, Bell, Send } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
-const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate }) => {
+const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) => {
     const [activeTab, setActiveTab] = useState('profile') // profile, services, message
     const [isEditing, setIsEditing] = useState(false)
     const [formData, setFormData] = useState({})
@@ -11,6 +11,8 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate }) => {
     const [loadingServices, setLoadingServices] = useState(false)
     const [message, setMessage] = useState('')
     const [sendingMsg, setSendingMsg] = useState(false)
+    const [roleModal, setRoleModal] = useState({ isOpen: false, newRole: null, action: '' })
+    const [confirmInput, setConfirmInput] = useState('')
 
     useEffect(() => {
         if (client) {
@@ -21,6 +23,38 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate }) => {
             setActiveTab('profile')
         }
     }, [client])
+
+    const handleRoleToggle = (newRole) => {
+        // Only allow toggle if it's actually a change (though UI prevents this mostly)
+        if (newRole === client.role) return
+
+        const action = newRole === 'admin' ? 'PROMOTE to Admin' : 'DEMOTE to Client'
+        setRoleModal({ isOpen: true, newRole, action })
+        setConfirmInput('')
+    }
+
+    const executeRoleChange = async () => {
+        if (confirmInput.toLowerCase() !== 'confirm') {
+            alert('You must type "confirm" to proceed.')
+            return
+        }
+
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ role: roleModal.newRole })
+                .eq('id', client.id)
+
+            if (error) throw error
+
+            alert(`User role updated to ${roleModal.newRole.toUpperCase()}. All existing data is preserved.`)
+            onUpdate({ ...client, role: roleModal.newRole })
+            setRoleModal({ isOpen: false, newRole: null, action: '' })
+        } catch (error) {
+            console.error('Error changing role:', error)
+            alert('Failed to change role. Check permissions.')
+        }
+    }
 
     const fetchServices = async (userId) => {
         setLoadingServices(true)
@@ -94,7 +128,7 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate }) => {
                     title: 'Message from Admin',
                     message: message,
                     type: 'info',
-                    read: false,
+                    is_read: false,
                     created_at: new Date()
                 }])
 
@@ -119,8 +153,60 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate }) => {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+                    className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col relative"
                 >
+                    {/* Role Confirmation Modal Overlay */}
+                    {roleModal.isOpen && (
+                        <div className="absolute inset-0 z-[60] flex items-center justify-center p-4 bg-white/60 backdrop-blur-sm rounded-2xl">
+                            <motion.div
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm border border-slate-200 ring-1 ring-black/5"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-4">
+                                        <Bell size={24} />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-slate-900 mb-2">Confirm Role Change</h3>
+                                    <p className="text-sm text-slate-500 mb-6">
+                                        Are you sure you want to <strong>{roleModal.action}</strong>?<br />
+                                        This grants or removes sensitive access permissions.
+                                    </p>
+
+                                    <div className="w-full mb-6 text-left bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">
+                                            Type 'confirm' to continue
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={confirmInput}
+                                            onChange={(e) => setConfirmInput(e.target.value)}
+                                            className="w-full bg-white px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                                            placeholder="confirm"
+                                            autoFocus
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-3 w-full">
+                                        <button
+                                            onClick={() => setRoleModal({ ...roleModal, isOpen: false })}
+                                            className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={executeRoleChange}
+                                            disabled={confirmInput.toLowerCase() !== 'confirm'}
+                                            className="flex-1 px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                                        >
+                                            Confirm
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
                     {/* Header */}
                     <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                         <div className="flex items-center space-x-4">
@@ -156,18 +242,50 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate }) => {
                             <div className="space-y-6">
                                 <div className="flex justify-between items-center mb-4">
                                     <h3 className="font-bold text-slate-800 text-lg">Personal & Business Details</h3>
-                                    {!isEditing ? (
-                                        <button onClick={() => setIsEditing(true)} className="text-indigo-600 font-semibold hover:underline text-sm flex items-center">
-                                            <EditIcon size={16} className="mr-1" /> Edit Profile
-                                        </button>
-                                    ) : (
-                                        <div className="flex space-x-3">
-                                            <button onClick={() => setIsEditing(false)} className="text-slate-500 hover:text-slate-700 text-sm font-medium">Cancel</button>
-                                            <button onClick={handleSave} className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-700 flex items-center">
-                                                <Save size={14} className="mr-1.5" /> Save Changes
-                                            </button>
-                                        </div>
-                                    )}
+
+                                    <div className="flex items-center gap-4">
+                                        {/* Superuser Role Management */}
+                                        {currentUser?.role === 'superuser' && client.role !== 'superuser' && (
+                                            <div className="flex items-center space-x-3 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                                                <span className="text-xs font-bold text-slate-400 px-2 uppercase">Role:</span>
+                                                <div className="flex bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
+                                                    <button
+                                                        onClick={() => handleRoleToggle('client')}
+                                                        className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${client.role === 'client'
+                                                            ? 'bg-blue-600 text-white shadow-sm'
+                                                            : 'text-slate-500 hover:text-slate-700'
+                                                            }`}
+                                                    >
+                                                        Client
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleRoleToggle('admin')}
+                                                        className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${client.role === 'admin'
+                                                            ? 'bg-blue-600 text-white shadow-sm'
+                                                            : 'text-slate-500 hover:text-slate-700'
+                                                            }`}
+                                                    >
+                                                        Admin
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {currentUser?.role === 'superuser' && (
+                                            !isEditing ? (
+                                                <button onClick={() => setIsEditing(true)} className="text-indigo-600 font-semibold hover:underline text-sm flex items-center">
+                                                    <EditIcon size={16} className="mr-1" /> Edit Profile
+                                                </button>
+                                            ) : (
+                                                <div className="flex space-x-3">
+                                                    <button onClick={() => setIsEditing(false)} className="text-slate-500 hover:text-slate-700 text-sm font-medium">Cancel</button>
+                                                    <button onClick={handleSave} className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-700 flex items-center">
+                                                        <Save size={14} className="mr-1.5" /> Save Changes
+                                                    </button>
+                                                </div>
+                                            )
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Form Grid */}

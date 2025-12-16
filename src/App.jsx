@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import ScrollToTop from './components/Shared/ScrollToTop'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Loader2 } from 'lucide-react'
 import Login from './components/auth/Login'
@@ -6,6 +7,7 @@ import Home from './pages/Home/Home'
 import About from './pages/About/About'
 import Contact from './pages/Contact/Contact'
 import PrivacyPolicy from './pages/PrivacyPolicy/PrivacyPolicy'
+import Terms from './pages/Policies/Terms'
 import ClientLayout from './pages/ClientPortal/ClientLayout'
 import Services from './pages/ClientPortal/Services'
 import Documents from './pages/ClientPortal/Documents'
@@ -18,6 +20,7 @@ import AdminRequests from './pages/Admin/AdminRequests'
 import AdminServices from './pages/Admin/AdminServices'
 import AdminRecords from './pages/Admin/AdminRecords'
 import AdminAnnouncements from './pages/Admin/AdminAnnouncements'
+
 import PublicServices from './pages/Services/Services'
 
 // Loading Spinner Component
@@ -34,15 +37,13 @@ const PrivateRoute = ({ children }) => {
 
   if (!user) return <Navigate to="/login" />
 
-  // If Admin tries to access client area, force redirect to Admin Dashboard
-  if (user.email === 'taxfriend.tax@gmail.com') {
-    return <Navigate to="/admin/dashboard" replace />
-  }
+  // Admins are allowed to access Client Portal to view their own personal history
+  // Removed redirection logic that blocked admins.
 
   return children
 }
 
-// Admin Protected Route (Only specific email)
+// Admin Protected Route (Role Based)
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth()
 
@@ -51,16 +52,19 @@ const AdminRoute = ({ children }) => {
   if (!user) return <Navigate to="/login" />
 
   // STRICT SECURITY CHECK
-  if (user.email !== 'taxfriend.tax@gmail.com') {
+  if (user.role !== 'admin' && user.role !== 'superuser') {
     return <Navigate to="/dashboard" replace />
   }
 
   return children
 }
 
+
+
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <AuthProvider>
         <Routes>
           {/* Public Routes */}
@@ -69,6 +73,7 @@ function App() {
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="/login" element={<Login />} />
 
           {/* Client Portal Routes */}
@@ -89,6 +94,8 @@ function App() {
             <Route path="services" element={<AdminServices />} />
             <Route path="records" element={<AdminRecords />} />
             <Route path="announcements" element={<AdminAnnouncements />} />
+            {/* Manage Admins merged into Admin Services */}
+            <Route path="profile" element={<Profile />} />
             <Route path="*" element={<div className="p-8 text-gray-500">Page Under Construction</div>} />
           </Route>
 

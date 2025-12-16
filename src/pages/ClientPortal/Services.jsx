@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, ArrowRight, FileText, CheckCircle, X, AlertCircle } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
+import { CatalogService } from '../../services/catalogService'
+import { RequestService } from '../../services/requestService'
+import { UserService } from '../../services/userService'
+import { DocumentService } from '../../services/documentService'
 import { useAuth } from '../../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
@@ -23,13 +26,8 @@ const Services = () => {
 
     const fetchServices = async () => {
         try {
-            const { data, error } = await supabase
-                .from('service_catalog')
-                .select('*')
-                .order('title')
-
-            if (error) throw error
-            setServices(data || [])
+            const data = await CatalogService.getAll()
+            setServices(data)
         } catch (error) {
             console.error('Error fetching services:', error)
         } finally {
@@ -53,47 +51,40 @@ const Services = () => {
         setSubmitting(true)
         try {
             // Check for duplicate pending/processing requests
-            const { data: existing } = await supabase
-                .from('user_services')
-                .select('id, status')
-                .eq('user_id', user.id)
-                .eq('service_id', selectedService.id)
-                .in('status', ['pending', 'processing'])
-                .maybeSingle()
+            const existing = await RequestService.checkActiveRequest(user.id, selectedService.id)
 
             if (existing) {
                 throw new Error(`You already have a active request (${existing.status}) for this service.`)
             }
 
-            const { error } = await supabase
-                .from('user_services')
-                .insert([{
-                    user_id: user.id,
-                    service_id: selectedService.id,
-                    status: 'pending',
-                    comments: '',
-                    created_at: new Date()
-                }])
-
-            if (error) throw error
+            await RequestService.createRequest(user.id, selectedService.id)
 
             // Create a notification
-            await supabase.from('notifications').insert([{
-                user_id: user.id,
-                title: 'Service Requested',
-                message: `Request received for ${selectedService.title}. Please upload relevant documents in the Documents section. Our team will verify them and reach back to you soon.`,
-                type: 'info',
-                read: false,
-                created_at: new Date()
-            }])
+            await UserService.createNotification(
+                user.id,
+                `Service Requested - ${selectedService.title}`,
+                `Request received for ${selectedService.title}. Please upload relevant documents in the Documents section. Our team will verify them and reach back to you soon.`,
+                'info'
+            )
 
             setMessage({ type: 'success', text: 'Request submitted successfully! Redirecting...' })
+
+            // Check if user has previously uploaded documents
+            // If they have docs, we don't force them to the upload page.
+            const userDocs = await DocumentService.getUserDocuments(user.id)
+            const hasDocs = userDocs && userDocs.length > 0
 
             setTimeout(() => {
                 setIsModalOpen(false)
                 setSelectedService(null)
-                // Redirect to History with a flag so it knows to forward to Documents after a delay
-                navigate('/dashboard/history', { state: { newRequest: true } })
+
+                if (hasDocs) {
+                    // User knows the drill / has docs. Just go to history.
+                    navigate('/dashboard/history')
+                } else {
+                    // New user or no docs. Nudge them to upload.
+                    navigate('/dashboard/history', { state: { newRequest: true } })
+                }
             }, 1000)
 
         } catch (error) {

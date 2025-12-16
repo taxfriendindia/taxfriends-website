@@ -12,7 +12,7 @@ import {
     ResponsiveContainer,
     Legend
 } from 'recharts'
-import { format, subDays, subHours, subMonths, subYears, isAfter, startOfWeek, startOfMonth, startOfHour, startOfDay } from 'date-fns'
+import { format, subDays, subHours, subMonths, subYears, isAfter, startOfWeek, startOfMonth, startOfHour, startOfDay, endOfDay } from 'date-fns'
 
 const AdminRecords = () => {
     const [loading, setLoading] = useState(true)
@@ -63,79 +63,96 @@ const AdminRecords = () => {
         if (loading) return []
 
         const now = new Date()
-        let startDate = subDays(now, 7)
-        let groupByKey = (date) => format(date, 'dd MMM')
-
-        // Dynamic Time Grouping Strategy
-        if (timeRange === '24h') {
-            startDate = subHours(now, 24)
-            groupByKey = (date) => format(startOfHour(date), 'HH:00')
-        } else if (timeRange === '7d') {
-            startDate = subDays(now, 7)
-            groupByKey = (date) => format(startOfDay(date), 'dd MMM') // Daily: "15 Dec"
-        } else if (timeRange === '1m') {
-            startDate = subMonths(now, 1)
-            // Group by Week 
-            groupByKey = (date) => `Week ${format(startOfWeek(date), 'w')}`
-        } else if (timeRange === '1y') {
-            startDate = subYears(now, 1)
-            // Group by Month
-            groupByKey = (date) => format(startOfMonth(date), 'MMM yy')
-        }
-
         const dataMap = new Map()
 
-        // --- Filter Logic Integration ---
-        // We only aggregate data that matches the current "Marketing Filter" context
+        let startDate = startOfDay(subDays(now, 6)) // default
+        let getNextDate = (d, i) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + i)
+        let formatKey = (d) => format(d, 'dd MMM')
+        let iterations = 7
 
-        // 1. Process Profiles (New Users)
-        if (marketingFilter === 'all' || marketingFilter === 'new_users') {
-            profiles.forEach(p => {
-                const d = new Date(p.created_at)
-                if (isAfter(d, startDate)) {
-                    const key = groupByKey(d)
-                    const entry = dataMap.get(key) || { name: key, primaryMetric: 0, secondaryMetric: 0 }
-                    entry.newUsers = (entry.newUsers || 0) + 1
-                    dataMap.set(key, entry)
-                }
-            })
+        // 1. Configure Range
+        if (timeRange === '24h') {
+            startDate = startOfHour(subHours(now, 23))
+            getNextDate = (d, i) => new Date(d.getTime() + i * 60 * 60 * 1000)
+            formatKey = (d) => format(d, 'HH:00')
+            iterations = 24
+        } else if (timeRange === '7d') {
+            startDate = startOfDay(subDays(now, 6))
+            iterations = 7
+        } else if (timeRange === '1m') {
+            startDate = startOfDay(subDays(now, 29))
+            iterations = 30
+        } else if (timeRange === '1y') {
+            startDate = startOfMonth(subMonths(now, 11))
+            getNextDate = (d, i) => new Date(d.getFullYear(), d.getMonth() + i, 1)
+            formatKey = (d) => format(d, 'MMM yy')
+            iterations = 12
+        } else if (timeRange === 'all') {
+            // Find earliest date
+            let minTime = now.getTime()
+            if (profiles.length > 0) minTime = Math.min(minTime, new Date(profiles[0].created_at).getTime())
+            if (requests.length > 0) minTime = Math.min(minTime, new Date(requests[0].created_at).getTime())
+
+            startDate = startOfDay(new Date(minTime))
+            const diffDays = Math.ceil((now - startDate) / (1000 * 60 * 60 * 24))
+            iterations = Math.max(diffDays + 1, 7) // at least 7 days
+
+            // If range is huge (> 1 year), group by Month. Otherwise keep Day-wise.
+            if (iterations > 400) {
+                startDate = startOfMonth(startDate)
+                iterations = Math.ceil((now - startDate) / (1000 * 60 * 60 * 24 * 30)) + 1
+                getNextDate = (d, i) => new Date(d.getFullYear(), d.getMonth() + i, 1)
+                formatKey = (d) => format(d, 'MMM yy')
+            }
         }
 
-        // 2. Process Requests
-        requests.forEach(r => {
-            const d = new Date(r.created_at)
+        // 2. Pre-fill Map (Continuous Axis)
+        for (let i = 0; i < iterations; i++) {
+            const d = getNextDate(startDate, i)
+            // Stop if future (for small 'All' ranges that pad to 7 days, or ensuring we don't go past 'now' too much)
+            // Actually nice to see up to today.
+            if (d > endOfDay(now)) break;
 
-            // Apply Status Filter Check
-            let matchesFilter = false
-            if (marketingFilter === 'all') matchesFilter = true
-            else if (marketingFilter === 'pending_req' && r.status === 'pending') matchesFilter = true
-            else if (marketingFilter === 'rejected_req' && r.status === 'rejected') matchesFilter = true
-            else if (marketingFilter === 'cancelled_req' && r.status === 'cancelled') matchesFilter = true
-
-            if (matchesFilter && isAfter(d, startDate)) {
-                const key = groupByKey(d)
-                const entry = dataMap.get(key) || { name: key }
-
-                // If specific filter, we count relevant metric
-                if (marketingFilter !== 'all' && marketingFilter !== 'new_users') {
-                    entry.filteredCount = (entry.filteredCount || 0) + 1
-                } else {
-                    entry.totalRequests = (entry.totalRequests || 0) + 1
-                }
-
-                dataMap.set(key, entry)
+            const key = formatKey(d)
+            if (!dataMap.has(key)) {
+                dataMap.set(key, {
+                    name: key,
+                    newUsers: 0,
+                    totalRequests: 0,
+                    filteredCount: 0,
+                    rawDate: d
+                })
             }
-        })
+        }
 
-        // Sort Map chronologically
-        // Note: Map iterates in insertion order, but since we insert based on unsorted input often, 
-        // we might need strict sort. 
-        // Best approach: create array of all expected keys in range and fill.
-        // For now, simpler: sort final array by parsing key? Hard with mixed formats.
-        // Let's assume input is chronological or rely on a simple sort if possible.
-        // To fix sort properly:
-        // We really should generate the 'skeleton' keys first.
-        // Let's stick to current logic: database returns sorted data, so iterating linearly fills Map in order.
+        // 3. Populate
+        const processItem = (date, type, item) => {
+            const d = new Date(date)
+            if (d < startDate) return
+
+            const key = formatKey(d)
+            if (dataMap.has(key)) {
+                const entry = dataMap.get(key)
+                if (type === 'profile') {
+                    if (marketingFilter === 'all' || marketingFilter === 'new_users') {
+                        entry.newUsers += 1
+                    }
+                } else if (type === 'request') {
+                    let matchesFilter = false
+                    if (marketingFilter === 'all') matchesFilter = true
+                    else if (marketingFilter === 'pending_req' && item.status === 'pending') matchesFilter = true
+                    else if (marketingFilter === 'rejected_cancelled_req' && (item.status === 'cancelled' || item.status === 'rejected')) matchesFilter = true
+
+                    if (matchesFilter) {
+                        if (marketingFilter !== 'all' && marketingFilter !== 'new_users') entry.filteredCount += 1
+                        else entry.totalRequests += 1
+                    }
+                }
+            }
+        }
+
+        profiles.forEach(p => processItem(p.created_at, 'profile', p))
+        requests.forEach(r => processItem(r.created_at, 'request', r))
 
         return Array.from(dataMap.values())
     }, [profiles, requests, timeRange, loading, marketingFilter])
@@ -150,11 +167,8 @@ const AdminRecords = () => {
         } else if (marketingFilter === 'pending_req') {
             const userIds = new Set(requests.filter(r => r.status === 'pending').map(r => r.user_id))
             data = data.filter(p => userIds.has(p.id))
-        } else if (marketingFilter === 'rejected_req') {
-            const userIds = new Set(requests.filter(r => r.status === 'rejected').map(r => r.user_id))
-            data = data.filter(p => userIds.has(p.id))
-        } else if (marketingFilter === 'cancelled_req') {
-            const userIds = new Set(requests.filter(r => r.status === 'cancelled').map(r => r.user_id))
+        } else if (marketingFilter === 'rejected_cancelled_req') {
+            const userIds = new Set(requests.filter(r => r.status === 'cancelled' || r.status === 'rejected').map(r => r.user_id))
             data = data.filter(p => userIds.has(p.id))
         }
 
@@ -194,34 +208,62 @@ const AdminRecords = () => {
 
             {/* Analytics Section */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between mb-8 gap-6">
                     <div>
                         <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                             <BarChart2 className="text-indigo-600" />
                             {marketingFilter === 'all' ? 'Activity Overview' : 'Filtered Trends'}
                         </h2>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-slate-500 mt-1">
                             {marketingFilter === 'all'
                                 ? 'Visual breakdown of user growth and service demand.'
-                                : `Tracking metric: ${marketingFilter.replace('_', ' ').toUpperCase()}`
+                                : `Tracking metric: ${marketingFilter === 'new_users' ? 'NEW USERS' : marketingFilter.replace('_', ' ').toUpperCase()}`
                             }
                         </p>
                     </div>
 
-                    {/* Time Filter */}
-                    <div className="flex bg-slate-100 p-1 rounded-xl self-start">
-                        {['24h', '7d', '1m', '1y'].map(range => (
-                            <button
-                                key={range}
-                                onClick={() => setTimeRange(range)}
-                                className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${timeRange === range
+                    <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+                        {/* Filter Dropdown */}
+                        <div className="relative">
+                            <select
+                                value={marketingFilter}
+                                onChange={(e) => setMarketingFilter(e.target.value)}
+                                className="pl-6 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-full text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer hover:bg-slate-100 transition-colors appearance-none shadow-sm"
+                            >
+                                <option value="all">Every Registered User</option>
+                                <option value="new_users">New Users (Last 30 Days)</option>
+                                <option value="pending_req">Users with Pending Requests</option>
+                                <option value="rejected_cancelled_req">Rejected or Cancelled Requests</option>
+                            </select>
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                            </div>
+                        </div>
+
+                        {/* Export Button */}
+                        <button
+                            onClick={downloadCSV}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-full shadow-lg shadow-slate-900/20 transition-all active:scale-95 hover:-translate-y-0.5"
+                        >
+                            <Download size={18} />
+                            Export
+                        </button>
+
+                        {/* Time Filter */}
+                        <div className="flex bg-slate-100 p-1.5 rounded-full">
+                            {['24h', '7d', '1m', '1y'].map(range => (
+                                <button
+                                    key={range}
+                                    onClick={() => setTimeRange(range)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${timeRange === range
                                         ? 'bg-white text-indigo-600 shadow-sm'
                                         : 'text-slate-500 hover:text-slate-700'
-                                    }`}
-                            >
-                                {range}
-                            </button>
-                        ))}
+                                        }`}
+                                >
+                                    {range}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
@@ -252,7 +294,7 @@ const AdminRecords = () => {
                                 {(marketingFilter === 'all' || marketingFilter === 'new_users') && (
                                     <Bar
                                         dataKey="newUsers"
-                                        name="New Users"
+                                        name="Registrations"
                                         fill="#10B981"
                                         radius={[4, 4, 0, 0]}
                                         barSize={marketingFilter === 'all' ? 20 : 40}
@@ -263,7 +305,7 @@ const AdminRecords = () => {
                                     <Line
                                         type="monotone" // connecting line
                                         dataKey="totalRequests"
-                                        name="Total Requests"
+                                        name="Services Requested"
                                         stroke="#6366F1"
                                         strokeWidth={3}
                                         dot={{ r: 4 }}
@@ -303,90 +345,44 @@ const AdminRecords = () => {
                 </div>
             </div>
 
-            {/* Marketing & Data Export Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Export Controls */}
-                <div className="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-fit">
-                    <div className="mb-6">
-                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                            <Download className="text-indigo-600" /> Data Export
-                        </h2>
-                        <p className="text-sm text-slate-500 mt-2">
-                            Target users based on their activity status.
-                        </p>
-                    </div>
-
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Filter List By</label>
-                            <select
-                                value={marketingFilter}
-                                onChange={(e) => setMarketingFilter(e.target.value)}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                            >
-                                <option value="all">Every Registered User</option>
-                                <option value="new_users">New Users (Last 30 Days)</option>
-                                <option value="pending_req">Users with Pending Requests</option>
-                                <option value="rejected_req">Rejected by Admin</option>
-                                <option value="cancelled_req">Cancelled by User (Retarget)</option>
-                            </select>
-                        </div>
-
-                        <button
-                            onClick={downloadCSV}
-                            className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow-lg shadow-slate-900/20 transition-all flex items-center justify-center gap-2"
-                        >
-                            <Download size={18} />
-                            Download CSV
-                        </button>
-
-                        <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 mt-4">
-                            <p className="text-indigo-800 text-xs font-semibold text-center">
-                                {marketingData.length} users found
-                            </p>
-                        </div>
-                    </div>
+            {/* Data Preview Table (Full Width) */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                    <h3 className="font-bold text-slate-800">Data Preview ({marketingData.length} records)</h3>
                 </div>
 
-                {/* Preview Table */}
-                <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                    <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                        <h3 className="font-bold text-slate-800">Data Preview</h3>
-                    </div>
-
-                    <div className="overflow-x-auto flex-1">
-                        <table className="w-full text-left">
-                            <thead className="bg-white border-b border-slate-100">
-                                <tr>
-                                    <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase">Name</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase">Contact</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase">Joined</th>
+                <div className="overflow-x-auto flex-1">
+                    <table className="w-full text-left">
+                        <thead className="bg-white border-b border-slate-100">
+                            <tr>
+                                <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase">Name</th>
+                                <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase">Contact</th>
+                                <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase">Joined</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                            {marketingData.slice(0, 10).map(u => (
+                                <tr key={u.id} className="hover:bg-slate-50">
+                                    <td className="px-6 py-3">
+                                        <div className="font-semibold text-slate-700 text-sm">{u.full_name || 'N/A'}</div>
+                                        <div className="text-xs text-slate-400">{u.organization}</div>
+                                    </td>
+                                    <td className="px-6 py-3">
+                                        <div className="text-xs font-mono text-slate-600">{u.email}</div>
+                                        <div className="text-xs text-slate-400">{u.mobile}</div>
+                                    </td>
+                                    <td className="px-6 py-3 text-xs text-slate-500">
+                                        {new Date(u.created_at).toLocaleDateString()}
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {marketingData.slice(0, 5).map(u => (
-                                    <tr key={u.id} className="hover:bg-slate-50">
-                                        <td className="px-6 py-3">
-                                            <div className="font-semibold text-slate-700 text-sm">{u.full_name || 'N/A'}</div>
-                                            <div className="text-xs text-slate-400">{u.organization}</div>
-                                        </td>
-                                        <td className="px-6 py-3">
-                                            <div className="text-xs font-mono text-slate-600">{u.email}</div>
-                                            <div className="text-xs text-slate-400">{u.mobile}</div>
-                                        </td>
-                                        <td className="px-6 py-3 text-xs text-slate-500">
-                                            {new Date(u.created_at).toLocaleDateString()}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        {marketingData.length === 0 && (
-                            <div className="p-8 text-center text-slate-400 text-sm">
-                                No records found.
-                            </div>
-                        )}
-                    </div>
+                            ))}
+                        </tbody>
+                    </table>
+                    {marketingData.length === 0 && (
+                        <div className="p-8 text-center text-slate-400 text-sm">
+                            No records found matching filters.
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -1,11 +1,26 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { MapPin, Phone, Mail, ChevronRight, Facebook, Twitter, Linkedin, Instagram } from 'lucide-react'
 
 const Footer = () => {
+    const navigate = useNavigate()
     // Exact location of your office for Google Maps Direction
     const officeAddress = "Mohanth Sah Chowk Naka Number 1, SK Color Lab Gali, Sitamarhi, Bihar 843302"
     const mapUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(officeAddress)}`
+
+    // Handle scroll to services
+    const handleServiceClick = (e, serviceName) => {
+        e.preventDefault()
+        // Determine target ID based on service (you might need to update Home.jsx to have these IDs)
+        // For now, general scroll to services section
+        navigate('/')
+        setTimeout(() => {
+            const section = document.getElementById('services')
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth' })
+            }
+        }, 100)
+    }
 
     return (
         <footer className="bg-gray-100 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 pt-16 pb-8 transition-colors duration-300">
@@ -17,7 +32,7 @@ const Footer = () => {
                             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform duration-300">
                                 TF
                             </div>
-                            <span className="font-bold text-2xl text-gray-900 dark:text-white tracking-tight">TaxFriends</span>
+                            <span className="font-bold text-2xl text-gray-900 dark:text-white tracking-tight">TaxFriend</span>
                         </Link>
                         <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed text-sm">
                             Your trusted partner for all tax and business compliance needs. Simplifying finance for businesses across India since 2013.
@@ -63,17 +78,21 @@ const Footer = () => {
                         </h4>
                         <ul className="space-y-3">
                             {[
-                                { name: 'Income Tax Filing', path: '/dashboard/services' },
-                                { name: 'GST Registration', path: '/dashboard/services' },
-                                { name: 'Company Formation', path: '/dashboard/services' },
-                                { name: 'MSME Registration', path: '/dashboard/services' },
-                                { name: 'TDS Filing', path: '/dashboard/services' }
+                                { name: 'Income Tax Filing', path: '/#services' },
+                                { name: 'GST Registration', path: '/#services' },
+                                { name: 'Company Formation', path: '/#services' },
+                                { name: 'MSME Registration', path: '/#services' },
+                                { name: 'TDS Filing', path: '/#services' }
                             ].map((service) => (
                                 <li key={service.name}>
-                                    <Link to={service.path} className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 flex items-center group">
+                                    <a
+                                        href={service.path}
+                                        onClick={(e) => handleServiceClick(e, service.name)}
+                                        className="cursor-pointer text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 flex items-center group"
+                                    >
                                         <ChevronRight size={14} className="mr-2 opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all duration-200" />
                                         <span className="group-hover:translate-x-1 transition-transform">{service.name}</span>
-                                    </Link>
+                                    </a>
                                 </li>
                             ))}
                         </ul>
@@ -128,7 +147,7 @@ const Footer = () => {
 
                 {/* Copyright */}
                 <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400">
-                    <p>© {new Date().getFullYear()} TaxFriends. All rights reserved.</p>
+                    <p>© {new Date().getFullYear()} TaxFriend. All rights reserved.</p>
                     <div className="flex space-x-6 mt-4 md:mt-0">
                         <Link to="/privacy-policy" className="hover:text-blue-600 transition-colors">Privacy Policy</Link>
                         <Link to="/terms" className="hover:text-blue-600 transition-colors">Terms of Service</Link>

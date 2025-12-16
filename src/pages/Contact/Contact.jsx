@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import React, { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence, useInView, useMotionValue, useTransform, animate } from 'framer-motion'
 import { Phone, Mail, MapPin, Clock, Send, CheckCircle, ChevronDown, Zap, Target, Lock, Wallet, ArrowRight } from 'lucide-react'
 import Navbar from '../../components/Shared/Navbar'
 import Footer from '../../components/Shared/Footer'
@@ -147,33 +147,67 @@ const Contact = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <span className="bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide">Pan-India Presence</span>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mt-4">Now Serving 50+ Cities Across India</h2>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mt-4 flex items-center justify-center gap-2">
+                Now Serving <ContactStatCounter number="10+" /> Cities Across India
+              </h2>
             </div>
 
-            <div className="relative bg-blue-50 dark:bg-gray-900 border border-blue-100 dark:border-gray-700 rounded-3xl p-4 md:p-12 overflow-hidden h-[500px] flex items-center justify-center">
-              {/* Abstract Map Nodes Animation */}
-              <div className="absolute inset-0 z-0 opacity-20 dark:opacity-10 bg-[url('https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/India_loction_map.svg/866px-India_loction_map.svg.png')] bg-contain bg-no-repeat bg-center transform scale-110"></div>
+            {/* Spider Layout Container */}
+            <div className="relative w-full max-w-6xl mx-auto min-h-[600px] bg-blue-50/30 dark:bg-gray-800/30 rounded-3xl border border-blue-100 dark:border-gray-700 overflow-hidden flex flex-col items-center py-10">
 
-              {/* Animated Pulse for Bihar */}
-              <div className="absolute top-[38%] right-[32%] z-10 hidden md:block">
-                <div className="relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-600 border-2 border-white"></span>
-                  <span className="absolute left-6 top-0 w-max bg-white/90 px-2 py-1 rounded text-xs font-bold shadow-sm">Bihar HQ</span>
+              {/* Background Map (Faded) */}
+              <div className="absolute inset-0 z-0 opacity-10 bg-[url('https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/India_loction_map.svg/866px-India_loction_map.svg.png')] bg-contain bg-no-repeat bg-center"></div>
+
+              {/* SVG Connections (Desktop Only) */}
+              <div className="absolute inset-0 z-10 pointer-events-none hidden md:block">
+                <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 1200 600">
+                  <defs>
+                    <linearGradient id="spiderGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#ef4444" stopOpacity="0.6" /> {/* Red gradient start from HQ */}
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.1" />
+                    </linearGradient>
+                  </defs>
+                  {/* Paths from Top Center (HQ) to approximate card locations */}
+                  {/* HQ Node Center approx: x=600, y=100 (top-central) */}
+
+                  {/* Row 1 cards: y=300. x positions: 200, 450, 750, 1000 */}
+                  <path d="M 600 120 C 600 200, 200 200, 200 300" stroke="url(#spiderGradient)" strokeWidth="3" fill="none" strokeDasharray="6,4" className="animate-pulse" />
+                  <path d="M 600 120 C 600 200, 450 200, 450 300" stroke="url(#spiderGradient)" strokeWidth="3" fill="none" strokeDasharray="6,4" className="animate-pulse" style={{ animationDelay: '0.2s' }} />
+                  <path d="M 600 120 C 600 200, 750 200, 750 300" stroke="url(#spiderGradient)" strokeWidth="3" fill="none" strokeDasharray="6,4" className="animate-pulse" style={{ animationDelay: '0.4s' }} />
+                  <path d="M 600 120 C 600 200, 1000 200, 1000 300" stroke="url(#spiderGradient)" strokeWidth="3" fill="none" strokeDasharray="6,4" className="animate-pulse" style={{ animationDelay: '0.6s' }} />
+
+                  {/* Row 2 cards: y=450. x positions: 200, 450, 750, 1000 */}
+                  <path d="M 600 120 C 580 200, 150 350, 200 450" stroke="url(#spiderGradient)" strokeWidth="3" fill="none" strokeDasharray="6,4" className="animate-pulse" style={{ animationDelay: '0.8s' }} />
+                  <path d="M 600 120 C 590 200, 400 350, 450 450" stroke="url(#spiderGradient)" strokeWidth="3" fill="none" strokeDasharray="6,4" className="animate-pulse" style={{ animationDelay: '1.0s' }} />
+                  <path d="M 600 120 C 610 200, 800 350, 750 450" stroke="url(#spiderGradient)" strokeWidth="3" fill="none" strokeDasharray="6,4" className="animate-pulse" style={{ animationDelay: '1.2s' }} />
+                  <path d="M 600 120 C 620 200, 1050 350, 1000 450" stroke="url(#spiderGradient)" strokeWidth="3" fill="none" strokeDasharray="6,4" className="animate-pulse" style={{ animationDelay: '1.4s' }} />
+                </svg>
+              </div>
+
+              {/* Central HQ Node (Top) */}
+              <div className="relative z-20 mb-20 md:mb-24 transform hover:scale-110 transition-transform duration-300">
+                <div className="relative group cursor-pointer flex flex-col items-center">
+                  <div className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center shadow-2xl shadow-red-600/40 border-4 border-white z-10">
+                    <span className="text-4xl">🏢</span>
+                  </div>
+                  <span className="animate-ping absolute top-0 w-24 h-24 rounded-full bg-red-500 opacity-40"></span>
+                  <div className="mt-4 bg-white px-6 py-2 rounded-full shadow-lg border border-red-100 text-red-600 font-extrabold text-lg text-center whitespace-nowrap z-20">
+                    📍 Bihar Head Quarter
+                  </div>
                 </div>
               </div>
 
-              {/* radiating lines or city markers would be complex css/svg, simplified here with text nodes */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-12 relative z-10 w-full max-w-5xl">
+              {/* Cities Grid */}
+              <div className="relative z-20 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-y-24 md:gap-x-12 px-4 w-full max-w-6xl justify-items-center">
                 {['Delhi', 'Mumbai', 'Bangalore', 'Kolkata', 'Chennai', 'Hyderabad', 'Pune', 'Ahmedabad'].map((city, i) => (
                   <motion.div
                     key={city}
                     initial={{ opacity: 0, scale: 0.5 }}
                     whileInView={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.1, type: 'spring' }}
-                    className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-3 rounded-xl shadow-lg border border-gray-100 flex items-center justify-center text-gray-800 dark:text-gray-200 font-bold"
+                    className="bg-white dark:bg-gray-800 p-4 w-full md:w-48 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 flex items-center justify-center font-bold text-gray-800 dark:text-white z-20 hover:shadow-xl hover:border-blue-200 transition-all"
                   >
-                    <MapPin size={16} className="text-blue-500 mr-2" /> {city}
+                    <MapPin size={20} className="text-blue-500 mr-2" /> {city}
                   </motion.div>
                 ))}
               </div>
@@ -313,35 +347,9 @@ const Contact = () => {
           </div>
         </section>
 
-        {/* 7. Emergency Banner */}
-        <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white py-4 relative overflow-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between relative z-10">
-            <div className="flex items-center space-x-3 mb-2 md:mb-0">
-              <span className="animate-pulse bg-white text-red-600 font-bold px-2 py-0.5 rounded text-xs uppercase tracking-wider">Urgent</span>
-              <span className="font-bold text-lg">🚨 Need Immediate Help with GST Deadlines?</span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <a href="tel:8409847102" className="flex items-center font-bold hover:underline">
-                <Phone size={18} className="mr-2" /> Call Now: 8409847102
-              </a>
-            </div>
-          </div>
-        </div>
 
-        {/* 8. Call To Action */}
-        <section className="py-16 bg-blue-900 text-white text-center">
-          <div className="max-w-4xl mx-auto px-4">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">Your Tax Worries End Here</h2>
-            <div className="flex flex-wrap justify-center gap-6 text-lg font-medium opacity-90">
-              <span className="flex items-center"><Phone size={20} className="mr-2" /> Call</span>
-              <span className="hidden md:inline">•</span>
-              <span className="flex items-center"><Mail size={20} className="mr-2" /> Email</span>
-              <span className="hidden md:inline">•</span>
-              <span className="flex items-center"><Send size={20} className="mr-2" /> Message</span>
-            </div>
-            <p className="mt-4 opacity-75">We're Here to Help!</p>
-          </div>
-        </section>
+
+
 
       </main>
       <Footer />
@@ -374,6 +382,32 @@ const FAQItem = ({ question, answer }) => {
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+const ContactStatCounter = ({ number }) => {
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: false, margin: "-10px" })
+  const count = useMotionValue(0)
+  const rounded = useTransform(count, Math.round)
+
+  useEffect(() => {
+    if (isInView) {
+      const numericValue = parseInt(number) || 0
+      const animation = animate(count, numericValue, { duration: 1, ease: "easeOut" })
+      return animation.stop
+    } else {
+      count.set(0)
+    }
+  }, [isInView, number, count])
+
+  const suffix = number.replace(/[0-9]/g, '')
+
+  return (
+    <span ref={ref} className="inline-flex items-center text-blue-600">
+      <motion.span>{rounded}</motion.span>
+      <span>{suffix}</span>
+    </span>
   )
 }
 

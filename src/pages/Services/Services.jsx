@@ -2,6 +2,8 @@ import React, { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight, CheckCircle, Clock, FileText, Shield, Users, FileCheck, Calendar, IndianRupee } from 'lucide-react'
+import Navbar from '../../components/Shared/Navbar'
+import Footer from '../../components/Shared/Footer'
 
 const Services = () => {
   const location = useLocation()
@@ -170,183 +172,187 @@ const Services = () => {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-8">
-      {/* Page Header */}
-      <section className="bg-white dark:bg-gray-800 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
-              Our Complete Service Portfolio
-            </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              From Basic Tax Filing to Complex Business Registrations - Everything You Need for Complete Business Compliance in India
-            </p>
-          </motion.div>
-        </div>
-      </section>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Navbar />
+      <main className="pt-20">
+        {/* Page Header */}
+        <section className="bg-white dark:bg-gray-800 py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+                Our Complete Service Portfolio
+              </h1>
+              <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+                From Basic Tax Filing to Complex Business Registrations - Everything You Need for Complete Business Compliance in India
+              </p>
+            </motion.div>
+          </div>
+        </section>
 
-      {/* Services Grid */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {services.map((service, index) => (
-              <motion.div
-                key={service.id}
-                id={service.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1, duration: 0.6 }}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-200 dark:border-gray-700 p-6 group scroll-mt-24"
-              >
-                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">
-                  {service.icon}
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                  {service.title}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-                  {service.description}
-                </p>
-
-                {/* Service Features */}
-                <div className="mb-6">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
-                    <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                    Service Includes:
-                  </h4>
-                  <ul className="space-y-2">
-                    {service.features.map((feature) => (
-                      <li key={feature} className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Indian Specific Information */}
-                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
-                    <FileText className="w-5 h-5 text-blue-500 mr-2" />
-                    Documents Required:
-                  </h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                    {service.indianInfo.documents.join(', ')}
+        {/* Services Grid */}
+        <section className="py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {services.map((service, index) => (
+                <motion.div
+                  key={service.id}
+                  id={service.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1, duration: 0.6 }}
+                  className="bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-200 dark:border-gray-700 p-6 group scroll-mt-24"
+                >
+                  <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">
+                    {service.icon}
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                    {service.title}
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    {service.description}
                   </p>
 
-                  {service.indianInfo.deadline && (
-                    <div className="mt-2">
-                      <h5 className="font-medium text-gray-900 dark:text-white text-sm">Deadlines:</h5>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{service.indianInfo.deadline}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Benefits */}
-                <div className="mb-6">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2 text-sm">Key Benefits:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {service.indianInfo.benefits.map((benefit, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full text-xs"
-                      >
-                        {benefit}
-                      </span>
-                    ))}
+                  {/* Service Features */}
+                  <div className="mb-6">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                      <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                      Service Includes:
+                    </h4>
+                    <ul className="space-y-2">
+                      {service.features.map((feature) => (
+                        <li key={feature} className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </div>
 
+                  {/* Indian Specific Information */}
+                  <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                      <FileText className="w-5 h-5 text-blue-500 mr-2" />
+                      Documents Required:
+                    </h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                      {service.indianInfo.documents.join(', ')}
+                    </p>
+
+                    {service.indianInfo.deadline && (
+                      <div className="mt-2">
+                        <h5 className="font-medium text-gray-900 dark:text-white text-sm">Deadlines:</h5>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{service.indianInfo.deadline}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Benefits */}
+                  <div className="mb-6">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-2 text-sm">Key Benefits:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {service.indianInfo.benefits.map((benefit, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full text-xs"
+                        >
+                          {benefit}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Link
+                    to="/contact"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 flex items-center justify-center space-x-2 group/link"
+                  >
+                    <span>🚀 Get Started</span>
+                    <ArrowRight size={20} className="group-hover/link:translate-x-1 transition-transform" />
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Why Choose Us for Indian Businesses */}
+        <section className="py-16 bg-white dark:bg-gray-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              className="text-center mb-16"
+            >
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                Why Indian Businesses Trust TaxFriends?
+              </h2>
+              <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+                We understand the unique challenges faced by Indian businesses and provide tailored solutions
+              </p>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {serviceFeatures.map((feature, index) => (
+                <motion.div
+                  key={feature.title}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1, duration: 0.6 }}
+                  className="text-center p-6 bg-gray-50 dark:bg-gray-700 rounded-xl"
+                >
+                  <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <feature.icon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
+                    {feature.title}
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                    {feature.description}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="py-16 bg-gradient-to-r from-blue-600 to-blue-800">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+                Ready to Start Your Business Journey in India?
+              </h2>
+              <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+                Our experts understand Indian regulations and will guide you through every step
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link
                   to="/contact"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 flex items-center justify-center space-x-2 group/link"
+                  className="bg-white text-blue-600 hover:bg-gray-100 font-semibold py-3 px-8 rounded-lg transition-all duration-300 transform hover:scale-105"
                 >
-                  <span>🚀 Get Started</span>
-                  <ArrowRight size={20} className="group-hover/link:translate-x-1 transition-transform" />
+                  💬 Talk to Our CA Expert
                 </Link>
-              </motion.div>
-            ))}
+                <a
+                  href="tel:8409847102"
+                  className="border-2 border-white text-white hover:bg-white hover:text-blue-600 font-semibold py-3 px-8 rounded-lg transition-all duration-300 transform hover:scale-105"
+                >
+                  📞 Get Free Consultation
+                </a>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      </section>
-
-      {/* Why Choose Us for Indian Businesses */}
-      <section className="py-16 bg-white dark:bg-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-              Why Indian Businesses Trust TaxFriends?
-            </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              We understand the unique challenges faced by Indian businesses and provide tailored solutions
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {serviceFeatures.map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1, duration: 0.6 }}
-                className="text-center p-6 bg-gray-50 dark:bg-gray-700 rounded-xl"
-              >
-                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <feature.icon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                  {feature.description}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-16 bg-gradient-to-r from-blue-600 to-blue-800">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-              Ready to Start Your Business Journey in India?
-            </h2>
-            <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-              Our experts understand Indian regulations and will guide you through every step
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                to="/contact"
-                className="bg-white text-blue-600 hover:bg-gray-100 font-semibold py-3 px-8 rounded-lg transition-all duration-300 transform hover:scale-105"
-              >
-                💬 Talk to Our CA Expert
-              </Link>
-              <a
-                href="tel:8409847102"
-                className="border-2 border-white text-white hover:bg-white hover:text-blue-600 font-semibold py-3 px-8 rounded-lg transition-all duration-300 transform hover:scale-105"
-              >
-                📞 Get Free Consultation
-              </a>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-    </div>
+        </section>
+      </main>
+      <Footer />
+    </div >
   )
 }
 

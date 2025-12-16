@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useOutletContext } from 'react-router-dom'
 import { Users, Search, Filter, MoreHorizontal, Eye, Mail, Phone, CheckCircle, Clock, Trash2, Download, Edit, AlertTriangle, ChevronDown } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../contexts/AuthContext'
 import ClientDetailsModal from './ClientDetailsModal'
 
 const AdminClients = () => {
+    const { user } = useAuth()
     const { setSidebarOpen } = useOutletContext() || { setSidebarOpen: () => { } }
     const [clients, setClients] = useState([])
     const [loading, setLoading] = useState(true)
@@ -47,6 +49,49 @@ const AdminClients = () => {
         }
     }
 
+    // View Mode
+    const [viewMode, setViewMode] = useState('clients') // 'clients' | 'admins'
+
+    // --- ACTIONS ---
+    const handleClientUpdate = (updatedData) => {
+        setClients(clients.map(c => c.id === updatedData.id ? { ...c, ...updatedData } : c))
+        // also update selected client to reflect changes immediately in modal if open
+        setSelectedClient({ ...selectedClient, ...updatedData })
+    }
+
+    const openDetails = (client) => {
+        setSelectedClient(client)
+        setIsDetailsOpen(true)
+    }
+
+    // ... (Delete logic remains same) ...
+    const openDeleteModal = (user) => {
+        setDeleteModal({ isOpen: true, user, inputName: '' })
+    }
+    const closeDeleteModal = () => setDeleteModal({ isOpen: false, user: null, inputName: '' })
+    const confirmDelete = async () => {
+        if (deleteModal.inputName !== 'DELETE') return
+
+        // Safety Check: Prevent deleting Super Users
+        if (deleteModal.user?.role === 'superuser') {
+            alert('Action Denied: Super Users cannot be removed.')
+            closeDeleteModal()
+            return
+        }
+
+        try {
+            const userId = deleteModal.user.id
+            const { error } = await supabase.from('profiles').delete().eq('id', userId)
+            if (error) throw error
+            setClients(clients.filter(c => c.id !== userId))
+            closeDeleteModal()
+            alert('User successfully deleted.')
+        } catch (error) {
+            console.error('Error deleting user:', error)
+            alert('Failed to delete user.')
+        }
+    }
+
     // --- DERIVED DATA FOR FILTERS ---
     const uniqueStates = useMemo(() => {
         const states = clients.map(c => c.residential_state || c.business_state).filter(Boolean)
@@ -65,6 +110,11 @@ const AdminClients = () => {
 
     // --- FILTER LOGIC ---
     const filteredClients = clients.filter(client => {
+        // 0. View Mode (Role Filter)
+        const isAdmin = client.role === 'admin' || client.role === 'superuser'
+        if (viewMode === 'clients' && isAdmin) return false
+        if (viewMode === 'admins' && !isAdmin) return false
+
         // 1. Search
         const searchMatch = (
             client.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -95,39 +145,6 @@ const AdminClients = () => {
 
         return true
     })
-
-
-    // --- ACTIONS ---
-    const handleClientUpdate = (updatedData) => {
-        setClients(clients.map(c => c.id === updatedData.id ? { ...c, ...updatedData } : c))
-        // also update selected client to reflect changes immediately in modal if open
-        setSelectedClient({ ...selectedClient, ...updatedData })
-    }
-
-    const openDetails = (client) => {
-        setSelectedClient(client)
-        setIsDetailsOpen(true)
-    }
-
-    // ... (Delete logic remains same) ...
-    const openDeleteModal = (user) => {
-        setDeleteModal({ isOpen: true, user, inputName: '' })
-    }
-    const closeDeleteModal = () => setDeleteModal({ isOpen: false, user: null, inputName: '' })
-    const confirmDelete = async () => {
-        if (deleteModal.inputName !== 'DELETE') return
-        try {
-            const userId = deleteModal.user.id
-            const { error } = await supabase.from('profiles').delete().eq('id', userId)
-            if (error) throw error
-            setClients(clients.filter(c => c.id !== userId))
-            closeDeleteModal()
-            alert('User successfully deleted.')
-        } catch (error) {
-            console.error('Error deleting user:', error)
-            alert('Failed to delete user.')
-        }
-    }
 
     const handleExport = () => {
         const fieldMapping = [
@@ -177,6 +194,22 @@ const AdminClients = () => {
 
             {/* Controls Bar (Search + Filters) */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 items-end">
+                {/* View Mode Switcher */}
+                <div className="flex bg-slate-100 p-1 rounded-xl w-full lg:col-span-4 max-w-sm mb-2">
+                    <button
+                        onClick={() => setViewMode('clients')}
+                        className={`flex-1 py-1.5 px-3 rounded-lg text-sm font-bold transition-all ${viewMode === 'clients' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        Clients
+                    </button>
+                    <button
+                        onClick={() => setViewMode('admins')}
+                        className={`flex-1 py-1.5 px-3 rounded-lg text-sm font-bold transition-all ${viewMode === 'admins' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        Admins
+                    </button>
+                </div>
+
                 {/* Search */}
                 <div className="flex flex-col">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Search User</label>
@@ -252,7 +285,9 @@ const AdminClients = () => {
                                                     )}
                                                 </div>
                                                 <div>
-                                                    <p className="text-slate-900 font-semibold">{client.full_name || 'Unnamed'}</p>
+                                                    <p className="text-slate-900 font-semibold">
+                                                        {client.full_name || client.email?.split('@')[0] || 'Unnamed'}
+                                                    </p>
                                                     <p className="text-slate-500 text-xs font-mono">{client.mobile || client.email}</p>
                                                 </div>
                                             </div>
@@ -277,9 +312,11 @@ const AdminClients = () => {
                                                 <button onClick={() => openDetails(client)} className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors" title="View & Edit Profile">
                                                     <Eye size={18} />
                                                 </button>
-                                                <button onClick={() => openDeleteModal(client)} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors" title="Delete User">
-                                                    <Trash2 size={18} />
-                                                </button>
+                                                {user?.role === 'superuser' && client.role !== 'superuser' && client.email !== 'taxfriend.tax@gmail.com' && (
+                                                    <button onClick={() => openDeleteModal(client)} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors" title="Delete User">
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -299,6 +336,7 @@ const AdminClients = () => {
                 onClose={() => setIsDetailsOpen(false)}
                 client={selectedClient}
                 onUpdate={handleClientUpdate}
+                currentUser={user}
             />
 
             {/* Delete Confirmation Modal */}

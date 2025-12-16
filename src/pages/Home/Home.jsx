@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useInView, useMotionValue, useTransform, animate } from 'framer-motion'
 import { ArrowRight, CheckCircle, Users, Target, Shield, Zap, MapPin, Menu, X, Phone, User } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../../components/Shared/Navbar'
@@ -9,6 +9,34 @@ import Footer from '../../components/Shared/Footer'
 const Home = () => {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+
+  const [text, setText] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [loopNum, setLoopNum] = useState(0)
+  const [typingSpeed, setTypingSpeed] = useState(150)
+
+  const words = ["End Here", "Stop Now", "Disappear", "Vanish"]
+
+  useEffect(() => {
+    const handleTyping = () => {
+      const i = loopNum % words.length
+      const fullText = words[i]
+
+      setText(isDeleting ? fullText.substring(0, text.length - 1) : fullText.substring(0, text.length + 1))
+
+      setTypingSpeed(isDeleting ? 50 : 150)
+
+      if (!isDeleting && text === fullText) {
+        setTimeout(() => setIsDeleting(true), 2000) // Pause at end
+      } else if (isDeleting && text === '') {
+        setIsDeleting(false)
+        setLoopNum(loopNum + 1)
+      }
+    }
+
+    const timer = setTimeout(handleTyping, typingSpeed)
+    return () => clearTimeout(timer)
+  }, [text, isDeleting, loopNum])
 
   const stats = [
     { icon: Users, number: '500+', label: 'Happy Clients' },
@@ -83,6 +111,42 @@ const Home = () => {
     <div className="min-h-screen bg-white dark:bg-gray-900 scroll-smooth">
       <Navbar />
 
+      {/* Red Scrolling Banner */}
+      <div className="bg-red-600 text-white overflow-hidden py-2 relative z-40 top-[80px]">
+        <div className="flex items-center">
+          <div className="bg-red-700 px-4 py-1 z-10 font-bold text-sm uppercase tracking-wider shadow-lg flex items-center whitespace-nowrap">
+            <span className="w-2 h-2 bg-white rounded-full animate-pulse mr-2"></span>
+            Urgent
+          </div>
+          <div className="whitespace-nowrap overflow-hidden flex-1">
+            <div className="animate-marquee inline-block">
+              {/* Set 1 */}
+              <span className="mx-6 font-medium">Get your company registered now! 🚀</span>
+              <span className="mx-6 font-medium">Get GST Number in just ONE day! ⚡</span>
+              <span className="mx-6 font-medium">Get Free from your Tax Worries today! 🛡️</span>
+              <span className="mx-6 font-medium">Need Immediate Help with GST Deadlines? Call Now! 📞</span>
+              <span className="mx-6 font-medium">Save huge on Annual Compliance Plans! 💰</span>
+              <span className="mx-6 font-medium">Expert CA Assistance strictly 1-on-1! 👨‍💼</span>
+              <span className="mx-6 font-medium">File ITR & maximize your refund! 💸</span>
+              <span className="mx-6 font-medium">100% Digital & Paperless Process! 📱</span>
+
+              {/* Set 2 (Duplicate for continuous feel) */}
+              <span className="mx-6 font-medium">Get your company registered now! 🚀</span>
+              <span className="mx-6 font-medium">Get GST Number in just ONE day! ⚡</span>
+              <span className="mx-6 font-medium">Get Free from your Tax Worries today! 🛡️</span>
+              <span className="mx-6 font-medium">Need Immediate Help with GST Deadlines? Call Now! 📞</span>
+              <span className="mx-6 font-medium">Save huge on Annual Compliance Plans! 💰</span>
+              <span className="mx-6 font-medium">Expert CA Assistance strictly 1-on-1! 👨‍💼</span>
+              <span className="mx-6 font-medium">File ITR & maximize your refund! 💸</span>
+              <span className="mx-6 font-medium">100% Digital & Paperless Process! 📱</span>
+            </div>
+          </div>
+          <a href="tel:8409847102" className="hidden sm:flex items-center bg-white text-red-600 px-3 py-0.5 rounded-full text-xs font-bold mr-2 hover:bg-gray-100 transition-colors z-10 whitespace-nowrap shadow-sm">
+            Call Now: 8409847102
+          </a>
+        </div>
+      </div>
+
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
         <div className="absolute inset-0 z-0">
@@ -96,7 +160,7 @@ const Home = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-center max-w-4xl mx-auto"
+            className="text-center max-w-6xl mx-auto"
           >
             <div className="inline-flex items-center space-x-2 bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 rounded-full px-4 py-1.5 mb-8">
               <span className="flex h-2 w-2 relative">
@@ -113,8 +177,9 @@ const Home = () => {
               className="text-5xl md:text-7xl font-bold text-gray-900 dark:text-white mb-8 tracking-tight leading-tight"
             >
               Your Tax Worries{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-                End Here
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 min-w-[200px] inline-block text-left">
+                {text}
+                <span className="w-[3px] h-[36px] md:h-[60px] bg-blue-600 inline-block ml-1 animate-pulse align-middle"></span>
               </span>
             </motion.h1>
 
@@ -149,22 +214,11 @@ const Home = () => {
             </motion.div>
           </motion.div>
 
+
           {/* Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-20">
             {stats.map((stat, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 + index * 0.1 }}
-                className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 text-center hover:scale-105 transition-transform duration-300"
-              >
-                <div className="bg-blue-50 dark:bg-blue-900/30 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600 dark:text-blue-400">
-                  <stat.icon size={24} />
-                </div>
-                <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{stat.number}</h3>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{stat.label}</p>
-              </motion.div>
+              <StatCounter key={index} stat={stat} index={index} />
             ))}
           </div>
         </div>
@@ -228,7 +282,7 @@ const Home = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
-              Why Businesses Trust TaxFriends
+              Why Businesses Trust TaxFriend
             </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -247,6 +301,46 @@ const Home = () => {
 
       <Footer />
     </div>
+  )
+}
+
+const StatCounter = ({ stat, index }) => {
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: false, margin: "-50px" }) // Re-run everytime
+  const count = useMotionValue(0)
+  const rounded = useTransform(count, Math.round)
+
+  useEffect(() => {
+    if (isInView) {
+      // Parse number (remove non-digits for counting)
+      const numericValue = parseInt(stat.number) || 0
+      const animation = animate(count, numericValue, { duration: 0.8, ease: "easeOut" })
+      return animation.stop
+    } else {
+      count.set(0)
+    }
+  }, [isInView, stat.number, count])
+
+  // Extract suffix (e.g. "+" or "%")
+  const suffix = stat.number.replace(/[0-9]/g, '')
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 20 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+      transition={{ duration: 0.5, delay: index * 0.1 }}
+      className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 text-center hover:scale-105 transition-transform duration-300"
+    >
+      <div className="bg-blue-50 dark:bg-blue-900/30 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600 dark:text-blue-400">
+        <stat.icon size={24} />
+      </div>
+      <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-1 flex justify-center items-center">
+        <motion.span>{rounded}</motion.span>
+        <span>{suffix}</span>
+      </h3>
+      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{stat.label}</p>
+    </motion.div>
   )
 }
 
