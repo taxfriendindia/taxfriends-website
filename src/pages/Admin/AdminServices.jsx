@@ -46,7 +46,7 @@ const AdminServices = () => {
             const [profilesResponse, catalogResponse, adminsResponse] = await Promise.all([
                 supabase.from('profiles').select('id, full_name, email, mobile, role').in('id', userIds),
                 supabase.from('service_catalog').select('id, title').in('id', serviceIds),
-                supabase.from('profiles').select('id, full_name, role').in('role', ['admin', 'superuser']) // Fetch admins
+                supabase.from('profiles').select('id, full_name, email, role').in('role', ['admin', 'superuser']) // Fetch admins
             ])
 
             const profileMap = (profilesResponse.data || []).reduce((acc, p) => ({ ...acc, [p.id]: p }), {})
