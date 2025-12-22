@@ -57,21 +57,21 @@ const AdminLayout = () => {
                     </div>
                 </div>
 
-                <div className="flex-1 flex flex-col min-h-0">
-                    <nav className="flex-1 overflow-y-auto p-4 space-y-2 py-6 scrollbar-hide">
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                    <nav className="flex-1 overflow-y-auto p-4 space-y-2 py-6 scrollbar-thin scrollbar-thumb-emerald-500/20 scrollbar-track-transparent hover:scrollbar-thumb-emerald-500/40 transition-all">
                         {finalMenuItems.map(item => (
                             <NavItem key={item.to} to={item.to} icon={item.icon} label={item.label} isOpen={isSidebarOpen} />
                         ))}
                     </nav>
 
-                    <div className="p-4 border-t border-white/10 bg-slate-900/60 backdrop-blur-md space-y-3">
+                    <div className="p-4 border-t border-white/10 bg-slate-900/60 backdrop-blur-md space-y-3 shrink-0">
                         <NavItem to="/admin/profile" icon={User} label="My Profile" isOpen={isSidebarOpen} />
                         <button
                             onClick={handleLogout}
                             className={`flex items-center w-full p-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white group border border-rose-500/20 shadow-lg shadow-rose-500/5 ${!isSidebarOpen && 'justify-center'}`}
                             title="Logout System"
                         >
-                            <LogOut size={20} className="shrink-0 group-hover:scale-120 transition-transform" />
+                            <LogOut size={20} className="shrink-0 group-hover:scale-110 transition-transform" />
                             <span className={`ml-4 transition-all duration-300 ${isSidebarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 w-0 -translate-x-4 hidden'}`}>
                                 Sign Out
                             </span>

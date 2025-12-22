@@ -135,7 +135,7 @@ const PartnerLayout = () => {
                     </div>
                 </div>
 
-                <nav className="flex-1 p-4 space-y-2 mt-4">
+                <nav className="flex-1 overflow-y-auto p-4 space-y-2 mt-4 scrollbar-thin scrollbar-thumb-blue-500/20 scrollbar-track-transparent hover:scrollbar-thumb-blue-500/40 transition-all">
                     {navItems.map((item) => (
                         <NavLink
                             key={item.to}
@@ -156,7 +156,7 @@ const PartnerLayout = () => {
                     ))}
                 </nav>
 
-                <div className="p-4 border-t border-white/10 bg-slate-900/60 backdrop-blur-md space-y-3">
+                <div className="p-4 border-t border-white/10 bg-slate-900/60 backdrop-blur-md space-y-3 shrink-0">
                     <NavLink
                         to="/partner/profile"
                         className={({ isActive }) =>
@@ -177,7 +177,7 @@ const PartnerLayout = () => {
                         className={`flex items-center w-full p-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white group border border-rose-500/20 shadow-lg shadow-rose-500/5 ${!isSidebarOpen && 'justify-center'}`}
                         title="Logout System"
                     >
-                        <LogOut size={20} className="shrink-0 group-hover:scale-120 transition-transform" />
+                        <LogOut size={20} className="shrink-0 group-hover:scale-110 transition-transform" />
                         <span className={`ml-4 transition-all duration-300 ${isSidebarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 w-0 -translate-x-4 hidden'}`}>
                             Sign Out
                         </span>
