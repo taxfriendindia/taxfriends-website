@@ -52,14 +52,17 @@ const AdminRequests = () => {
                 return
             }
 
-            // 2. Fetch Profiles with organization and mobile
+            // 2. Fetch Profiles (both users and partners who uploaded)
             if (docs && docs.length > 0) {
                 const userIds = [...new Set(docs.map(d => d.user_id))]
-                const validUserIds = userIds.filter(Boolean)
+                const partnerIds = [...new Set(docs.map(d => d.uploaded_by).filter(Boolean))]
+                const allIds = [...new Set([...userIds, ...partnerIds])]
+
+                const validIds = allIds.filter(Boolean)
                 const { data: profiles, error: pError } = await supabase
                     .from('profiles')
-                    .select('id, full_name, email, mobile_number, organization')
-                    .in('id', validUserIds)
+                    .select('id, full_name, email, mobile_number, organization, role')
+                    .in('id', validIds)
 
                 if (pError) {
                     console.error("Error fetching profiles for documents:", pError)
@@ -70,10 +73,14 @@ const AdminRequests = () => {
                 // 3. Join documents with profile data
                 const joinedDocs = docs.map(doc => {
                     const uid = doc.user_id?.toLowerCase()
-                    const p = profileMap[uid]
+                    const pid = doc.uploaded_by?.toLowerCase()
+                    const userProfile = profileMap[uid]
+                    const partnerProfile = profileMap[pid]
+
                     return {
                         ...doc,
-                        profiles: p || { id: doc.user_id, full_name: null, email: 'ID: ' + doc.user_id?.slice(0, 8) }
+                        profiles: userProfile || { id: doc.user_id, full_name: null, email: 'ID: ' + doc.user_id?.slice(0, 8) },
+                        uploaded_by_profile: partnerProfile || null
                     }
                 })
 
