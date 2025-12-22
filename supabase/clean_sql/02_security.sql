@@ -44,8 +44,15 @@ CREATE POLICY "Profiles: Users can view own" ON public.profiles FOR SELECT USING
 DROP POLICY IF EXISTS "Profiles: Admins can view all" ON public.profiles;
 CREATE POLICY "Profiles: Admins can view all" ON public.profiles FOR SELECT USING (public.is_admin());
 
-DROP POLICY IF EXISTS "Profiles: Partners can view their clients" ON public.profiles;
-CREATE POLICY "Profiles: Partners can view their clients" ON public.profiles FOR SELECT USING (partner_id = auth.uid());
+DROP POLICY IF EXISTS "Profiles: Partners manage clients" ON public.profiles;
+CREATE POLICY "Profiles: Partners manage clients" ON public.profiles 
+FOR ALL 
+USING (partner_id = auth.uid())
+WITH CHECK (
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'partner' AND 
+    partner_id = auth.uid() AND 
+    role = 'client'
+);
 
 DROP POLICY IF EXISTS "Profiles: Users can update own" ON public.profiles;
 CREATE POLICY "Profiles: Users can update own" ON public.profiles 
@@ -56,12 +63,6 @@ WITH CHECK (
     role = (SELECT role FROM public.profiles WHERE id = auth.uid()) -- Cannot change role
 );
 
-DROP POLICY IF EXISTS "Profiles: Partners can insert clients" ON public.profiles;
-CREATE POLICY "Profiles: Partners can insert clients" ON public.profiles FOR INSERT WITH CHECK (
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'partner' AND 
-    partner_id = auth.uid() AND 
-    role = 'client'
-);
 
 DROP POLICY IF EXISTS "Profiles: Superusers manage all" ON public.profiles;
 CREATE POLICY "Profiles: Superusers manage all" ON public.profiles FOR ALL USING (public.is_superuser());

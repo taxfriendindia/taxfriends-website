@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Users, Search, Filter, Mail, Phone, ExternalLink,
     Calendar, Briefcase, ChevronRight, UserPlus, MapPin,
-    ArrowUpRight, Sparkles, Building2, Globe
+    ArrowUpRight, Sparkles, Building2, Globe, X, Edit2, Save, AlertCircle
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -14,7 +14,10 @@ const PartnerClients = () => {
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterType, setFilterType] = useState('All'); // 'All', 'Business', 'Individual'
+    const [filterType, setFilterType] = useState('All');
+    const [editingClient, setEditingClient] = useState(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (user) fetchClients();
@@ -35,6 +38,53 @@ const PartnerClients = () => {
             console.error('Error fetching partner clients:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeleteClient = async (clientId) => {
+        if (!window.confirm('Are you sure you want to delete this client? All their service history will be lost.')) return;
+
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .delete()
+                .eq('id', clientId)
+                .eq('partner_id', user.id);
+
+            if (error) throw error;
+            setClients(prev => prev.filter(c => c.id !== clientId));
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('Failed to delete client: ' + error.message);
+        }
+    };
+
+    const handleUpdateClient = async (e) => {
+        e.preventDefault();
+        try {
+            setIsSaving(true);
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    full_name: editingClient.full_name,
+                    email: editingClient.email,
+                    mobile_number: editingClient.mobile_number,
+                    organization: editingClient.organization,
+                    residential_city: editingClient.residential_city,
+                    residential_state: editingClient.residential_state
+                })
+                .eq('id', editingClient.id);
+
+            if (error) throw error;
+
+            setClients(prev => prev.map(c => c.id === editingClient.id ? editingClient : c));
+            setIsEditModalOpen(false);
+            setEditingClient(null);
+        } catch (error) {
+            console.error('Update error:', error);
+            alert('Failed to update client: ' + error.message);
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -88,8 +138,8 @@ const PartnerClients = () => {
                             key={type}
                             onClick={() => setFilterType(type)}
                             className={`flex-1 lg:px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filterType === type
-                                    ? 'bg-white text-blue-600 shadow-sm'
-                                    : 'text-slate-400 hover:text-slate-600'
+                                ? 'bg-white text-blue-600 shadow-sm'
+                                : 'text-slate-400 hover:text-slate-600'
                                 }`}
                         >
                             {type}
@@ -155,22 +205,141 @@ const PartnerClients = () => {
                                     <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Subscriber Since</span>
                                     <span className="text-[10px] font-black text-slate-500">{new Date(client.created_at).toLocaleDateString()}</span>
                                 </div>
-                                <button className="h-10 px-5 bg-white border border-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:border-blue-600 hover:text-blue-600 transition-all shadow-sm group/btn">
-                                    Portal Access <ArrowUpRight size={14} className="group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => { setEditingClient({ ...client }); setIsEditModalOpen(true); }}
+                                        className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm group/edit"
+                                        title="Edit Profile"
+                                    >
+                                        <Edit2 size={14} className="group-hover/edit:scale-110 transition-transform" />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteClient(client.id)}
+                                        className="p-2.5 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm group/del"
+                                        title="Delete Client"
+                                    >
+                                        <X size={14} className="group-hover/del:rotate-90 transition-transform" />
+                                    </button>
+                                    <Link
+                                        to={`/partner/onboard?clientId=${client.id}`}
+                                        className="h-10 px-5 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-black transition-all shadow-sm"
+                                    >
+                                        Process Service
+                                    </Link>
+                                </div>
                             </div>
                         </motion.div>
                     ))
                 )}
             </div>
+
+            {/* Edit Client Modal */}
+            <AnimatePresence>
+                {isEditModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm"
+                            onClick={() => setIsEditModalOpen(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="relative w-full max-w-2xl bg-white rounded-[40px] shadow-2xl border border-slate-200 overflow-hidden"
+                        >
+                            <div className="bg-slate-900 p-8 text-white relative">
+                                <div className="absolute top-0 right-0 p-8 opacity-10"><Users size={120} /></div>
+                                <h3 className="text-2xl font-black tracking-tight relative z-10">Edit Client Node</h3>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] relative z-10">Updating infrastructure for {editingClient?.full_name}</p>
+                            </div>
+
+                            <form onSubmit={handleUpdateClient} className="p-10 space-y-8">
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
+                                        <input
+                                            required
+                                            value={editingClient?.full_name || ''}
+                                            onChange={e => setEditingClient({ ...editingClient, full_name: e.target.value })}
+                                            className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 text-xs font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mobile Number</label>
+                                        <input
+                                            required
+                                            value={editingClient?.mobile_number || ''}
+                                            onChange={e => setEditingClient({ ...editingClient, mobile_number: e.target.value })}
+                                            className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 text-xs font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                                        <input
+                                            value={editingClient?.email || ''}
+                                            onChange={e => setEditingClient({ ...editingClient, email: e.target.value })}
+                                            className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 text-xs font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Organization (Optional)</label>
+                                        <input
+                                            value={editingClient?.organization || ''}
+                                            onChange={e => setEditingClient({ ...editingClient, organization: e.target.value })}
+                                            className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 text-xs font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">City</label>
+                                        <input
+                                            value={editingClient?.residential_city || ''}
+                                            onChange={e => setEditingClient({ ...editingClient, residential_city: e.target.value })}
+                                            className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 text-xs font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">State</label>
+                                        <input
+                                            value={editingClient?.residential_state || ''}
+                                            onChange={e => setEditingClient({ ...editingClient, residential_state: e.target.value })}
+                                            className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 text-xs font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-4 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsEditModalOpen(false)}
+                                        className="flex-1 h-14 bg-slate-50 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isSaving}
+                                        className="flex-2 h-14 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-500/20 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 min-w-[200px]"
+                                    >
+                                        {isSaving ? <Sparkles className="animate-spin" size={16} /> : <Save size={16} />}
+                                        Update Node
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
 
 const DataField = ({ icon: Icon, value, highlight }) => (
     <div className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all ${highlight
-            ? 'bg-blue-50/50 border-blue-100/50 text-blue-700'
-            : 'bg-slate-50/50 border-slate-100/50 text-slate-600'
+        ? 'bg-blue-50/50 border-blue-100/50 text-blue-700'
+        : 'bg-slate-50/50 border-slate-100/50 text-slate-600'
         }`}>
         <Icon size={16} className={highlight ? 'text-blue-500' : 'text-slate-300'} />
         <span className="text-xs font-bold truncate tracking-tight">{value}</span>

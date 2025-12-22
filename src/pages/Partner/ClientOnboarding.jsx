@@ -9,6 +9,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { UserService } from '../../services/userService';
+import { useSearchParams } from 'react-router-dom';
 
 const ClientOnboarding = () => {
     const { user } = useAuth();
@@ -27,10 +28,36 @@ const ClientOnboarding = () => {
     });
     const [files, setFiles] = useState([]);
     const [fileStatus, setFileStatus] = useState('');
+    const [searchParams] = useSearchParams();
 
     useEffect(() => {
         fetchCatalog();
-    }, []);
+        const clientId = searchParams.get('clientId');
+        if (clientId) fetchClientDetails(clientId);
+    }, [searchParams]);
+
+    const fetchClientDetails = async (id) => {
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (error) throw error;
+            if (data) {
+                setClientData({
+                    full_name: data.full_name || '',
+                    mobile_number: data.mobile_number || '',
+                    email: data.email || '',
+                    state: data.residential_state || 'All',
+                    city: data.residential_city || 'All'
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching client details:', error);
+        }
+    };
 
     const fetchCatalog = async () => {
         try {
@@ -107,7 +134,6 @@ const ClientOnboarding = () => {
                     user_id: clientId,
                     service_id: selectedService.id,
                     partner_id: user.id,
-                    is_assisted_service: true,
                     status: 'pending'
                 }])
                 .select()
@@ -115,11 +141,16 @@ const ClientOnboarding = () => {
 
             if (serviceError) throw serviceError;
 
-            // 3. Upload Documents
+            // 3. Upload Documents (Optional - skip if storage not configured)
             if (files.length > 0) {
                 setFileStatus(`Uploading ${files.length} Document(s)...`);
-                for (const file of files) {
-                    await UserService.uploadDocument(clientId, file, file.name, 'general');
+                try {
+                    for (const file of files) {
+                        await UserService.uploadDocument(clientId, file, file.name, 'general');
+                    }
+                } catch (uploadError) {
+                    console.warn('Document upload failed (storage not configured):', uploadError);
+                    // Continue anyway - documents can be uploaded later
                 }
             }
 

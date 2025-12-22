@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
-    LayoutDashboard, Users, FilePlus, Wallet, LogOut, Menu, X, Shield, ChevronLeft, ChevronRight, Bell, UserPlus, User
+    LayoutDashboard, Users, FilePlus, Wallet, LogOut, Menu, X, Shield, ChevronLeft, ChevronRight, Bell, UserPlus, User, FileText
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -107,6 +107,7 @@ const PartnerLayout = () => {
     const navItems = [
         { to: '/partner/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/partner/clients', icon: Users, label: 'My Clients' },
+        { to: '/partner/services', icon: FileText, label: 'Service Requests' },
         { to: '/partner/onboard', icon: UserPlus, label: 'Onboard Node' },
         { to: '/partner/wallet', icon: Wallet, label: 'Wallet & Payouts' },
     ]

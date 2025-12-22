@@ -171,14 +171,14 @@ const PartnerProgram = () => {
                 <div className="max-w-7xl mx-auto px-4 text-center">
                     <div className="max-w-3xl mx-auto text-white">
                         <Wallet2 size={48} className="mx-auto mb-6 opacity-80" />
-                        <h2 className="text-3xl md:text-4xl font-bold mb-6 italic">Earn Direct Commissions up to ₹2500 per Service</h2>
+                        <h2 className="text-3xl md:text-4xl font-bold mb-6 italic">Earn Direct Commissions ₹300 - ₹500 per Service</h2>
                         <p className="text-blue-100 mb-10 text-lg">
                             Whether you upload client documents directly or your referred clients use our services later, you earn. Our transparent wallet system keeps you in control.
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto">
                             <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
-                                <div className="text-2xl font-bold">₹600 - ₹2500</div>
-                                <div className="text-xs font-medium uppercase tracking-wider text-blue-200">Ticket Size</div>
+                                <div className="text-2xl font-bold">₹300 - ₹500</div>
+                                <div className="text-xs font-medium uppercase tracking-wider text-blue-200">Commission Per Client</div>
                             </div>
                             <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
                                 <div className="text-2xl font-bold">3 Days</div>

@@ -27,6 +27,7 @@ import PartnerLayout from './pages/Partner/PartnerLayout'
 import PartnerDashboard from './pages/Partner/PartnerDashboard'
 import ClientOnboarding from './pages/Partner/ClientOnboarding'
 import PartnerClients from './pages/Partner/PartnerClients'
+import PartnerServices from './pages/Partner/PartnerServices'
 import WalletHistory from './pages/Partner/WalletHistory'
 
 import PublicServices from './pages/Services/Services'
@@ -108,6 +109,7 @@ function App() {
             <Route path="dashboard" element={<PartnerDashboard />} />
             <Route path="onboard" element={<ClientOnboarding />} />
             <Route path="clients" element={<PartnerClients />} />
+            <Route path="services" element={<PartnerServices />} />
             <Route path="wallet" element={<WalletHistory />} />
             <Route path="profile" element={<Profile />} />
           </Route>
