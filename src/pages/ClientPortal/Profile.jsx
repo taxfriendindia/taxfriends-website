@@ -285,7 +285,7 @@ const Profile = () => {
         )
     }
 
-    const needsSetup = (!formData.full_name || !formData.phone_number) && !forceHideSetup;
+    const needsSetup = (!formData.full_name || !formData.phone_number) && !forceHideSetup && user?.role !== 'admin' && user?.role !== 'superuser';
 
     if (needsSetup && !isEditing) {
         return (
@@ -381,76 +381,80 @@ const Profile = () => {
                         </div>
                     </div>
 
-                    {/* Progress Card */}
-                    <div className="bg-slate-900 rounded-[32px] p-8 text-white shadow-2xl relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-700"><Activity size={100} /></div>
 
-                        <div className="flex items-center justify-between mb-8">
-                            <div>
-                                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Profile Health</h3>
-                                <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase tracking-tighter">Strength of identity records</p>
-                            </div>
-                            <div className="text-4xl font-black text-blue-400">{completionPercentage}%</div>
-                        </div>
 
-                        <div className="w-full h-4 bg-white/5 rounded-2xl p-1 mb-8 overflow-hidden">
-                            <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${completionPercentage}%` }}
-                                className={`h-full rounded-xl bg-gradient-to-r ${roleConfig.gradient} shadow-[0_0_20px_rgba(59,130,246,0.3)]`}
-                            />
-                        </div>
+                    {user.role !== 'admin' && user.role !== 'superuser' && (
+                        <>
+                            {/* Progress Card */}
+                            <div className="bg-slate-900 rounded-[32px] p-8 text-white shadow-2xl relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-700"><Activity size={100} /></div>
 
-                        {missingFields.length > 0 && (
-                            <div className="space-y-2">
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Pending Action Items</p>
-                                <div className="grid grid-cols-1 gap-2">
-                                    {missingFields.slice(0, 4).map((f, i) => (
-                                        <div key={i} className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 transition-colors">
-                                            <span className="text-[11px] font-bold text-slate-300">{f}</span>
-                                            <ChevronRight size={14} className="text-slate-600" />
+                                <div className="flex items-center justify-between mb-8">
+                                    <div>
+                                        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Profile Health</h3>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase tracking-tighter">Strength of identity records</p>
+                                    </div>
+                                    <div className="text-4xl font-black text-blue-400">{completionPercentage}%</div>
+                                </div>
+
+                                <div className="w-full h-4 bg-white/5 rounded-2xl p-1 mb-8 overflow-hidden">
+                                    <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${completionPercentage}%` }}
+                                        className={`h-full rounded-xl bg-gradient-to-r ${roleConfig.gradient} shadow-[0_0_20px_rgba(59,130,246,0.3)]`}
+                                    />
+                                </div>
+
+                                {missingFields.length > 0 && (
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Pending Action Items</p>
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {missingFields.slice(0, 4).map((f, i) => (
+                                                <div key={i} className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 transition-colors">
+                                                    <span className="text-[11px] font-bold text-slate-300">{f}</span>
+                                                    <ChevronRight size={14} className="text-slate-600" />
+                                                </div>
+                                            ))}
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
 
-                    {/* KYC (Partners/Specific) */}
-                    {(user.role === 'partner' || user.role === 'client') && (
-                        <div className="bg-white rounded-[32px] p-8 border border-slate-200 shadow-sm relative overflow-hidden">
-                            <div className="flex items-center justify-between mb-8">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><Shield size={20} /></div>
-                                    <h3 className="font-black text-slate-900 tracking-tight">Identity Vault</h3>
-                                </div>
-                                <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${formData.kyc_status === 'verified' ? 'bg-emerald-50 text-emerald-600 border-emerald-500' :
+                            {/* KYC/Vault */}
+                            <div className="bg-white rounded-[32px] p-8 border border-slate-200 shadow-sm relative overflow-hidden">
+                                <div className="flex items-center justify-between mb-8">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><Shield size={20} /></div>
+                                        <h3 className="font-black text-slate-900 tracking-tight">Identity Vault</h3>
+                                    </div>
+                                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${formData.kyc_status === 'verified' ? 'bg-emerald-50 text-emerald-600 border-emerald-500' :
                                         formData.kyc_status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-200' :
                                             'bg-slate-50 text-slate-400 border-slate-200'
-                                    }`}>
-                                    {formData.kyc_status?.replace('_', ' ') || 'NONE'}
+                                        }`}>
+                                        {formData.kyc_status?.replace('_', ' ') || 'NONE'}
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="grid grid-cols-1 gap-4">
-                                <DocButton
-                                    label="Aadhar Identity"
-                                    onUpload={(f) => handleDocUpload(f, 'aadhar')}
-                                    disabled={uploading || formData.kyc_status === 'verified'}
-                                    status={formData.kyc_status}
-                                />
-                                <DocButton
-                                    label="PAN Verification"
-                                    onUpload={(f) => handleDocUpload(f, 'pan')}
-                                    disabled={uploading || formData.kyc_status === 'verified'}
-                                    status={formData.kyc_status}
-                                />
-                            </div>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <DocButton
+                                        label="Aadhar Identity"
+                                        onUpload={(f) => handleDocUpload(f, 'aadhar')}
+                                        disabled={uploading || formData.kyc_status === 'verified'}
+                                        status={formData.kyc_status}
+                                    />
+                                    <DocButton
+                                        label="PAN Verification"
+                                        onUpload={(f) => handleDocUpload(f, 'pan')}
+                                        disabled={uploading || formData.kyc_status === 'verified'}
+                                        status={formData.kyc_status}
+                                    />
+                                </div>
 
-                            <p className="mt-6 text-[10px] text-slate-400 font-medium leading-relaxed italic">
-                                * Your documents are encrypted and only accessible by compliance officers for identity verification.
-                            </p>
-                        </div>
+                                <p className="mt-6 text-[10px] text-slate-400 font-medium leading-relaxed italic">
+                                    * Your documents are encrypted and only accessible by compliance officers for identity verification.
+                                </p>
+                            </div>
+                        </>
                     )}
                 </aside>
 
@@ -570,8 +574,8 @@ const InputGroup = ({ label, icon: Icon, simple, dark, ...props }) => (
             <input
                 {...props}
                 className={`w-full h-[60px] ${Icon ? 'pl-14' : 'px-5'} rounded-2xl text-sm font-bold outline-none transition-all shadow-sm ${dark
-                        ? 'bg-white/10 border-white/10 text-white placeholder:text-white/20 focus:bg-white/20'
-                        : 'bg-slate-50 border-slate-100 text-slate-700 placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500'
+                    ? 'bg-white/10 border-white/10 text-white placeholder:text-white/20 focus:bg-white/20'
+                    : 'bg-slate-50 border-slate-100 text-slate-700 placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500'
                     } disabled:opacity-50`}
             />
         </div>
@@ -584,8 +588,8 @@ const DocButton = ({ label, onUpload, disabled, status }) => (
         <label
             htmlFor={`upload-${label}`}
             className={`flex items-center justify-between p-5 rounded-2xl border transition-all cursor-pointer ${disabled
-                    ? 'bg-emerald-50 border-emerald-100 text-emerald-700 cursor-default'
-                    : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-white hover:border-blue-500 hover:shadow-lg'
+                ? 'bg-emerald-50 border-emerald-100 text-emerald-700 cursor-default'
+                : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-white hover:border-blue-500 hover:shadow-lg'
                 }`}
         >
             <div className="flex items-center gap-3">

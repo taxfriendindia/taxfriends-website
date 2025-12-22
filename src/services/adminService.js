@@ -38,12 +38,27 @@ export const AdminService = {
         const recentTime = subDays(new Date(), 30).toISOString()
         const { count: newUsers } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', recentTime)
 
+        // 3. Fetch Total Settled Payouts
+        const { data: payouts } = await supabase
+            .from('payout_requests')
+            .select('amount')
+            .eq('status', 'completed')
+
+        const totalPayouts = (payouts || []).reduce((sum, p) => sum + Number(p.amount), 0)
+
         return {
             totalUsers: usersRes.count || 0,
             newUsers: newUsers || 0,
             totalReqs: reqsRes.count || 0,
-            rejectedReqs: rejectedRes.count || 0
+            rejectedReqs: rejectedRes.count || 0,
+            totalPayouts: totalPayouts
         }
+    },
+
+    async superResetSystem() {
+        const { error } = await supabase.rpc('super_reset_system')
+        if (error) throw error
+        return true
     },
 
     async getRecentActivity() {

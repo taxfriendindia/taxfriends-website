@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
-    LayoutDashboard, Users, FilePlus, Wallet, LogOut, Menu, X, Shield, ChevronLeft, ChevronRight, Bell, UserPlus
+    LayoutDashboard, Users, FilePlus, Wallet, LogOut, Menu, X, Shield, ChevronLeft, ChevronRight, Bell, UserPlus, User
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -156,13 +156,31 @@ const PartnerLayout = () => {
                     ))}
                 </nav>
 
-                <div className="p-4 border-t border-white/10">
+                <div className="p-4 border-t border-white/10 bg-slate-900/60 backdrop-blur-md space-y-3">
+                    <NavLink
+                        to="/partner/profile"
+                        className={({ isActive }) =>
+                            `flex items-center p-3 rounded-xl transition-all duration-200 ${isActive
+                                ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/30'
+                                : 'text-slate-400 hover:bg-white/10 hover:text-white'
+                            } ${!isSidebarOpen && 'justify-center'}`
+                        }
+                        title={!isSidebarOpen ? "My Profile" : ''}
+                    >
+                        <User size={20} className="flex-shrink-0" />
+                        <span className={`ml-3 whitespace-nowrap transition-all duration-200 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 hidden'}`}>
+                            My Profile
+                        </span>
+                    </NavLink>
                     <button
                         onClick={handleLogout}
-                        className={`flex items-center p-3 w-full text-red-400 hover:bg-red-400/10 rounded-xl transition-all ${!isSidebarOpen && 'justify-center'}`}
+                        className={`flex items-center w-full p-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white group border border-rose-500/20 shadow-lg shadow-rose-500/5 ${!isSidebarOpen && 'justify-center'}`}
+                        title="Logout System"
                     >
-                        <LogOut size={20} />
-                        <span className={`ml-3 font-semibold ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 hidden'}`}>Logout</span>
+                        <LogOut size={20} className="shrink-0 group-hover:scale-120 transition-transform" />
+                        <span className={`ml-4 transition-all duration-300 ${isSidebarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 w-0 -translate-x-4 hidden'}`}>
+                            Sign Out
+                        </span>
                     </button>
                 </div>
             </aside>
@@ -312,12 +330,24 @@ const PartnerLayout = () => {
                                 ))}
                             </nav>
 
-                            <div className="mt-auto pt-6 border-t border-slate-100">
+                            <div className="mt-auto pt-6 border-t border-slate-100 space-y-4">
+                                <NavLink
+                                    to="/partner/profile"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className={({ isActive }) =>
+                                        `flex items-center p-4 rounded-2xl font-bold transition-all ${isActive
+                                            ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/30'
+                                            : 'text-slate-600 hover:bg-slate-100'
+                                        }`
+                                    }
+                                >
+                                    <User size={22} className="mr-4" /> My Profile
+                                </NavLink>
                                 <button
                                     onClick={handleLogout}
-                                    className="flex items-center p-4 w-full text-red-500 bg-red-50 rounded-2xl font-bold"
+                                    className="flex items-center p-4 w-full text-rose-500 bg-rose-50 rounded-2xl font-bold"
                                 >
-                                    <LogOut size={22} className="mr-4" /> Logout
+                                    <LogOut size={22} className="mr-4" /> Logout System
                                 </button>
                             </div>
                         </motion.aside>

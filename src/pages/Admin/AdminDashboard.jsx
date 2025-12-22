@@ -19,7 +19,7 @@ const AdminDashboard = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState({ totalUsers: 0, newUsers: 0, totalReqs: 0, rejectedReqs: 0 });
+    const [stats, setStats] = useState({ totalUsers: 0, newUsers: 0, totalReqs: 0, rejectedReqs: 0, totalPayouts: 0 });
     const [chartData, setChartData] = useState([]);
     const [recentActivity, setRecentActivity] = useState([]);
     const [adminPerformance, setAdminPerformance] = useState({});
@@ -130,6 +130,12 @@ const AdminDashboard = () => {
                         <button onClick={() => navigate('/admin/records')} className="flex-[2] md:flex-none px-4 py-2 bg-emerald-600 border border-emerald-600 rounded-xl text-xs md:text-sm font-bold text-white hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20">
                             <Download size={14} /> Export Reports
                         </button>
+                        <button
+                            onClick={() => navigate('/admin/super-reset')}
+                            className="flex-1 md:flex-none px-4 py-2 bg-rose-600 text-white rounded-xl text-xs md:text-sm font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 flex items-center gap-2"
+                        >
+                            <Zap size={14} /> System Reset
+                        </button>
                     </div>
                 )}
             </div>
@@ -176,8 +182,8 @@ const AdminDashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <StatCard title="Total Clients" count={stats.totalUsers} sub="Network Size" icon={Users} color="bg-violet-600" shadow="shadow-violet-500/20" path="/admin/clients" />
                 <StatCard title="Active Requests" count={stats.totalReqs} sub="Pipeline" icon={Activity} color="bg-amber-500" shadow="shadow-amber-500/20" path="/admin/services" />
+                <StatCard title="Total Payouts" count={`₹${stats.totalPayouts.toLocaleString()}`} sub="Paid Out" icon={Shield} color="bg-teal-600" shadow="shadow-teal-500/20" path="/admin/partners" />
                 <StatCard title="Total Partners" count={allPartners.length} sub="Franchisees" icon={Zap} color="bg-rose-500" shadow="shadow-rose-500/20" path="/admin/clients?view=partners" />
-                <StatCard title="Revenue (est)" count="₹0" sub="Live Sync" icon={TrendingUp} color="bg-emerald-600" shadow="shadow-emerald-600/20" />
             </div>
 
             {/* Graphs Section */}

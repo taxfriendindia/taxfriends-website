@@ -5,6 +5,8 @@ import { DocumentService } from '../../services/documentService'
 import { UserService } from '../../services/userService'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useOutletContext } from 'react-router-dom'
+import StatusModal from '../../components/StatusModal'
+import ConfirmationModal from '../../components/ConfirmationModal'
 
 const AdminRequests = () => {
     const { setSidebarOpen } = useOutletContext() || { setSidebarOpen: () => { } }
@@ -19,6 +21,8 @@ const AdminRequests = () => {
     // Modal State
     const [selectedUserId, setSelectedUserId] = useState(null)
     const [processingId, setProcessingId] = useState(null)
+    const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'info', title: '', message: '' })
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => { } })
 
     useEffect(() => {
         setStatusFilter('all') // Reset to all on mount or keep previous preference
@@ -100,14 +104,27 @@ const AdminRequests = () => {
             ))
         } catch (error) {
             console.error('Error updating status:', error)
-            alert('Failed to update status')
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'Operation Failed',
+                message: 'Failed to update document status.'
+            })
         } finally {
             setProcessingId(null)
         }
     }
 
     const handleVerifyAll = async (userId) => {
-        if (!confirm('Are you sure you want to verify ALL pending documents for this user?')) return
+        setConfirmModal({
+            isOpen: true,
+            title: 'Verify All Documents',
+            message: 'Are you sure you want to verify ALL pending documents for this user?',
+            onConfirm: () => executeVerifyAll(userId)
+        })
+    }
+
+    const executeVerifyAll = async (userId) => {
 
         const userDocs = allDocuments.filter(d => d.user_id === userId && d.status !== 'verified')
         if (userDocs.length === 0) return
@@ -127,10 +144,20 @@ const AdminRequests = () => {
                 docIds.includes(doc.id) ? { ...doc, status: 'verified' } : doc
             ))
 
-            alert(`Successfully verified ${docIds.length} documents.`)
+            setStatusModal({
+                isOpen: true,
+                type: 'success',
+                title: 'Batch Action Success',
+                message: `Successfully verified ${docIds.length} documents.`
+            })
         } catch (error) {
             console.error('Error verifying all:', error)
-            alert('Failed to verify all documents.')
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'Batch Action Failed',
+                message: 'Failed to verify all documents.'
+            })
         } finally {
             setProcessingId(null)
         }
@@ -559,6 +586,23 @@ const AdminRequests = () => {
                     </div>
                 )}
             </AnimatePresence>
+            <StatusModal
+                isOpen={statusModal.isOpen}
+                onClose={() => setStatusModal({ ...statusModal, isOpen: false })}
+                type={statusModal.type}
+                title={statusModal.title}
+                message={statusModal.message}
+            />
+
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                danger={true}
+                confirmLabel="Yes, Process"
+            />
         </div >
     )
 }
@@ -595,7 +639,7 @@ const DocActions = ({ doc, processingId, onUpdate, onRefresh, userId }) => {
                     if (!confirm("Delete this document?")) return;
                     try {
                         await DocumentService.deleteDocument(doc.id, doc.file_url);
-                        window.location.reload(); // Simple refresh for now
+                        onRefresh();
                     } catch (e) { console.error(e) }
                 }}
                 disabled={processingId === doc.id}

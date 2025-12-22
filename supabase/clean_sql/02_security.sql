@@ -48,11 +48,19 @@ DROP POLICY IF EXISTS "Profiles: Partners can view their clients" ON public.prof
 CREATE POLICY "Profiles: Partners can view their clients" ON public.profiles FOR SELECT USING (partner_id = auth.uid());
 
 DROP POLICY IF EXISTS "Profiles: Users can update own" ON public.profiles;
-CREATE POLICY "Profiles: Users can update own" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Profiles: Users can update own" ON public.profiles 
+FOR UPDATE 
+USING (auth.uid() = id)
+WITH CHECK (
+    auth.uid() = id AND 
+    role = (SELECT role FROM public.profiles WHERE id = auth.uid()) -- Cannot change role
+);
 
 DROP POLICY IF EXISTS "Profiles: Partners can insert clients" ON public.profiles;
 CREATE POLICY "Profiles: Partners can insert clients" ON public.profiles FOR INSERT WITH CHECK (
-    public.get_my_role() = 'partner' AND partner_id = auth.uid() AND role = 'client'
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'partner' AND 
+    partner_id = auth.uid() AND 
+    role = 'client'
 );
 
 DROP POLICY IF EXISTS "Profiles: Superusers manage all" ON public.profiles;
@@ -80,6 +88,12 @@ CREATE POLICY "Services: Admins manage all" ON public.user_services FOR ALL USIN
 
 DROP POLICY IF EXISTS "Services: Partners view their clients" ON public.user_services;
 CREATE POLICY "Services: Partners view their clients" ON public.user_services FOR SELECT USING (partner_id = auth.uid());
+
+DROP POLICY IF EXISTS "Services: Partners create for clients" ON public.user_services;
+CREATE POLICY "Services: Partners create for clients" ON public.user_services FOR INSERT WITH CHECK (
+    partner_id = auth.uid() AND 
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'partner'
+);
 
 -- 6. NOTIFICATIONS POLICIES
 DROP POLICY IF EXISTS "Notify: Users view own" ON public.notifications;

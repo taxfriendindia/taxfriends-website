@@ -5,6 +5,7 @@ import { Users, Search, Filter, MoreHorizontal, Eye, Mail, Phone, CheckCircle, C
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ClientDetailsModal from './ClientDetailsModal'
+import StatusModal from '../../components/StatusModal'
 
 const AdminClients = () => {
     const { user } = useAuth()
@@ -20,6 +21,7 @@ const AdminClients = () => {
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, user: null, inputName: '' })
     const [selectedClient, setSelectedClient] = useState(null)
     const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+    const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'info', title: '', message: '' })
 
     useEffect(() => {
         fetchClients()
@@ -80,7 +82,7 @@ const AdminClients = () => {
 
         // Safety Check: Prevent deleting Super Users
         if (deleteModal.user?.role === 'superuser') {
-            alert('Action Denied: Super Users cannot be removed.')
+            setStatusModal({ isOpen: true, type: 'error', title: 'Action Denied', message: 'Super Users cannot be removed.' })
             closeDeleteModal()
             return
         }
@@ -91,10 +93,10 @@ const AdminClients = () => {
             if (error) throw error
             setClients(clients.filter(c => c.id !== userId))
             closeDeleteModal()
-            alert('User successfully deleted.')
+            setStatusModal({ isOpen: true, type: 'success', title: 'Deleted', message: 'User record has been permanently removed.' })
         } catch (error) {
             console.error('Error deleting user:', error)
-            alert('Failed to delete user.')
+            setStatusModal({ isOpen: true, type: 'error', title: 'Process Failed', message: 'Failed to delete user.' })
         }
     }
 
@@ -367,6 +369,14 @@ const AdminClients = () => {
                     </div>
                 )}
             </AnimatePresence>
+
+            <StatusModal
+                isOpen={statusModal.isOpen}
+                onClose={() => setStatusModal({ ...statusModal, isOpen: false })}
+                type={statusModal.type}
+                title={statusModal.title}
+                message={statusModal.message}
+            />
         </div>
     )
 }

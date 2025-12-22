@@ -120,7 +120,8 @@ const ClientOnboarding = () => {
             if (error) throw error;
             setStep(4);
         } catch (error) {
-            alert('Error creating service request.');
+            console.error('Service Request Error:', error);
+            alert(`Error: ${error.message || 'Failed to create service request.'}`);
         } finally {
             setLoading(false);
         }
@@ -296,20 +297,24 @@ const ClientOnboarding = () => {
                                     key={service.id}
                                     onClick={() => setSelectedService(service)}
                                     className={`p-8 rounded-[40px] text-left transition-all relative overflow-hidden group border-2 ${selectedService?.id === service.id
-                                            ? 'bg-white border-indigo-600 shadow-2xl shadow-indigo-600/10'
-                                            : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
+                                        ? 'bg-blue-50/50 border-blue-600 shadow-2xl shadow-blue-600/10'
+                                        : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
                                         }`}
                                 >
                                     {selectedService?.id === service.id && (
                                         <div className="absolute top-6 right-6 text-indigo-600"><CheckCircle2 size={28} /></div>
                                     )}
-                                    <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                        <FileText className="text-slate-400" size={24} />
+                                    <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm">
+                                        {service.icon && service.icon.startsWith('http') ? (
+                                            <img src={service.icon} alt="" className="w-10 h-10 object-contain" />
+                                        ) : (
+                                            <ServiceIcon name={service.icon} />
+                                        )}
                                     </div>
                                     <h4 className="font-black text-slate-900 text-lg tracking-tight mb-2">{service.title}</h4>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-6 line-clamp-2 md:min-h-[30px]">{service.description}</p>
-                                    <div className="text-[11px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-4 py-2 rounded-full inline-block">
-                                        {service.price_range || 'Official Processing'}
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 line-clamp-2 md:min-h-[30px]">{service.description}</p>
+                                    <div className="text-[9px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-3 py-1.5 rounded-lg inline-block">
+                                        Official Processing
                                     </div>
                                 </button>
                             ))}
@@ -434,5 +439,19 @@ const SuccessAction = ({ icon: Icon, title, desc, color = "indigo", onClick }) =
         <p className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${color === 'emerald' ? 'text-emerald-500' : 'text-indigo-500'}`}>{desc}</p>
     </button>
 );
+
+const ServiceIcon = ({ name }) => {
+    const icons = {
+        'Building2': Building2,
+        'Send': Send,
+        'Calculator': Briefcase, // Fallback for Calculator
+        'Layers': Zap, // Fallback for Layers
+        'Rocket': Zap, // Fallback for Rocket
+        'Award': Shield, // Fallback for Award
+        'FileText': FileText
+    }
+    const Icon = icons[name] || FileText
+    return <Icon size={28} className="text-indigo-600" />
+}
 
 export default ClientOnboarding;

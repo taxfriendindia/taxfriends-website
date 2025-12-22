@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
-    LayoutDashboard, Users, FileText, LogOut, Menu, Shield, ChevronLeft, ChevronRight, Activity, PieChart, Megaphone, X
+    LayoutDashboard, Users, FileText, LogOut, Menu, Shield, ChevronLeft, ChevronRight, Activity, PieChart, Megaphone, X, IndianRupee, Clock, Zap, User
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -30,6 +30,11 @@ const AdminLayout = () => {
         { to: "/admin/announcements", icon: Megaphone, label: "Broadcast" },
     ]
 
+    const isSuper = user?.role === 'superuser' || user?.email === 'taxfriend.tax@gmail.com'
+    const finalMenuItems = isSuper
+        ? [...menuItems, { to: "/admin/super-reset", icon: Zap, label: "System Reset" }]
+        : menuItems
+
     return (
         <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 bg-[url('https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=2629&auto=format&fit=crop')] bg-cover bg-fixed relative">
             {/* Overlay */}
@@ -52,27 +57,26 @@ const AdminLayout = () => {
                     </div>
                 </div>
 
-                <nav className="p-4 space-y-2 mt-4">
-                    {menuItems.map(item => (
-                        <NavItem key={item.to} to={item.to} icon={item.icon} label={item.label} isOpen={isSidebarOpen} />
-                    ))}
+                <div className="flex-1 flex flex-col min-h-0">
+                    <nav className="flex-1 overflow-y-auto p-4 space-y-2 py-6 scrollbar-hide">
+                        {finalMenuItems.map(item => (
+                            <NavItem key={item.to} to={item.to} icon={item.icon} label={item.label} isOpen={isSidebarOpen} />
+                        ))}
+                    </nav>
 
-                    <div className="pt-4 border-t border-white/10 mt-4">
-                        <NavItem to="/admin/profile" icon={Users} label="My Profile" isOpen={isSidebarOpen} />
+                    <div className="p-4 border-t border-white/10 bg-slate-900/60 backdrop-blur-md space-y-3">
+                        <NavItem to="/admin/profile" icon={User} label="My Profile" isOpen={isSidebarOpen} />
+                        <button
+                            onClick={handleLogout}
+                            className={`flex items-center w-full p-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white group border border-rose-500/20 shadow-lg shadow-rose-500/5 ${!isSidebarOpen && 'justify-center'}`}
+                            title="Logout System"
+                        >
+                            <LogOut size={20} className="shrink-0 group-hover:scale-120 transition-transform" />
+                            <span className={`ml-4 transition-all duration-300 ${isSidebarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 w-0 -translate-x-4 hidden'}`}>
+                                Sign Out
+                            </span>
+                        </button>
                     </div>
-                </nav>
-
-                <div className="absolute bottom-0 w-full p-4 border-t border-white/10">
-                    <button
-                        onClick={handleLogout}
-                        className={`flex items-center text-red-300 hover:text-red-200 hover:bg-white/10 rounded-lg transition-colors w-full p-2 ${!isSidebarOpen && 'justify-center'}`}
-                        title="Logout"
-                    >
-                        <LogOut size={20} />
-                        <span className={`ml-3 whitespace-nowrap transition-all duration-200 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 hidden'}`}>
-                            Logout
-                        </span>
-                    </button>
                 </div>
             </aside>
 
@@ -125,7 +129,7 @@ const AdminLayout = () => {
                             </div>
 
                             <nav className="space-y-4">
-                                {menuItems.map((item) => (
+                                {finalMenuItems.map((item) => (
                                     <NavLink
                                         key={item.to}
                                         to={item.to}
@@ -143,7 +147,19 @@ const AdminLayout = () => {
                                 ))}
                             </nav>
 
-                            <div className="mt-auto pt-6 border-t border-white/10">
+                            <div className="mt-auto space-y-4 pt-6 border-t border-white/10">
+                                <NavLink
+                                    to="/admin/profile"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className={({ isActive }) =>
+                                        `flex items-center p-4 rounded-2xl font-bold transition-all ${isActive
+                                            ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-500/30'
+                                            : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                                        }`
+                                    }
+                                >
+                                    <User size={22} className="mr-4" /> My Profile
+                                </NavLink>
                                 <button
                                     onClick={handleLogout}
                                     className="flex items-center p-4 w-full text-red-400 bg-red-400/10 rounded-2xl font-bold"

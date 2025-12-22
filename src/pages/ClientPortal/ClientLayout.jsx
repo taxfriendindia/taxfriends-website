@@ -191,22 +191,21 @@ const ClientLayout = () => {
                 .delete()
                 .eq('user_id', user.id)
 
-            if (error) {
-                // If RLS blocks the delete, throw to catch block
-                console.error("Delete failed details:", error);
-                throw new Error("Permission denied. Run the 'IMPORTANT' SQL script.");
+            if (error) throw error;
+
+            // 3. IF PARTNER: Also clear rejected payout history for storage optimization as requested
+            if (user.role === 'partner') {
+                await supabase.rpc('clear_partner_history', { target_partner_id: user.id });
             }
 
-            // 3. Dismiss ALL currently loaded Broadcasts in LocalStorage
+            // 4. Dismiss ALL currently loaded Broadcasts in LocalStorage
             if (broadcastIds.length > 0) {
                 const dismissed = JSON.parse(localStorage.getItem('dismissed_notifs') || '[]')
                 const newDismissed = [...new Set([...dismissed, ...broadcastIds])]
                 localStorage.setItem('dismissed_notifs', JSON.stringify(newDismissed))
             }
         } catch (error) {
-            console.error('Error clearing notifications:', error)
-            alert('Failed to delete notifications permanently. Please ask Admin to run the "FIX_USER_CANCEL.sql" script.')
-            // Revert optimistic update if needed or just let them retry
+            console.error('Error clearing:', error)
         }
     }
 
@@ -270,46 +269,48 @@ const ClientLayout = () => {
                     </button>
                 </div>
 
-                <nav className="p-4 space-y-2">
-                    {/* Admin Switcher for Super Admin & Admins */}
-                    {(user?.role === 'admin' || user?.role === 'superuser') && (
-                        <NavLink
-                            to="/admin/dashboard"
-                            className="flex items-center space-x-3 px-4 py-3 rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all duration-200 mb-6 group"
-                        >
-                            <Shield className="w-5 h-5 flex-shrink-0" />
-                            <span className="font-bold">Admin Panel</span>
-                        </NavLink>
-                    )}
+                <div className="flex-1 flex flex-col min-h-0">
+                    <nav className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-hide">
+                        {/* Admin Switcher for Super Admin & Admins */}
+                        {(user?.role === 'admin' || user?.role === 'superuser') && (
+                            <NavLink
+                                to="/admin/dashboard"
+                                className="flex items-center space-x-3 px-4 py-3 rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all duration-200 mb-6 group"
+                            >
+                                <Shield className="w-5 h-5 flex-shrink-0" />
+                                <span className="font-bold">Admin Panel</span>
+                            </NavLink>
+                        )}
 
-                    {navItems.map((item) => (
-                        <NavLink
-                            key={item.path}
-                            to={item.path}
-                            className={({ isActive }) =>
-                                `flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
-                                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold shadow-sm'
-                                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                                }`
-                            }
-                        >
-                            <item.icon size={20} className="group-hover:scale-110 transition-transform" />
-                            <span>{item.label}</span>
-                            {item.path === '/dashboard/history' && (
-                                <ChevronRight size={16} className="ml-auto opacity-50" />
-                            )}
-                        </NavLink>
-                    ))}
-                </nav>
+                        {navItems.map((item) => (
+                            <NavLink
+                                key={item.path}
+                                to={item.path}
+                                className={({ isActive }) =>
+                                    `flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
+                                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold shadow-sm'
+                                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                                    }`
+                                }
+                            >
+                                <item.icon size={20} className="group-hover:scale-110 transition-transform" />
+                                <span>{item.label}</span>
+                                {item.path === '/dashboard/history' && (
+                                    <ChevronRight size={16} className="ml-auto opacity-50" />
+                                )}
+                            </NavLink>
+                        ))}
+                    </nav>
 
-                <div className="absolute bottom-0 w-full p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                    <button
-                        onClick={handleLogout}
-                        className="flex items-center space-x-3 px-4 py-3 w-full text-red-600 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
-                    >
-                        <LogOut size={20} />
-                        <span className="font-medium">Sign Out</span>
-                    </button>
+                    <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                        <button
+                            onClick={handleLogout}
+                            className="flex items-center space-x-3 px-4 py-3 w-full text-rose-600 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/10 transition-colors font-bold"
+                        >
+                            <LogOut size={20} />
+                            <span>Sign Out System</span>
+                        </button>
+                    </div>
                 </div>
             </aside>
 

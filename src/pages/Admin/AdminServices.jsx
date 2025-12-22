@@ -4,12 +4,15 @@ import { supabase } from '../../lib/supabase'
 import { UserService } from '../../services/userService'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
+import StatusModal from '../../components/StatusModal'
 
 const AdminServices = () => {
     const { user } = useAuth()
     const location = useLocation()
     const [services, setServices] = useState([])
     const [loading, setLoading] = useState(true)
+    const [rejectionModal, setRejectionModal] = useState({ isOpen: false, serviceId: null, userId: null, title: '' })
+    const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', title: '', message: '' })
 
     // Filters State
     const [statusFilter, setStatusFilter] = useState(location.state?.statusFilter || 'all')
@@ -139,7 +142,12 @@ const AdminServices = () => {
             ))
         } catch (error) {
             console.error('Error updating status:', error)
-            alert('Failed to update status. Please try again.')
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'Update Failed',
+                message: 'Could not update service status.'
+            })
         }
     }
 
@@ -432,6 +440,60 @@ const AdminServices = () => {
                     </div>
                 )}
             </div>
+
+            {/* Rejection Modal */}
+            {rejectionModal.isOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setRejectionModal({ isOpen: false })} />
+                    <div className="bg-white rounded-[2rem] w-full max-w-md p-8 shadow-2xl relative z-10 border border-slate-100 animate-in fade-in zoom-in duration-300">
+                        <h3 className="text-xl font-black text-slate-800 mb-2">Reject Request</h3>
+                        <p className="text-slate-500 text-xs font-medium mb-6 uppercase tracking-widest">Reason for rejecting {rejectionModal.title}</p>
+
+                        <textarea
+                            id="rejectionReason"
+                            placeholder="Reason for rejection (e.g. Invalid documents, Out of scope)"
+                            className="w-full h-32 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-rose-500 outline-none transition-all resize-none mb-6"
+                        />
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                onClick={() => setRejectionModal({ isOpen: false })}
+                                className="py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    const reason = document.getElementById('rejectionReason').value
+                                    if (!reason) return
+                                    await handleStatusUpdate(rejectionModal.serviceId, 'rejected')
+                                    try {
+                                        await UserService.createNotification(
+                                            rejectionModal.userId,
+                                            'Service Request Rejected',
+                                            `Your request for '${rejectionModal.title}' was rejected. Reason: ${reason}.`,
+                                            'error'
+                                        )
+                                    } catch (e) { console.error(e) }
+                                    setRejectionModal({ isOpen: false })
+                                }}
+                                className="py-4 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg shadow-rose-200"
+                            >
+                                Reject & Notify
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Status Modal */}
+            <StatusModal
+                isOpen={statusModal.isOpen}
+                onClose={() => setStatusModal({ ...statusModal, isOpen: false })}
+                type={statusModal.type}
+                title={statusModal.title}
+                message={statusModal.message}
+            />
         </div>
     )
 }
@@ -460,57 +522,55 @@ const StatBox = ({ label, count, icon: Icon, color }) => {
     );
 }
 
-const ServiceActions = ({ item, onUpdate, onDelete }) => (
-    <div className="flex items-center justify-end gap-1">
-        {item.status !== 'processing' && item.status !== 'completed' && (
-            <button
-                onClick={() => onUpdate(item.id, 'processing')}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-indigo-200"
-                title="Start Processing"
-            >
-                <PlayCircle size={14} />
-                Process
-            </button>
-        )}
+const ServiceActions = ({ item, onUpdate, onDelete }) => {
+    const isActionable = item.status !== 'completed';
+    const isProcessing = item.status === 'processing';
 
-        {item.status !== 'completed' && (
-            <button
-                onClick={() => onUpdate(item.id, 'completed')}
-                className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all border border-transparent hover:border-emerald-100"
-                title="Mark as Completed"
-            >
-                <CheckCircle size={20} />
-            </button>
-        )}
+    return (
+        <div className="flex items-center justify-end gap-2">
+            {!isProcessing && item.status !== 'completed' && (
+                <button
+                    onClick={() => onUpdate(item.id, 'processing')}
+                    className="px-6 py-2.5 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-xl shadow-indigo-200 active:scale-95"
+                >
+                    <PlayCircle size={14} />
+                    Process {item.profile.full_name}
+                </button>
+            )}
 
-        {item.status !== 'rejected' && (
-            <button
-                onClick={async () => {
-                    const reason = prompt("Enter rejection reason:", "Information incomplete/incorrect")
-                    if (reason === null) return
-                    onUpdate(item.id, 'rejected')
-                    try {
-                        await UserService.createNotification(
-                            item.user_id,
-                            'Service Request Rejected',
-                            `Your request for '${item.title}' was rejected. Reason: ${reason}.`,
-                            'error'
-                        )
-                    } catch (e) { console.error(e) }
-                }}
-                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                title="Reject & Notify"
-            >
-                <XCircle size={18} />
-            </button>
-        )}
+            {isProcessing && (
+                <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl animate-in fade-in zoom-in duration-300">
+                    <button
+                        onClick={() => onUpdate(item.id, 'completed')}
+                        className="flex items-center gap-2 px-4 py-2 bg-white text-emerald-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-50 transition-all shadow-sm border border-emerald-100"
+                        title="Mark as Completed"
+                    >
+                        <CheckCircle size={14} />
+                        Complete
+                    </button>
+                    <button
+                        onClick={() => setRejectionModal({
+                            isOpen: true,
+                            serviceId: item.id,
+                            userId: item.user_id,
+                            title: item.title
+                        })}
+                        className="flex items-center gap-2 px-4 py-2 bg-white text-rose-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-50 transition-all shadow-sm border border-rose-100"
+                        title="Reject & Notify"
+                    >
+                        <XCircle size={14} />
+                        Reject
+                    </button>
+                </div>
+            )}
 
-        <button
-            onClick={() => onDelete(item.id)}
-            className="p-2 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
-            title="Delete Permanently"
-        >
-            <Trash2 size={18} />
-        </button>
-    </div>
-)
+            <button
+                onClick={() => onDelete(item.id)}
+                className="p-2.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all border border-transparent hover:border-rose-100"
+                title="Delete Permanently"
+            >
+                <Trash2 size={16} />
+            </button>
+        </div>
+    );
+}

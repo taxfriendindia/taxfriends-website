@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import StatusModal from '../../components/StatusModal';
 
 const WalletHistory = () => {
     const { user } = useAuth();
@@ -19,6 +20,8 @@ const WalletHistory = () => {
     const [requesting, setRequesting] = useState(false);
     const [completedServicesCount, setCompletedServicesCount] = useState(0);
     const [activeTab, setActiveTab] = useState('earnings');
+    const [showPayoutModal, setShowPayoutModal] = useState(false);
+    const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'info', title: '', message: '' });
 
     useEffect(() => {
         if (user) fetchWalletData();
@@ -69,23 +72,16 @@ const WalletHistory = () => {
         }
     };
 
-    const handleRequestPayout = async () => {
-        if (balance < 300) {
-            alert('Minimum balance of ₹300 is required for payout.');
-            return;
-        }
-
-        if (completedServicesCount < 3) {
-            alert('At least 3 completed service files are required to request a payout.');
-            return;
-        }
-
+    const handleRequestPayout = async (requestedAmount) => {
         if (!profile?.payout_upi) {
-            alert('Please update your UPI ID in Profile settings first.');
+            setStatusModal({
+                isOpen: true,
+                type: 'warning',
+                title: 'UPI Missing',
+                message: 'Please update your UPI ID in Profile settings first.'
+            });
             return;
         }
-
-        if (!window.confirm(`Are you sure you want to request a payout of ₹${balance}?`)) return;
 
         setRequesting(true);
         try {
@@ -93,17 +89,28 @@ const WalletHistory = () => {
                 .from('payout_requests')
                 .insert([{
                     partner_id: user.id,
-                    amount: balance,
+                    amount: requestedAmount,
                     recipient_details: profile.payout_upi,
                     status: 'pending'
                 }]);
 
             if (error) throw error;
-            alert('Payout request submitted! Our team will verify your records shortly.');
+            setShowPayoutModal(false);
+            setStatusModal({
+                isOpen: true,
+                type: 'success',
+                title: 'Request Sent',
+                message: `Payout request for ₹${requestedAmount} submitted! Our team will verify your records shortly.`
+            });
             fetchWalletData();
         } catch (error) {
             console.error('Payout request error:', error);
-            alert('Failed to submit payout request.');
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'Request Failed',
+                message: 'Failed to submit payout request. Please try again later.'
+            });
         } finally {
             setRequesting(false);
         }
@@ -128,6 +135,11 @@ const WalletHistory = () => {
                         <div className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] uppercase tracking-[0.2em] border border-indigo-100">Live</div>
                     </h1>
                     <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Manage your franchise royalties and settlements</p>
+                </div>
+                <div className="flex gap-3">
+                    <a href="/partner/profile" className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest hover:text-indigo-600 hover:border-indigo-600 transition-all shadow-sm">
+                        Profile Settings
+                    </a>
                 </div>
             </header>
 
@@ -157,7 +169,7 @@ const WalletHistory = () => {
                                 <div className="flex items-center gap-6">
                                     <div className="flex flex-col">
                                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Lifetime Earnings</span>
-                                        <span className="text-lg font-black text-emerald-400">₹{(royalties.reduce((acc, r) => acc + (r.amount || 0), 0)).toLocaleString()}</span>
+                                        <span className="text-lg font-black text-emerald-400">₹{(royalties.filter(r => r.amount > 0).reduce((acc, r) => acc + (r.amount || 0), 0)).toLocaleString()}</span>
                                     </div>
                                     <div className="w-px h-8 bg-white/10" />
                                     <div className="flex flex-col">
@@ -174,12 +186,12 @@ const WalletHistory = () => {
                             </div>
 
                             <button
-                                onClick={handleRequestPayout}
-                                disabled={requesting || balance < 300 || completedServicesCount < 3}
-                                className="group relative h-[72px] bg-white text-slate-950 rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-indigo-50 transition-all shadow-2xl active:scale-95 disabled:opacity-30 flex items-center justify-center gap-3 overflow-hidden"
+                                onClick={() => setShowPayoutModal(true)}
+                                disabled={balance < 300}
+                                className="w-full md:w-auto px-10 py-5 bg-white text-slate-900 rounded-[28px] font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-indigo-50 transition-all active:scale-95 shadow-2xl shadow-white/10 disabled:opacity-50 disabled:cursor-not-allowed group/btn"
                             >
-                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                {requesting ? <div className="animate-spin"><Loader2 size={24} /></div> : <><Sparkles size={20} className="text-indigo-600" /> Request Payout</>}
+                                <Sparkles size={20} className="group-hover/btn:rotate-12 transition-transform text-indigo-600" />
+                                Request Payout
                             </button>
                         </div>
                     </div>
@@ -194,7 +206,7 @@ const WalletHistory = () => {
 
                     <div className="space-y-4">
                         <EligibilityRow label="Min. Balance ₹300" current={balance} target={300} type="currency" />
-                        <EligibilityRow label="3 Completed Files" current={completedServicesCount} target={3} type="count" />
+
                         <EligibilityRow label="KYC Verified" status={profile?.kyc_status} type="status" />
                     </div>
 
@@ -204,7 +216,7 @@ const WalletHistory = () => {
                             <span className="text-[10px] font-black uppercase tracking-widest">Verification Required</span>
                         </div>
                         <p className="text-[10px] text-amber-600 font-bold uppercase tracking-wider leading-relaxed">
-                            Email service screenshots to <span className="text-amber-800 underline">support@taxfriends.in</span> for verification. Payouts are approved within 24 hours of document check.
+                            Email service screenshots to <span className="text-amber-800 underline">taxfriend.tax@gmail.com</span> for verification. Payouts are approved within 24 hours of document check.
                         </p>
                     </div>
                 </div>
@@ -279,6 +291,25 @@ const WalletHistory = () => {
                     </AnimatePresence>
                 </div>
             </div>
+            {/* Payout Request Modal */}
+            <AnimatePresence>
+                {showPayoutModal && (
+                    <PayoutAmountModal
+                        balance={balance}
+                        onClose={() => setShowPayoutModal(false)}
+                        onConfirm={handleRequestPayout}
+                        loading={requesting}
+                    />
+                )}
+            </AnimatePresence>
+
+            <StatusModal
+                isOpen={statusModal.isOpen}
+                onClose={() => setStatusModal({ ...statusModal, isOpen: false })}
+                type={statusModal.type}
+                title={statusModal.title}
+                message={statusModal.message}
+            />
         </div>
     );
 };
@@ -329,7 +360,7 @@ const TransactionRow = ({ title, subtitle, amount, status, type, notice }) => (
             </div>
         </div>
         <div className="text-right space-y-1">
-            <div className={`text-xl font-black ${type === 'credit' ? 'text-emerald-600' : 'text-slate-900'}`}>{type === 'credit' ? '+' : '-'}₹{amount.toLocaleString()}</div>
+            <div className={`text-xl font-black ${type === 'credit' ? 'text-emerald-600' : 'text-rose-600'}`}>{type === 'credit' ? '+' : '-'}₹{amount.toLocaleString()}</div>
             <div className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${status === 'completed' || status === 'available' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                 status === 'pending' || status === 'processing' ? 'bg-amber-50 text-amber-600 border-amber-100' :
                     'bg-slate-50 text-slate-400 border-slate-200'
@@ -350,3 +381,101 @@ const EmptyState = ({ label }) => (
 );
 
 export default WalletHistory;
+
+const PayoutAmountModal = ({ balance, onClose, onConfirm, loading }) => {
+    const [amount, setAmount] = useState(balance);
+    const [error, setError] = useState('');
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        const val = parseFloat(amount);
+        if (isNaN(val) || val < 300) {
+            setError('Minimum withdrawal is ₹300');
+            return;
+        }
+        if (val > balance) {
+            setError('Cannot exceed available balance');
+            return;
+        }
+        onConfirm(val);
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={onClose}
+                className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+            />
+            <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="bg-white rounded-[40px] w-full max-w-md p-8 md:p-10 shadow-2xl relative z-10 border border-slate-100 overflow-hidden"
+            >
+                {/* Decorative background */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-3xl -mr-16 -mt-16" />
+
+                <div className="relative">
+                    <div className="flex justify-between items-center mb-8">
+                        <div>
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Withdraw Funds</h3>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Select payout amount</p>
+                        </div>
+                        <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
+                            <Filter size={20} className="rotate-45" />
+                        </button>
+                    </div>
+
+                    <div className="bg-slate-900 text-white p-6 rounded-3xl mb-8 flex justify-between items-center">
+                        <div>
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Available</span>
+                            <p className="text-2xl font-black">₹{balance.toLocaleString()}</p>
+                        </div>
+                        <div className="p-3 bg-white/10 rounded-2xl">
+                            <Wallet size={24} className="text-indigo-400" />
+                        </div>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Payout Amount</label>
+                            <div className="relative">
+                                <IndianRupee className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                                <input
+                                    type="number"
+                                    value={amount}
+                                    onChange={(e) => {
+                                        setAmount(e.target.value);
+                                        setError('');
+                                    }}
+                                    className={`w-full h-16 bg-slate-50 border ${error ? 'border-rose-300 ring-4 ring-rose-50' : 'border-slate-200'} rounded-2xl pl-14 pr-6 font-black text-slate-700 text-lg outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-200 transition-all`}
+                                    placeholder="0.00"
+                                />
+                            </div>
+                            {error && <p className="text-[10px] font-bold text-rose-500 flex items-center gap-1 ml-1"> <AlertCircle size={12} /> {error}</p>}
+                        </div>
+
+                        <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex gap-3">
+                            <Zap size={16} className="text-indigo-600 shrink-0" />
+                            <p className="text-[10px] font-bold text-indigo-700 leading-relaxed uppercase tracking-wide">
+                                Funds will be transferred to your registered UPI ID <span className="font-black underline underline-offset-2">every Friday</span>.
+                            </p>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={loading || !amount}
+                            className="w-full h-16 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-200 disabled:opacity-50"
+                        >
+                            {loading ? <Loader2 className="animate-spin" size={20} /> : <Zap size={20} />}
+                            {loading ? 'Processing...' : 'Confirm Withdrawal'}
+                        </button>
+                    </form>
+                </div>
+            </motion.div>
+        </div>
+    );
+};

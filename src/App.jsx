@@ -21,6 +21,7 @@ import AdminServices from './pages/Admin/AdminServices'
 import AdminRecords from './pages/Admin/AdminRecords'
 import AdminAnnouncements from './pages/Admin/AdminAnnouncements'
 import AdminPartners from './pages/Admin/AdminPartners'
+import SuperReset from './pages/Admin/SuperReset'
 import PartnerProgram from './pages/Partner/PartnerProgram'
 import PartnerLayout from './pages/Partner/PartnerLayout'
 import PartnerDashboard from './pages/Partner/PartnerDashboard'
@@ -44,8 +45,13 @@ const PrivateRoute = ({ children }) => {
 
   if (!user) return <Navigate to="/login" />
 
-  // Admins are allowed to access Client Portal to view their own personal history
-  // Removed redirection logic that blocked admins.
+  // Strict role redirection
+  if (user.role === 'admin' || user.role === 'superuser') {
+    return <Navigate to="/admin" replace />
+  }
+  if (user.role === 'partner') {
+    return <Navigate to="/partner" replace />
+  }
 
   return children
 }
@@ -116,7 +122,10 @@ function App() {
             <Route path="records" element={<AdminRecords />} />
             <Route path="announcements" element={<AdminAnnouncements />} />
             <Route path="partners" element={<AdminPartners />} />
+            <Route path="payouts" element={<AdminPartners initialTab="payouts" />} />
+            <Route path="payout-history" element={<AdminPartners initialTab="history" />} />
             {/* Manage Admins merged into Admin Services */}
+            <Route path="super-reset" element={<SuperReset />} />
             <Route path="profile" element={<Profile />} />
             <Route path="*" element={<div className="p-8 text-gray-500">Page Under Construction</div>} />
           </Route>

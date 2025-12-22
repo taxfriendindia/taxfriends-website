@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react'
 import { Megaphone, Send, Users, ShieldAlert, CheckCircle, Info, Sparkles, Layout } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
+import StatusModal from '../../components/StatusModal'
+import ConfirmationModal from '../../components/ConfirmationModal'
 
 const AdminAnnouncements = () => {
     const [message, setMessage] = useState('')
     const [title, setTitle] = useState('')
     const [isSending, setIsSending] = useState(false)
     const [stats, setStats] = useState({ totalUsers: 0, sentCount: 0 })
+    const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'info', title: '', message: '' })
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, onConfirm: () => { } })
 
     useEffect(() => {
         fetchStats()
@@ -24,13 +28,22 @@ const AdminAnnouncements = () => {
 
     const handleBroadcast = async () => {
         if (!message.trim() || !title.trim()) {
-            alert('Please enter both title and message.')
+            setStatusModal({
+                isOpen: true,
+                type: 'warning',
+                title: 'Missing Fields',
+                message: 'Please enter both title and message.'
+            })
             return
         }
 
-        if (!confirm(`Are you sure you want to send this announcement to ALL ${stats.totalUsers} users? This cannot be undone.`)) {
-            return
-        }
+        setConfirmModal({
+            isOpen: true,
+            onConfirm: executeBroadcast
+        })
+    }
+
+    const executeBroadcast = async () => {
 
         setIsSending(true)
         try {
@@ -51,12 +64,22 @@ const AdminAnnouncements = () => {
 
             if (iError) throw iError
 
-            alert(`Successfully broadcasted to all ${stats.totalUsers} platform users via Global Channel.`)
+            setStatusModal({
+                isOpen: true,
+                type: 'success',
+                title: 'Broadcast Sent',
+                message: `Successfully broadcasted to all ${stats.totalUsers} platform users.`
+            })
             setMessage('')
             setTitle('')
         } catch (error) {
             console.error('Broadcast failed:', error)
-            alert(`Failed to send broadcast: ${error.message || 'Unknown error. Check database permissions.'}`)
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'Broadcast Failed',
+                message: error.message || 'Check database permissions.'
+            })
         } finally {
             setIsSending(false)
         }
@@ -206,6 +229,24 @@ const AdminAnnouncements = () => {
                     </div>
                 </div>
             </div>
+
+            <StatusModal
+                isOpen={statusModal.isOpen}
+                onClose={() => setStatusModal({ ...statusModal, isOpen: false })}
+                type={statusModal.type}
+                title={statusModal.title}
+                message={statusModal.message}
+            />
+
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={confirmModal.onConfirm}
+                title="Confirm Broadcast"
+                message={`Are you sure you want to send this announcement to ALL ${stats.totalUsers} users? This action cannot be undone.`}
+                danger={true}
+                confirmLabel="Yes, Broadcast"
+            />
         </motion.div>
     )
 }

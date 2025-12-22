@@ -4,14 +4,16 @@ import {
     Shield, Users, Wallet, Clock, CheckCircle2, XCircle,
     Search, Filter, ChevronRight, Eye, MoreVertical,
     ArrowUpRight, Download, Mail, Phone, AlertCircle, Ban,
-    ExternalLink, Edit, DollarSign, IndianRupee, Copy, X, Save, Loader2
+    ExternalLink, Edit, DollarSign, IndianRupee, Copy, X, Save, Loader2, FileText, Trash2, Activity
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { UserService } from '../../services/userService';
+import StatusModal from '../../components/StatusModal';
+import ConfirmationModal from '../../components/ConfirmationModal';
 
-const AdminPartners = () => {
+const AdminPartners = ({ initialTab }) => {
     const { user: currentUser } = useAuth();
     const isSuperAdmin = currentUser?.role === 'superuser';
     const navigate = useNavigate();
@@ -20,13 +22,19 @@ const AdminPartners = () => {
     const [payoutRequests, setPayoutRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeTab, setActiveTab] = useState('directory'); // Default to directory to show all partners
+    const [activeTab, setActiveTab] = useState(initialTab || 'directory');
+
+    useEffect(() => {
+        if (initialTab) {
+            setActiveTab(initialTab);
+        }
+    }, [initialTab]);
     const [filters, setFilters] = useState({ state: 'All', city: 'All' });
     const [stats, setStats] = useState({
         total: 0,
         pendingKyc: 0,
         pendingPayouts: 0,
-        totalRoyalties: 0
+        totalApprovedPayouts: 0
     });
 
     // Modal States
@@ -34,6 +42,21 @@ const AdminPartners = () => {
         type: null, // 'contact', 'wallet', 'verify', 'edit'
         partner: null,
         data: {}
+    });
+
+    const [statusModal, setStatusModal] = useState({
+        isOpen: false,
+        type: 'info',
+        title: '',
+        message: ''
+    });
+
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { },
+        danger: false
     });
 
     useEffect(() => {
@@ -65,7 +88,7 @@ const AdminPartners = () => {
                 total: partnersData?.length || 0,
                 pendingKyc: partnersData?.filter(p => p.kyc_status === 'pending').length || 0,
                 pendingPayouts: payoutsData?.filter(p => p.status === 'pending').length || 0,
-                totalRoyalties: partnersData?.reduce((acc, curr) => acc + (curr.wallet_balance || 0), 0)
+                totalApprovedPayouts: payoutsData?.filter(p => p.status === 'completed').reduce((acc, curr) => acc + (curr.amount || 0), 0)
             });
 
         } catch (error) {
@@ -88,9 +111,20 @@ const AdminPartners = () => {
             if (error) throw error;
             setModalConfig({ type: null, partner: null, data: {} });
             await fetchData();
+            setStatusModal({
+                isOpen: true,
+                type: 'success',
+                title: 'KYC Updated',
+                message: `Partner status has been updated to ${status.toUpperCase()} successfully.`
+            });
         } catch (error) {
             console.error('KYC Update Error:', error);
-            alert('Failed to update KYC status: ' + (error.message || 'Please try again.'));
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'Operation Failed',
+                message: error.message || 'Failed to update KYC status.'
+            });
         } finally {
             setLoading(false);
         }
@@ -99,17 +133,21 @@ const AdminPartners = () => {
     const handleUpdatePayout = async (payoutId, status) => {
         if (!isSuperAdmin) return;
 
-        try {
-            const payout = payoutRequests.find(p => p.id === payoutId);
+        const payout = payoutRequests.find(p => p.id === payoutId);
 
-            // Check if completing and if partner is KYC verified
-            if (status === 'completed') {
-                if (payout?.partner?.kyc_status !== 'verified') {
-                    alert('Cannot complete payout: Partner KYC is not verified.');
-                    return;
-                }
+        if (status === 'completed') {
+            if (payout?.partner?.kyc_status !== 'verified') {
+                setStatusModal({
+                    isOpen: true,
+                    type: 'warning',
+                    title: 'KYC Required',
+                    message: 'Cannot complete payout: Partner KYC is not verified.'
+                });
+                return;
             }
+        }
 
+        try {
             const { error } = await supabase
                 .from('payout_requests')
                 .update({
@@ -129,8 +167,20 @@ const AdminPartners = () => {
             await UserService.createNotification(payout.partner_id, title, message, status === 'completed' ? 'success' : 'error');
 
             fetchData();
+            setStatusModal({
+                isOpen: true,
+                type: status === 'completed' ? 'success' : 'error',
+                title: status === 'completed' ? 'Payout Success' : 'Payout Rejected',
+                message: status === 'completed' ? 'Funds have been settled successfully.' : 'Request has been moved to history.'
+            });
         } catch (error) {
             console.error('Payout Update Error:', error);
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'Critical Error',
+                message: 'Failed to update payout request.'
+            });
         }
     };
 
@@ -139,43 +189,23 @@ const AdminPartners = () => {
         if (!amount || isNaN(amount) || amount === 0) return;
 
         try {
-            const newBalance = parseFloat(currentBalance || 0) + parseFloat(amount);
+            setLoading(true);
+            const { error } = await supabase.rpc('adjust_partner_wallet', {
+                target_partner_id: partnerId,
+                adjustment_amount: parseFloat(amount),
+                adjustment_reason: reason,
+                admin_id: currentUser.id
+            });
 
-            // 1. Update Profile Balance
-            const { error: balanceError } = await supabase
-                .from('profiles')
-                .update({ wallet_balance: newBalance })
-                .eq('id', partnerId);
+            if (error) throw error;
 
-            if (balanceError) throw balanceError;
-
-            // 2. Log in partner_royalties for history visibility
-            // We use 'adjustment' type (from migration 06)
-            await supabase.from('partner_royalties').insert([{
-                partner_id: partnerId,
-                amount: amount,
-                type: 'adjustment',
-                status: 'available',
-                verified_at: new Date().toISOString()
-            }]);
-
-            // 3. Send notification to partner
-            const title = amount > 0 ? "Wallet Credited" : "Wallet Debited";
-            const message = amount > 0
-                ? `₹${amount} has been added to your wallet.`
-                : `₹${Math.abs(amount)} has been deducted from your wallet. Reason: ${reason || 'Administrative Adjustment'}`;
-
-            await UserService.createNotification(partnerId, title, message, amount > 0 ? 'success' : 'warning');
-
-            // Force immediate UI update
-            setPartners(prev => prev.map(p => p.id === partnerId ? { ...p, wallet_balance: newBalance } : p));
             setModalConfig({ type: null, partner: null, data: {} });
-
-            // Give Supabase a moment to reflect changes before re-fetching
-            setTimeout(() => fetchData(), 500);
+            await fetchData();
         } catch (error) {
             console.error('Wallet Adjustment Error:', error);
             alert('Failed to adjust wallet: ' + error.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -190,11 +220,112 @@ const AdminPartners = () => {
 
             setPartners(prev => prev.map(p => p.id === partnerId ? { ...p, ...updateData } : p));
             setModalConfig({ type: null, partner: null, data: {} });
-            alert('Partner profile updated successfully');
+            setStatusModal({
+                isOpen: true,
+                type: 'success',
+                title: 'Profile Updated',
+                message: 'Partner information has been synchronized.'
+            });
         } catch (error) {
             console.error('Update Partner Error:', error);
-            alert('Failed to update partner: ' + error.message);
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'Sync Failed',
+                message: error.message
+            });
         }
+    };
+
+    const handleExportPayouts = () => {
+        if (payoutRequests.length === 0) return;
+
+        const headers = ['Date', 'Partner Name', 'Email', 'Amount', 'Status', 'Method', 'Recipient Details', 'Processed At'];
+        const csvContent = [
+            headers.join(','),
+            ...payoutRequests.map(r => [
+                new Date(r.created_at).toLocaleDateString(),
+                `"${r.partner?.full_name || 'N/A'}"`,
+                r.partner?.email || 'N/A',
+                r.amount,
+                r.status,
+                r.method,
+                `"${r.recipient_details || ''}"`,
+                r.processed_at ? new Date(r.processed_at).toLocaleString() : 'Pending'
+            ].join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `taxfriends_payouts_report_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+    };
+
+    const handleClearProcessedHistory = async () => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Purge Payout History?',
+            message: 'Are you sure you want to permanently delete ALL settled and rejected payout records? This keeps the database lean but clears the trace. Continue?',
+            danger: true,
+            onConfirm: async () => {
+                try {
+                    setLoading(true);
+                    const { error } = await supabase.rpc('clear_processed_payouts');
+                    if (error) throw error;
+                    await fetchData();
+                    setStatusModal({
+                        isOpen: true,
+                        type: 'success',
+                        title: 'Cleanup Complete',
+                        message: 'All processed payout records have been purged.'
+                    });
+                } catch (error) {
+                    console.error('Cleanup Error:', error);
+                    setStatusModal({
+                        isOpen: true,
+                        type: 'error',
+                        title: 'Cleanup Failed',
+                        message: error.message
+                    });
+                } finally {
+                    setLoading(false);
+                }
+            }
+        });
+    };
+
+    const handleClearEarningHistory = async () => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Purge Earning History?',
+            message: 'CRITICAL: This will wipe all royalty/earning logs from the system for all partners. Balances are NOT affected. Do you wish to continue?',
+            danger: true,
+            onConfirm: async () => {
+                try {
+                    setLoading(true);
+                    const { error } = await supabase.rpc('clear_all_earning_history');
+                    if (error) throw error;
+                    await fetchData();
+                    setStatusModal({
+                        isOpen: true,
+                        type: 'success',
+                        title: 'Earnings Purged',
+                        message: 'All partner earning history has been cleared successfully.'
+                    });
+                } catch (error) {
+                    console.error('Cleanup Error:', error);
+                    setStatusModal({
+                        isOpen: true,
+                        type: 'error',
+                        title: 'Purge Failed',
+                        message: error.message
+                    });
+                } finally {
+                    setLoading(false);
+                }
+            }
+        });
     };
 
     const uniqueStates = useMemo(() => {
@@ -228,8 +359,8 @@ const AdminPartners = () => {
         return true;
     });
 
-    const pendingKycList = partners.filter(p => p.kyc_status === 'pending');
     const pendingPayoutsList = payoutRequests.filter(p => p.status === 'pending');
+    const payoutHistoryList = payoutRequests.filter(p => p.status === 'completed' || p.status === 'rejected');
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -239,27 +370,48 @@ const AdminPartners = () => {
                     <h1 className="text-3xl font-black text-slate-900 tracking-tight">Partner Management</h1>
                     <p className="text-slate-500 font-medium">Manage franchise partners, KYC verifications, and payouts.</p>
                 </div>
-                {!isSuperAdmin && (
-                    <div className="bg-amber-50 border border-amber-100 px-4 py-2 rounded-xl flex items-center gap-2 text-amber-700 text-xs font-bold uppercase tracking-wider">
-                        <Ban size={16} /> Restricted to Super Admin
-                    </div>
-                )}
+                <div className="flex flex-col md:flex-row md:items-center gap-4">
+                    {activeTab === 'payouts' && (
+                        <button
+                            onClick={handleExportPayouts}
+                            className="px-6 py-3 bg-emerald-600 text-white rounded-2x border border-emerald-100/20 font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-200 flex items-center justify-center gap-2"
+                        >
+                            <Download size={14} /> Export Report
+                        </button>
+                    )}
+                    {activeTab === 'history' && (
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleClearEarningHistory}
+                                className="px-6 py-3 bg-amber-50 text-amber-600 rounded-2xl border border-amber-100 font-black text-[10px] uppercase tracking-widest hover:bg-amber-600 hover:text-white transition-all flex items-center justify-center gap-2"
+                            >
+                                <Activity size={14} /> Purge Earning History
+                            </button>
+                            <button
+                                onClick={handleClearProcessedHistory}
+                                className="px-6 py-3 bg-rose-50 text-rose-600 rounded-2xl border border-rose-100 font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all flex items-center justify-center gap-2"
+                            >
+                                <Trash2 size={14} /> Purge Payout History
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Stats Overview */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard icon={Users} label="Total Partners" value={stats.total} color="emerald" />
-                <StatCard icon={Shield} label="Pending KYC" value={stats.pendingKyc} color="emerald" />
+                <StatCard icon={CheckCircle2} label="Payouts Completed" value={`₹${stats.totalApprovedPayouts}`} color="emerald" />
                 <StatCard icon={Wallet} label="Pending Payouts" value={stats.pendingPayouts} color="emerald" />
-                <StatCard icon={Clock} label="Avg. Approval" value="2.4h" color="emerald" />
+                <StatCard icon={Shield} label="Pending KYC" value={stats.pendingKyc} color="emerald" />
             </div>
 
             {/* Tabs & Search */}
             <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden min-h-[600px] flex flex-col">
                 <div className="p-4 md:p-8 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-slate-50/50">
                     <div className="flex bg-white p-1 rounded-2xl shadow-inner border border-slate-200/50 self-start">
-                        <TabButton active={activeTab === 'kyc'} onClick={() => setActiveTab('kyc')} label="KYC Requests" count={stats.pendingKyc} />
-                        <TabButton active={activeTab === 'payouts'} onClick={() => setActiveTab('payouts')} label="Payouts" count={stats.pendingPayouts} />
+                        <TabButton active={activeTab === 'payouts'} onClick={() => setActiveTab('payouts')} label="Pending Payouts" count={stats.pendingPayouts} />
+                        <TabButton active={activeTab === 'history'} onClick={() => setActiveTab('history')} label="Payout History" />
                         <TabButton active={activeTab === 'directory'} onClick={() => setActiveTab('directory')} label="All Partners" />
                     </div>
 
@@ -296,29 +448,19 @@ const AdminPartners = () => {
 
                 <div className="flex-1">
                     <AnimatePresence mode="wait">
-                        {activeTab === 'kyc' && (
+                        {activeTab === 'history' && (
                             <motion.div
-                                key="kyc"
+                                key="history"
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
                                 className="divide-y divide-slate-100"
                             >
-                                {pendingKycList.length === 0 ? (
-                                    <EmptyState icon={CheckCircle2} title="All Caught Up" desc="No pending KYC requests at the moment." />
+                                {payoutHistoryList.length === 0 ? (
+                                    <EmptyState icon={Clock} title="No History" desc="No completed payout records found." />
                                 ) : (
-                                    pendingKycList.map(item => (
-                                        <PartnerRow
-                                            key={item.id}
-                                            partner={item}
-                                            type="kyc"
-                                            onUpdate={handleUpdateKyc}
-                                            isSuperAdmin={isSuperAdmin}
-                                            onWalletAdj={(pId, bal) => setModalConfig({ type: 'wallet', partner: item, data: { balance: bal } })}
-                                            onContact={(p) => setModalConfig({ type: 'contact', partner: p })}
-                                            onVerify={(p) => setModalConfig({ type: 'verify', partner: p })}
-                                            fetchData={fetchData}
-                                        />
+                                    payoutHistoryList.map(item => (
+                                        <PayoutHistoryRow key={item.id} request={item} />
                                     ))
                                 )}
                             </motion.div>
@@ -385,12 +527,10 @@ const AdminPartners = () => {
                     />
                 )}
                 {modalConfig.type === 'verify' && (
-                    <ConfirmModal
-                        title="Force Verify KYC"
-                        message={`CRITICAL: You are about to bypass document verification for ${modalConfig.partner.full_name}. This will grant them full platform authority.`}
-                        warning="This action is logged and should only be used if documents were verified offline."
+                    <VerifyKycModal
+                        partner={modalConfig.partner}
                         onClose={() => setModalConfig({ type: null, partner: null, data: {} })}
-                        onConfirm={() => handleUpdateKyc(modalConfig.partner.id, 'verified')}
+                        onConfirm={(status) => handleUpdateKyc(modalConfig.partner.id, status)}
                     />
                 )}
                 {modalConfig.type === 'edit' && (
@@ -401,6 +541,23 @@ const AdminPartners = () => {
                     />
                 )}
             </AnimatePresence>
+
+            <StatusModal
+                isOpen={statusModal.isOpen}
+                onClose={() => setStatusModal({ ...statusModal, isOpen: false })}
+                type={statusModal.type}
+                title={statusModal.title}
+                message={statusModal.message}
+            />
+
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                danger={confirmModal.danger}
+            />
         </div>
     );
 };
@@ -652,44 +809,52 @@ const WalletModal = ({ partner, onClose, onConfirm }) => {
 
                 <div className="space-y-6">
                     <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
-                        <button onClick={() => setType('credit')} className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${type === 'credit' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Add Funds</button>
-                        <button onClick={() => setType('debit')} className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${type === 'debit' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Deduction</button>
+                        <button onClick={() => setType('credit')} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${type === 'credit' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Credit</button>
+                        <button onClick={() => setType('debit')} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${type === 'debit' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Debit</button>
+                        <button onClick={() => setType('payout')} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${type === 'payout' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Payout</button>
                     </div>
 
                     <div className="space-y-4">
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Adjustment Amount</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                                {type === 'payout' ? 'Manual Payout Amount' : 'Adjustment Amount'}
+                            </label>
                             <div className="relative">
                                 <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                 <input
                                     type="number"
                                     value={amount}
                                     onChange={(e) => setAmount(e.target.value)}
-                                    placeholder="Enter amount"
-                                    className="w-full h-[60px] bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-6 font-black text-slate-700 outline-none focus:ring-2 focus:ring-emerald-600 transition-all"
+                                    placeholder="0.00"
+                                    className="w-full h-[60px] bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-6 font-black text-slate-700 outline-none focus:ring-2 focus:ring-slate-900 transition-all"
                                 />
                             </div>
                         </div>
 
-                        {type === 'debit' && (
+                        {(type === 'debit' || type === 'payout') && (
                             <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-rose-500">Reason for Deduction*</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                                    {type === 'payout' ? 'Reference / Trnx ID*' : 'Reason for Adjustment*'}
+                                </label>
                                 <textarea
                                     value={reason}
                                     onChange={(e) => setReason(e.target.value)}
-                                    placeholder="Type penalty or correction reason..."
-                                    className="w-full h-24 bg-slate-50 border border-slate-200 rounded-2xl p-4 font-bold text-sm text-slate-700 outline-none focus:ring-2 focus:ring-rose-500 transition-all resize-none"
+                                    placeholder={type === 'payout' ? "Enter UPI Ref or NEFT ID..." : "Enter reason for this adjustment..."}
+                                    className="w-full h-24 bg-slate-50 border border-slate-200 rounded-2xl p-4 font-bold text-sm text-slate-700 outline-none focus:ring-2 focus:ring-slate-900 transition-all resize-none"
                                 />
                             </div>
                         )}
                     </div>
 
                     <button
-                        onClick={() => onConfirm(type === 'credit' ? parseFloat(amount) : -parseFloat(amount), reason)}
-                        disabled={!amount || (type === 'debit' && !reason)}
-                        className={`w-full h-[64px] rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl disabled:opacity-50 disabled:grayscale ${type === 'credit' ? 'bg-emerald-600 text-white shadow-emerald-200' : 'bg-rose-600 text-white shadow-rose-200'}`}
+                        onClick={() => onConfirm(type === 'credit' ? parseFloat(amount) : -parseFloat(amount), type === 'payout' ? `MANUAL_PAYOUT: ${reason}` : reason)}
+                        disabled={!amount || ((type === 'debit' || type === 'payout') && !reason)}
+                        className={`w-full h-[64px] rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl disabled:opacity-50 disabled:grayscale ${type === 'credit' ? 'bg-emerald-600 text-white shadow-emerald-200' :
+                            type === 'debit' ? 'bg-rose-600 text-white shadow-rose-200' :
+                                'bg-blue-600 text-white shadow-blue-200'
+                            }`}
                     >
-                        <Save size={18} /> {type === 'credit' ? 'Confirm Addition' : 'Confirm Deduction'}
+                        <Save size={18} /> {type === 'credit' ? 'Execute Credit' : type === 'debit' ? 'Execute Debit' : 'Record Payout'}
                     </button>
                 </div>
             </motion.div>
@@ -920,6 +1085,117 @@ const PartnerEditModal = ({ partner, onClose, onSave }) => {
                         {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
                         Save Changes
                     </button>
+                </div>
+            </motion.div>
+        </div>
+    );
+};
+
+const PayoutHistoryRow = ({ request }) => (
+    <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:bg-slate-50/50 transition-colors group">
+        <div className="flex items-center gap-4">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm border ${request.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                {request.status === 'completed' ? <CheckCircle2 size={24} /> : <XCircle size={24} />}
+            </div>
+            <div>
+                <div className="font-black text-slate-900 text-sm tracking-tight flex items-center gap-2">
+                    ₹{request.amount} {request.status === 'completed' ? 'Settled' : 'Rejected'}
+                </div>
+                <div className="flex flex-col gap-1 mt-1">
+                    <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-medium text-slate-400 flex items-center gap-1"><Users size={10} /> {request.partner?.full_name}</span>
+                        <span className="text-[10px] font-medium text-slate-400 flex items-center gap-1"><Clock size={10} /> {new Date(request.processed_at || request.created_at).toLocaleDateString()}</span>
+                    </div>
+                    {request.admin_notes && (
+                        <p className="text-[9px] font-bold text-slate-500 italic mt-1 bg-slate-100 px-2 py-1 rounded-lg w-fit">
+                            Note: {request.admin_notes}
+                        </p>
+                    )}
+                </div>
+            </div>
+        </div>
+        <div className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${request.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+            {request.status}
+        </div>
+    </div>
+);
+
+const VerifyKycModal = ({ partner, onClose, onConfirm }) => {
+    const [docs, setDocs] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchDocs();
+    }, []);
+
+    const fetchDocs = async () => {
+        try {
+            const { data } = await supabase
+                .from('user_documents')
+                .select('*')
+                .eq('user_id', partner.id);
+            setDocs(data || []);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="bg-white rounded-[32px] w-full max-w-lg p-8 shadow-2xl relative z-10 border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="flex justify-between items-center mb-8 shrink-0">
+                    <div>
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">KYC Verification</h3>
+                        <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">Reviewing {partner.full_name}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
+                        <X size={24} />
+                    </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6">
+                    <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex gap-3">
+                        <AlertCircle className="text-amber-600 shrink-0" size={20} />
+                        <p className="text-xs font-bold text-amber-800 leading-relaxed uppercase tracking-wide">
+                            Manual verification bypasses automated document checks. Ensure identity is confirmed offline before proceeding.
+                        </p>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Submitted Documents</h4>
+                        {loading ? (
+                            <div className="h-20 flex items-center justify-center text-slate-300"><Loader2 className="animate-spin" /></div>
+                        ) : docs.length === 0 ? (
+                            <div className="p-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No documents uploaded yet</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-3">
+                                {docs.map(doc => (
+                                    <div key={doc.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-white rounded-xl shadow-sm"><FileText className="text-indigo-600" size={18} /></div>
+                                            <div>
+                                                <p className="text-xs font-black text-slate-800 truncate max-w-[150px]">{doc.name}</p>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{doc.doc_type || 'Unknown'}</p>
+                                            </div>
+                                        </div>
+                                        <a href={doc.file_url} target="_blank" rel="noreferrer" className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
+                                            <ExternalLink size={18} />
+                                        </a>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="pt-8 border-t border-slate-100 grid grid-cols-2 gap-3 shrink-0">
+                    <button onClick={() => onConfirm('rejected')} className="py-4 bg-rose-50 text-rose-600 border border-rose-100 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all">Reject KYC</button>
+                    <button onClick={() => onConfirm('verified')} className="py-4 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-200">Force Verify</button>
                 </div>
             </motion.div>
         </div>

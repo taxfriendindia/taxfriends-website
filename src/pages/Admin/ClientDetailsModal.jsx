@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, User, Briefcase, MessageSquare, Save, Mail, MapPin, Calendar, Clock, Bell, Send } from 'lucide-react'
+import { X, User, Briefcase, MessageSquare, Save, Mail, MapPin, Calendar, Clock, Bell, Send, Wallet, Trash2, IndianRupee, Zap, AlertCircle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import StatusModal from '../../components/StatusModal'
+import ConfirmationModal from '../../components/ConfirmationModal'
 
 const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) => {
     const [activeTab, setActiveTab] = useState('profile') // profile, services, message
@@ -13,6 +15,9 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
     const [sendingMsg, setSendingMsg] = useState(false)
     const [roleModal, setRoleModal] = useState({ isOpen: false, newRole: null, action: '' })
     const [confirmInput, setConfirmInput] = useState('')
+    const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'info', title: '', message: '' })
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => { }, danger: false })
+    const [clearing, setClearing] = useState(false)
 
     useEffect(() => {
         if (client) {
@@ -35,7 +40,7 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
 
     const executeRoleChange = async () => {
         if (confirmInput.toLowerCase() !== 'confirm') {
-            alert('You must type "confirm" to proceed.')
+            setStatusModal({ isOpen: true, type: 'warning', title: 'Action Denied', message: 'You must type "confirm" to proceed.' })
             return
         }
 
@@ -48,12 +53,14 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
 
             if (error) throw error
 
-            alert(`User role updated to ${roleModal.newRole.toUpperCase()}. All existing data is preserved.`)
+            if (error) throw error
+
+            setStatusModal({ isOpen: true, type: 'success', title: 'Role Updated', message: `User role has been changed to ${roleModal.newRole.toUpperCase()}.` })
             onUpdate({ ...client, role: roleModal.newRole })
             setRoleModal({ isOpen: false, newRole: null, action: '' })
         } catch (error) {
             console.error('Error changing role:', error)
-            alert(`Failed to change role: ${error.message}`)
+            setStatusModal({ isOpen: true, type: 'error', title: 'Update Failed', message: error.message })
         }
     }
 
@@ -129,10 +136,10 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
 
             onUpdate({ ...client, ...updateData }) // Update parent state with merged data
             setIsEditing(false)
-            alert('Profile updated successfully!')
+            setStatusModal({ isOpen: true, type: 'success', title: 'Profile Saved', message: 'Identity records have been updated.' })
         } catch (error) {
             console.error('Error updating profile:', error)
-            alert(`Failed to update profile: ${error.message || 'Check permissions'}`)
+            setStatusModal({ isOpen: true, type: 'error', title: 'Save Failed', message: error.message })
         }
     }
 
@@ -154,15 +161,52 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
 
             if (error) throw error
 
-            alert('Notification sent to user successfully!')
+            if (error) throw error
+
+            setStatusModal({ isOpen: true, type: 'success', title: 'Notification Sent', message: 'The user will receive this message instantly.' })
             setMessage('')
         } catch (error) {
             console.error('Error sending notification:', error)
-            alert('Failed to send notification.')
+            setStatusModal({ isOpen: true, type: 'error', title: 'Message Blocked', message: 'Failed to deliver notification.' })
         } finally {
             setSendingMsg(false)
         }
     }
+
+    const handleClearHistory = async () => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Purge History?',
+            message: 'CRITICAL: This will permanently wipe all royalty and payout history for this partner. Wallet balance is preserved. Do you wish to continue?',
+            danger: true,
+            onConfirm: async () => {
+                setClearing(true);
+                try {
+                    const { error } = await supabase.rpc('clear_partner_history', {
+                        target_partner_id: client.id
+                    });
+                    if (error) throw error;
+
+                    fetchServices(client.id); // Refresh
+                    setStatusModal({
+                        isOpen: true,
+                        type: 'success',
+                        title: 'History Purged',
+                        message: 'All transaction records for this partner have been deleted.'
+                    });
+                } catch (error) {
+                    setStatusModal({
+                        isOpen: true,
+                        type: 'error',
+                        title: 'Purge Failed',
+                        message: error.message
+                    });
+                } finally {
+                    setClearing(false);
+                }
+            }
+        });
+    };
 
     if (!isOpen || !client) return null
 
@@ -317,6 +361,33 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
                                     </div>
                                 </div>
 
+                                {client.role === 'partner' && (
+                                    <div className="bg-slate-900 text-white p-6 rounded-3xl mb-8 flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500 rounded-full blur-3xl -mr-16 -mt-16 opacity-20 group-hover:opacity-30 transition-opacity" />
+                                        <div className="flex items-center gap-4 relative z-10">
+                                            <div className="p-4 bg-white/10 rounded-2xl border border-white/5 backdrop-blur-sm">
+                                                <Wallet size={28} className="text-emerald-400" />
+                                            </div>
+                                            <div>
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Available Franchise Balance</span>
+                                                <div className="flex items-center gap-2">
+                                                    <IndianRupee size={24} className="text-emerald-500" />
+                                                    <span className="text-3xl font-black text-white">{(client.wallet_balance || 0).toLocaleString()}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={handleClearHistory}
+                                            disabled={clearing}
+                                            className="px-6 py-3 bg-white/10 hover:bg-rose-600 text-white rounded-2xl border border-white/10 transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2 relative z-10 disabled:opacity-50"
+                                        >
+                                            {clearing ? <Zap size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                            {clearing ? 'Purging...' : 'Purge All History'}
+                                        </button>
+                                    </div>
+                                )}
+
                                 {/* Form Grid */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <InputGroup label="Full Name" name="full_name" value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} disabled={!isEditing} />
@@ -411,6 +482,23 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
                     </div>
                 </motion.div>
             </div>
+
+            <StatusModal
+                isOpen={statusModal.isOpen}
+                onClose={() => setStatusModal({ ...statusModal, isOpen: false })}
+                type={statusModal.type}
+                title={statusModal.title}
+                message={statusModal.message}
+            />
+
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                danger={confirmModal.danger}
+            />
         </AnimatePresence>
     )
 }
