@@ -173,9 +173,33 @@ const AdminLayout = () => {
             </AnimatePresence>
 
             {/* Main Content Area */}
-            <main className={`flex-1 min-h-screen relative z-10 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} p-4 md:p-8 pt-20 lg:pt-8 overflow-x-hidden`}>
-                <Outlet context={{ isSidebarOpen, setSidebarOpen }} />
-            </main>
+            <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 relative z-10 ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
+                {/* Global Desktop Header */}
+                <header className="hidden lg:flex h-16 bg-white/40 backdrop-blur-xl border-b border-white/20 sticky top-0 z-40 px-8 items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-4">
+                        <div className="px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-[10px] font-black text-emerald-600 uppercase tracking-widest">
+                            Authorized Session
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                        <div className="flex flex-col items-end">
+                            <span className="text-xs font-black text-slate-800 tracking-tight">{user.full_name}</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{user.role}</span>
+                        </div>
+                        <button
+                            onClick={handleLogout}
+                            className="p-2.5 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl transition-all shadow-sm group"
+                            title="Sign Out"
+                        >
+                            <LogOut size={18} className="group-hover:rotate-12 transition-transform" />
+                        </button>
+                    </div>
+                </header>
+
+                <main className="flex-1 p-4 md:p-8 pt-8 lg:pt-8 overflow-x-hidden">
+                    <Outlet context={{ isSidebarOpen, setSidebarOpen }} />
+                </main>
+            </div>
         </div>
     )
 }

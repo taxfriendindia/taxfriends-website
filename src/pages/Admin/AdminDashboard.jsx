@@ -130,12 +130,6 @@ const AdminDashboard = () => {
                         <button onClick={() => navigate('/admin/records')} className="flex-[2] md:flex-none px-4 py-2 bg-emerald-600 border border-emerald-600 rounded-xl text-xs md:text-sm font-bold text-white hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20">
                             <Download size={14} /> Export Reports
                         </button>
-                        <button
-                            onClick={() => navigate('/admin/super-reset')}
-                            className="flex-1 md:flex-none px-4 py-2 bg-rose-600 text-white rounded-xl text-xs md:text-sm font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 flex items-center gap-2"
-                        >
-                            <Zap size={14} /> System Reset
-                        </button>
                     </div>
                 )}
             </div>

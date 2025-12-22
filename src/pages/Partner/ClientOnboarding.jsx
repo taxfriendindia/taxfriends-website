@@ -4,381 +4,343 @@ import {
     UserPlus, Users, Search, ChevronRight, FileText, CheckCircle2,
     ArrowLeft, Upload, Send, MessageCircle, AlertCircle, Building2,
     User, Zap, Shield, MapPin, Smartphone, Mail, Sparkles,
-    Briefcase, ArrowRight, Loader2, Globe
+    Briefcase, ArrowRight, Loader2, Globe, FileUp, X, Activity
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { UserService } from '../../services/userService';
 
 const ClientOnboarding = () => {
     const { user } = useAuth();
-    const [step, setStep] = useState(1); // 1: Select Type, 2: Select/Create Client, 3: Select Service, 4: Success
-    const [type, setType] = useState(null); // 'new' | 'existing'
-    const [clients, setClients] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [step, setStep] = useState(1); // 1: Select Service, 2: Client & Docs, 3: Success
     const [catalog, setCatalog] = useState([]);
+    const [loading, setLoading] = useState(false);
 
     // Selection State
-    const [selectedClient, setSelectedClient] = useState(null);
     const [selectedService, setSelectedService] = useState(null);
-
-    const [newClientForm, setNewClientForm] = useState({
-        full_name: '', mothers_name: '', aadhar_number: '', pan_number: '',
-        gst_number: '', organization: '', state: '', city: '',
-        mobile_number: '', email: ''
+    const [clientData, setClientData] = useState({
+        full_name: '',
+        mobile_number: '',
+        email: '',
+        state: 'All',
+        city: 'All'
     });
+    const [files, setFiles] = useState([]);
+    const [fileStatus, setFileStatus] = useState('');
 
     useEffect(() => {
-        fetchInitialData();
+        fetchCatalog();
     }, []);
 
-    const fetchInitialData = async () => {
+    const fetchCatalog = async () => {
         try {
-            // Fetch catalog
-            const { data: cat } = await supabase.from('service_catalog').select('*').order('title');
-            setCatalog(cat || []);
-
-            // Fetch this partner's clients
-            const { data: myClients } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('partner_id', user.id)
-                .order('full_name');
-            setClients(myClients || []);
+            const { data } = await supabase.from('service_catalog').select('*').order('title');
+            setCatalog(data || []);
         } catch (error) {
             console.error('Fetch error:', error);
         }
     };
 
-    const handleNewClientSubmit = async (e) => {
+    const handleFileChange = (e) => {
+        const selectedFiles = Array.from(e.target.files);
+        setFiles(prev => [...prev, ...selectedFiles]);
+    };
+
+    const removeFile = (index) => {
+        setFiles(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const handleFinalSubmit = async (e) => {
         e.preventDefault();
+        if (!selectedService || !clientData.full_name || !clientData.mobile_number) {
+            alert('Please fill in required fields (Name & Mobile).');
+            return;
+        }
+
         setLoading(true);
+        setFileStatus('Verifying Client Identity...');
+
         try {
-            // 1. Check if user already exists
+            // 1. Check or Create Profile (Shadow)
+            let clientId;
             const { data: existingProfile } = await supabase
                 .from('profiles')
-                .select('id, full_name, email, mobile_number')
-                .or(`mobile_number.eq.${newClientForm.mobile_number},email.eq.${newClientForm.email}`)
+                .select('id')
+                .eq('mobile_number', clientData.mobile_number)
                 .maybeSingle();
 
             if (existingProfile) {
-                alert(`Error: A user with this contact information is already registered. Please use 'Existing Client' or check details.`);
-                setLoading(false);
-                return;
+                clientId = existingProfile.id;
+                // Update profile with latest name/details if provided
+                await supabase.from('profiles').update({
+                    full_name: clientData.full_name,
+                    residential_state: clientData.state === 'All' ? null : clientData.state,
+                    residential_city: clientData.city === 'All' ? null : clientData.city,
+                    partner_id: user.id // Tie to this partner if not already
+                }).eq('id', clientId);
+            } else {
+                const shadowId = crypto.randomUUID();
+                const { data: newProfile, error: createError } = await supabase
+                    .from('profiles')
+                    .insert([{
+                        id: shadowId,
+                        full_name: clientData.full_name,
+                        mobile_number: clientData.mobile_number,
+                        email: clientData.email || null,
+                        residential_state: clientData.state === 'All' ? null : clientData.state,
+                        residential_city: clientData.city === 'All' ? null : clientData.city,
+                        partner_id: user.id,
+                        role: 'client'
+                    }])
+                    .select()
+                    .single();
+
+                if (createError) throw createError;
+                clientId = newProfile.id;
             }
 
-            // 2. Create Shadow Profile
-            const shadowId = crypto.randomUUID();
-            const { data, error } = await supabase
-                .from('profiles')
-                .insert([{
-                    id: shadowId,
-                    ...newClientForm,
-                    partner_id: user.id,
-                    role: 'client'
-                }])
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            // 3. Send Invitation Email
-            await supabase.auth.signInWithOtp({
-                email: newClientForm.email,
-                options: {
-                    data: {
-                        full_name: newClientForm.full_name,
-                        partner_id: user.id
-                    }
-                }
-            });
-
-            setSelectedClient(data);
-            setStep(3);
-        } catch (error) {
-            alert(`Error: ${error.message || 'Failed to create client.'}`);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleServiceRequest = async () => {
-        if (!selectedClient || !selectedService) return;
-
-        setLoading(true);
-        try {
-            const { error } = await supabase
+            // 2. Create Service Request
+            setFileStatus('Creating Service Ticket...');
+            const { data: serviceReq, error: serviceError } = await supabase
                 .from('user_services')
                 .insert([{
-                    user_id: selectedClient.id,
+                    user_id: clientId,
                     service_id: selectedService.id,
                     partner_id: user.id,
                     is_assisted_service: true,
                     status: 'pending'
-                }]);
+                }])
+                .select()
+                .single();
 
-            if (error) throw error;
-            setStep(4);
+            if (serviceError) throw serviceError;
+
+            // 3. Upload Documents
+            if (files.length > 0) {
+                setFileStatus(`Uploading ${files.length} Document(s)...`);
+                for (const file of files) {
+                    await UserService.uploadDocument(clientId, file, file.name, 'general');
+                }
+            }
+
+            setStep(3);
         } catch (error) {
-            console.error('Service Request Error:', error);
-            alert(`Error: ${error.message || 'Failed to create service request.'}`);
+            console.error('Submission Error:', error);
+            alert(`Submission Failed: ${error.message}`);
         } finally {
             setLoading(false);
+            setFileStatus('');
         }
     };
 
-    const filteredClients = clients.filter(c =>
-        c.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.mobile_number?.includes(searchTerm) ||
-        c.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
     return (
-        <div className="max-w-5xl mx-auto pb-24">
-            {/* Multi-step Header */}
-            <div className="mb-16">
-                <div className="flex items-center justify-between max-w-2xl mx-auto relative px-4">
-                    <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-100 -z-10 -translate-y-1/2" />
-                    {[1, 2, 3, 4].map((num) => (
-                        <div key={num} className="flex flex-col items-center gap-3">
-                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-sm transition-all duration-500 shadow-xl ${step >= num ? 'bg-slate-900 text-white translate-y-[-4px]' : 'bg-white text-slate-300 border border-slate-100'
-                                }`}>
-                                {step > num ? <CheckCircle2 size={20} className="text-emerald-400" /> : num}
-                            </div>
-                            <span className={`text-[9px] font-black uppercase tracking-widest ${step >= num ? 'text-slate-900' : 'text-slate-300'}`}>
-                                {['Source', 'Identity', 'Service', 'Ready'][num - 1]}
-                            </span>
+        <div className="max-w-6xl mx-auto pb-24 px-4 sm:px-6">
+            {/* Simple Step Indicator */}
+            <div className="flex items-center justify-center gap-4 mb-16">
+                {[1, 2, 3].map(num => (
+                    <div key={num} className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm transition-all duration-300 ${step >= num ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white text-slate-300 border border-slate-100'
+                            }`}>
+                            {step > num ? <CheckCircle2 size={18} /> : num}
                         </div>
-                    ))}
-                </div>
+                        {num < 3 && <div className={`w-8 h-0.5 rounded-full ${step > num ? 'bg-indigo-600' : 'bg-slate-100'}`} />}
+                    </div>
+                ))}
             </div>
 
             <AnimatePresence mode="wait">
-                {/* Step 1: Type Selection */}
+                {/* Step 1: Select Service */}
                 {step === 1 && (
                     <motion.div
                         key="step1"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="grid grid-cols-1 md:grid-cols-2 gap-8"
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="space-y-10"
                     >
-                        <SelectionCard
-                            icon={UserPlus}
-                            title="New Subscriber"
-                            desc="Registration for first-time clients. We will send an invitation to claim their dashboard."
-                            accent="blue"
-                            onClick={() => { setType('new'); setStep(2); }}
-                        />
-                        <SelectionCard
-                            icon={Users}
-                            title="Returning Client"
-                            desc="Service request for clients already in your franchise network database."
-                            accent="emerald"
-                            onClick={() => { setType('existing'); setStep(2); }}
-                        />
+                        <div className="text-center space-y-2">
+                            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Select Processing Service</h1>
+                            <p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em]">What does your client need today?</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {catalog.map(service => (
+                                <button
+                                    key={service.id}
+                                    onClick={() => { setSelectedService(service); setStep(2); }}
+                                    className="bg-white p-8 rounded-[3rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:border-indigo-200 transition-all text-left flex flex-col group relative overflow-hidden"
+                                >
+                                    <div className="absolute top-0 right-0 p-8 opacity-5 -mr-4 -mt-4 group-hover:scale-110 transition-transform duration-700">
+                                        <ServiceIcon name={service.icon} size={120} />
+                                    </div>
+                                    <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-transform">
+                                        <ServiceIcon name={service.icon} size={28} />
+                                    </div>
+                                    <h3 className="font-black text-slate-900 text-xl tracking-tight mb-2">{service.title}</h3>
+                                    <p className="text-slate-400 font-bold text-[10px] uppercase tracking-wider line-clamp-2 mb-6">{service.description}</p>
+                                    <div className="mt-auto flex items-center justify-between">
+                                        <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">Official Process</span>
+                                        <div className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-300">
+                                            <ArrowRight size={18} />
+                                        </div>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
                     </motion.div>
                 )}
 
-                {/* Step 2: Form or Search */}
+                {/* Step 2: Client & Documents */}
                 {step === 2 && (
                     <motion.div
                         key="step2"
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="bg-white rounded-[40px] border border-slate-200 shadow-sm overflow-hidden"
+                        exit={{ opacity: 0, x: -20 }}
+                        className="max-w-4xl mx-auto"
                     >
-                        <div className="p-8 md:p-12">
-                            <div className="flex items-center gap-4 mb-10">
-                                <button onClick={() => setStep(1)} className="p-3 hover:bg-slate-50 rounded-2xl text-slate-400 transition-all border border-transparent hover:border-slate-100"><ArrowLeft size={20} /></button>
-                                <div>
-                                    <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
-                                        {type === 'new' ? 'Client Registration' : 'Client Identity'}
-                                    </h2>
-                                    <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Step 02: Verification of details</p>
+                        <div className="bg-white rounded-[4rem] border border-slate-200 shadow-2xl shadow-indigo-500/5 overflow-hidden">
+                            <div className="bg-slate-900 p-8 text-white relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl" />
+                                <div className="flex items-center gap-6 relative z-10">
+                                    <button onClick={() => setStep(1)} className="p-3 bg-white/10 rounded-2xl border border-white/10 hover:bg-white/20 transition-all">
+                                        <ArrowLeft size={20} />
+                                    </button>
+                                    <div>
+                                        <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-1">Selected Service</p>
+                                        <h3 className="text-2xl font-black tracking-tight">{selectedService?.title}</h3>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3 relative z-10">
+                                    <div className="px-5 py-2.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 text-[10px] font-black uppercase tracking-widest">
+                                        Official Processing
+                                    </div>
                                 </div>
                             </div>
 
-                            {type === 'new' ? (
-                                <form onSubmit={handleNewClientSubmit} className="space-y-10">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                                        <OnboardInput label="Full Name" value={newClientForm.full_name} onChange={v => setNewClientForm({ ...newClientForm, full_name: v })} icon={User} required />
-                                        <OnboardInput label="Mother's Name" value={newClientForm.mothers_name} onChange={v => setNewClientForm({ ...newClientForm, mothers_name: v })} icon={User} required />
-                                        <OnboardInput label="Mobile Number" value={newClientForm.mobile_number} onChange={v => setNewClientForm({ ...newClientForm, mobile_number: v })} icon={Smartphone} required />
-                                        <OnboardInput label="Email Address" value={newClientForm.email} onChange={v => setNewClientForm({ ...newClientForm, email: v })} icon={Mail} required type="email" />
-                                        <OnboardInput label="Aadhar ID" value={newClientForm.aadhar_number} onChange={v => setNewClientForm({ ...newClientForm, aadhar_number: v })} icon={FileText} />
-                                        <OnboardInput label="PAN Card" value={newClientForm.pan_number} onChange={v => setNewClientForm({ ...newClientForm, pan_number: v })} icon={FileText} />
-                                        <div className="md:col-span-2"><OnboardInput label="Organization / Entity Name" value={newClientForm.organization} onChange={v => setNewClientForm({ ...newClientForm, organization: v })} icon={Briefcase} /></div>
-                                        <OnboardInput label="GSTIN" value={newClientForm.gst_number} onChange={v => setNewClientForm({ ...newClientForm, gst_number: v })} icon={Building2} />
-                                        <div className="flex gap-4">
-                                            <OnboardInput label="City" value={newClientForm.city} onChange={v => setNewClientForm({ ...newClientForm, city: v })} icon={MapPin} />
-                                            <OnboardInput label="State" value={newClientForm.state} onChange={v => setNewClientForm({ ...newClientForm, state: v })} icon={Globe} />
+                            <form onSubmit={handleFinalSubmit} className="p-10 md:p-14 space-y-12">
+                                {/* Client Info Section */}
+                                <div className="space-y-8">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><User size={20} /></div>
+                                        <h4 className="font-black text-slate-800 uppercase text-xs tracking-[0.2em]">Client Information</h4>
+                                        <div className="h-px bg-slate-100 flex-1" />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
+                                            <input
+                                                required
+                                                value={clientData.full_name}
+                                                onChange={e => setClientData({ ...clientData, full_name: e.target.value })}
+                                                placeholder="Enter Client Full Name"
+                                                className="w-full h-14 px-6 bg-slate-50 border border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white transition-all outline-none font-bold text-slate-900"
+                                            />
+                                        </div>
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mobile Number</label>
+                                            <input
+                                                required
+                                                type="tel"
+                                                value={clientData.mobile_number}
+                                                onChange={e => setClientData({ ...clientData, mobile_number: e.target.value })}
+                                                placeholder="Phone without +91"
+                                                className="w-full h-14 px-6 bg-slate-50 border border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white transition-all outline-none font-bold text-slate-900"
+                                            />
                                         </div>
                                     </div>
+                                </div>
 
-                                    <button
-                                        type="submit"
-                                        disabled={loading}
-                                        className="w-full h-16 bg-slate-900 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-2xl hover:bg-black transition-all flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-50"
-                                    >
-                                        {loading ? <Loader2 className="animate-spin" /> : <><Sparkles size={20} className="text-amber-400" /> Verified & Continue <ArrowRight size={20} /></>}
-                                    </button>
-                                </form>
-                            ) : (
+                                {/* Document Section */}
                                 <div className="space-y-8">
-                                    <div className="relative group">
-                                        <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" size={20} />
-                                        <input
-                                            type="text"
-                                            placeholder="Quick search by name, contact or ID..."
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                            className="w-full h-16 bg-slate-50 border border-slate-100 rounded-[2rem] pl-16 pr-8 font-bold text-slate-700 placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-indigo-600/5 outline-none transition-all"
-                                        />
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-2 bg-amber-50 text-amber-600 rounded-lg"><FileText size={20} /></div>
+                                        <h4 className="font-black text-slate-800 uppercase text-xs tracking-[0.2em]">Required Documents</h4>
+                                        <div className="h-px bg-slate-100 flex-1" />
                                     </div>
 
-                                    <div className="grid grid-cols-1 gap-4">
-                                        {filteredClients.length === 0 ? (
-                                            <div className="py-20 text-center text-slate-300 font-bold italic text-sm">No records found in your network</div>
-                                        ) : (
-                                            filteredClients.map(c => (
-                                                <button
-                                                    key={c.id}
-                                                    onClick={() => { setSelectedClient(c); setStep(3); }}
-                                                    className="w-full flex items-center justify-between p-6 bg-slate-50 border border-slate-100 rounded-3xl hover:bg-white hover:border-indigo-600/20 hover:shadow-xl hover:shadow-indigo-600/5 transition-all group"
-                                                >
-                                                    <div className="flex items-center gap-5">
-                                                        <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center font-black text-indigo-600 shadow-sm group-hover:scale-110 transition-transform">
-                                                            {c.full_name?.charAt(0)}
+                                    <div className="grid grid-cols-1 gap-6">
+                                        <label className="group relative cursor-pointer border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-3xl p-12 transition-all hover:bg-indigo-50/50">
+                                            <input type="file" multiple onChange={handleFileChange} className="hidden" />
+                                            <div className="flex flex-col items-center gap-4 text-center">
+                                                <div className="w-16 h-16 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white group-hover:scale-110 transition-all shadow-sm">
+                                                    <FileUp size={32} />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="font-black text-slate-900 uppercase text-xs tracking-widest">Upload Files</p>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">PDF, JPEG or PNG (Max 5MB each)</p>
+                                                </div>
+                                            </div>
+                                        </label>
+
+                                        {files.length > 0 && (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                                                {files.map((file, i) => (
+                                                    <div key={i} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                                                        <div className="flex items-center gap-3 overflow-hidden">
+                                                            <div className="w-8 h-8 bg-white rounded-lg border border-slate-200 flex items-center justify-center text-indigo-600 shrink-0">
+                                                                <FileText size={14} />
+                                                            </div>
+                                                            <span className="text-[10px] font-black text-slate-700 truncate">{file.name}</span>
                                                         </div>
-                                                        <div className="text-left">
-                                                            <h4 className="font-black text-slate-900 tracking-tight">{c.full_name}</h4>
-                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{c.mobile_number} • {c.email}</p>
-                                                        </div>
+                                                        <button type="button" onClick={() => removeFile(i)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
+                                                            <X size={14} />
+                                                        </button>
                                                     </div>
-                                                    <div className="p-3 bg-white rounded-xl border border-slate-100 text-slate-300 group-hover:text-indigo-600 group-hover:border-indigo-100 transition-all">
-                                                        <ChevronRight size={20} />
-                                                    </div>
-                                                </button>
-                                            ))
+                                                ))}
+                                            </div>
                                         )}
                                     </div>
                                 </div>
-                            )}
+
+                                <button
+                                    disabled={loading}
+                                    type="submit"
+                                    className="w-full h-20 bg-indigo-600 text-white rounded-[2.5rem] font-black text-base uppercase tracking-[0.3em] flex items-center justify-center gap-4 shadow-xl shadow-indigo-500/20 hover:bg-slate-950 transition-all disabled:opacity-50 mt-10"
+                                >
+                                    {loading ? (
+                                        <>
+                                            <Loader2 size={24} className="animate-spin" />
+                                            <span className="text-xs">{fileStatus}</span>
+                                        </>
+                                    ) : (
+                                        <>Deploy Service Request <ArrowRight size={24} /></>
+                                    )}
+                                </button>
+                            </form>
                         </div>
                     </motion.div>
                 )}
 
-                {/* Step 3: Service Selection */}
+                {/* Step 3: Success */}
                 {step === 3 && (
                     <motion.div
                         key="step3"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="space-y-8"
-                    >
-                        <div className="bg-slate-900 rounded-[32px] p-8 text-white flex items-center justify-between shadow-2xl relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600/20 rounded-full blur-3xl" />
-                            <div className="flex items-center gap-6 relative z-10">
-                                <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center font-black text-xl text-indigo-400">
-                                    {selectedClient?.full_name?.charAt(0)}
-                                </div>
-                                <div>
-                                    <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.3em]">Processing for</p>
-                                    <h3 className="text-2xl font-black tracking-tight">{selectedClient?.full_name}</h3>
-                                </div>
-                            </div>
-                            <button onClick={() => setStep(2)} className="h-10 px-6 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/10">Change</button>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {catalog.map(service => (
-                                <button
-                                    key={service.id}
-                                    onClick={() => setSelectedService(service)}
-                                    className={`p-8 rounded-[40px] text-left transition-all relative overflow-hidden group border-2 ${selectedService?.id === service.id
-                                        ? 'bg-blue-50/50 border-blue-600 shadow-2xl shadow-blue-600/10'
-                                        : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
-                                        }`}
-                                >
-                                    {selectedService?.id === service.id && (
-                                        <div className="absolute top-6 right-6 text-indigo-600"><CheckCircle2 size={28} /></div>
-                                    )}
-                                    <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm">
-                                        {service.icon && service.icon.startsWith('http') ? (
-                                            <img src={service.icon} alt="" className="w-10 h-10 object-contain" />
-                                        ) : (
-                                            <ServiceIcon name={service.icon} />
-                                        )}
-                                    </div>
-                                    <h4 className="font-black text-slate-900 text-lg tracking-tight mb-2">{service.title}</h4>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 line-clamp-2 md:min-h-[30px]">{service.description}</p>
-                                    <div className="text-[9px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-3 py-1.5 rounded-lg inline-block">
-                                        Official Processing
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-
-                        {selectedService && (
-                            <motion.button
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                onClick={handleServiceRequest}
-                                disabled={loading}
-                                className="w-full h-20 bg-indigo-600 text-white rounded-[2rem] font-black text-base uppercase tracking-[0.3em] shadow-2xl shadow-indigo-600/30 hover:bg-indigo-700 transition-all flex items-center justify-center gap-4 active:scale-[0.98] disabled:opacity-50"
-                            >
-                                {loading ? <Loader2 size={24} className="animate-spin" /> : <><Zap size={24} className="text-amber-400" /> Initialize Processing</>}
-                            </motion.button>
-                        )}
-                    </motion.div>
-                )}
-
-                {/* Step 4: Success */}
-                {step === 4 && (
-                    <motion.div
-                        key="step4"
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white p-12 md:p-20 rounded-[4rem] border border-slate-200 shadow-2xl text-center relative overflow-hidden"
+                        className="bg-white p-12 md:p-24 rounded-[5rem] border border-slate-200 shadow-2xl text-center relative overflow-hidden"
                     >
                         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-400 to-indigo-600" />
-                        <div className="w-28 h-28 bg-emerald-50 text-emerald-500 rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 shadow-inner">
-                            <CheckCircle2 size={56} />
+                        <div className="w-32 h-32 bg-emerald-50 text-emerald-500 rounded-[3rem] flex items-center justify-center mx-auto mb-10 shadow-inner">
+                            <CheckCircle2 size={64} />
                         </div>
-                        <h2 className="text-4xl font-black text-slate-900 mb-4 tracking-tighter uppercase">Request Deployed!</h2>
-                        <p className="text-slate-400 font-bold text-sm max-w-md mx-auto mb-16 leading-relaxed">
-                            Professional processing for <strong>{selectedClient?.full_name}</strong> has been initiated. Collect documents to finalize.
+                        <h2 className="text-5xl font-black text-slate-900 mb-6 tracking-tighter uppercase">Deployed!</h2>
+                        <p className="text-slate-400 font-bold text-sm max-w-md mx-auto mb-16 leading-relaxed uppercase tracking-widest">
+                            The service request has been transmitted and the documents are being processed by our admin team.
                         </p>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto mb-16">
-                            <SuccessAction
-                                icon={Upload}
-                                title="Upload Records"
-                                desc="Direct dashboard entry"
-                                onClick={() => window.location.href = '/partner/clients'}
-                            />
-                            <SuccessAction
-                                icon={MessageCircle}
-                                title="WhatsApp Support"
-                                desc="Expert consultation"
-                                color="emerald"
-                                onClick={() => window.open(`https://wa.me/917814234033?text=Documents%20for%20${selectedClient?.full_name}%20for%20${selectedService?.title}`, '_blank')}
-                            />
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
                             <button
-                                onClick={() => { setStep(1); setType(null); setSelectedClient(null); setSelectedService(null); }}
-                                className="h-14 px-10 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-black transition-all"
+                                onClick={() => { setStep(1); setFiles([]); setClientData({ full_name: '', mobile_number: '', email: '', state: 'All', city: 'All' }); }}
+                                className="w-full sm:w-auto px-10 py-5 bg-slate-900 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:bg-black transition-all"
                             >
-                                Start New Onboarding
+                                New Request
                             </button>
                             <button
                                 onClick={() => window.location.href = '/partner/dashboard'}
-                                className="h-14 px-10 bg-white border border-slate-200 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm"
+                                className="w-full sm:w-auto px-10 py-5 bg-white border border-slate-200 text-slate-600 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-slate-50 transition-all"
                             >
-                                Franchise Home
+                                Go to Dashboard
                             </button>
                         </div>
                     </motion.div>
@@ -388,70 +350,19 @@ const ClientOnboarding = () => {
     );
 };
 
-const SelectionCard = ({ icon: Icon, title, desc, accent, onClick }) => {
-    const accents = {
-        blue: 'hover:border-blue-600/30 hover:shadow-blue-600/10 group-hover:bg-blue-600',
-        emerald: 'hover:border-emerald-600/30 hover:shadow-emerald-600/10 group-hover:bg-emerald-600'
-    };
-
-    return (
-        <button
-            onClick={onClick}
-            className={`bg-white p-10 md:p-12 rounded-[48px] border-2 border-slate-100 shadow-sm transition-all text-left flex flex-col group h-full relative overflow-hidden ${accents[accent]}`}
-        >
-            <div className={`w-20 h-20 bg-slate-50 text-slate-400 rounded-3xl flex items-center justify-center mb-10 transition-all duration-500 shadow-sm group-hover:text-white ${accents[accent].split(' ')[2]}`}>
-                <Icon size={40} />
-            </div>
-            <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight group-hover:translate-x-1 transition-transform">{title}</h3>
-            <p className="text-slate-400 font-bold text-sm leading-relaxed mb-10 flex-1">{desc}</p>
-            <div className={`flex items-center font-black text-[10px] uppercase tracking-[0.2em] gap-3 ${accent === 'blue' ? 'text-blue-600' : 'text-emerald-600'} group-hover:translate-x-2 transition-transform`}>
-                Initialize Entry <ArrowRight size={18} />
-            </div>
-        </button>
-    );
-};
-
-const OnboardInput = ({ label, icon: Icon, type = "text", value, onChange, required }) => (
-    <div className="space-y-3">
-        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{label} {required && '*'}</label>
-        <div className="relative group/input">
-            <Icon className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within/input:text-slate-800 transition-colors" size={20} />
-            <input
-                type={type}
-                required={required}
-                value={value}
-                onChange={e => onChange(e.target.value)}
-                placeholder={`Enter ${label.toLowerCase()}...`}
-                className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl pl-14 pr-6 text-sm font-bold text-slate-700 placeholder:text-slate-200 focus:bg-white focus:ring-4 focus:ring-slate-900/5 outline-none transition-all"
-            />
-        </div>
-    </div>
-);
-
-const SuccessAction = ({ icon: Icon, title, desc, color = "indigo", onClick }) => (
-    <button onClick={onClick} className={`p-8 rounded-[32px] border transition-all text-center flex flex-col items-center group ${color === 'emerald' ? 'bg-emerald-50 border-emerald-100 hover:bg-emerald-100' : 'bg-indigo-50 border-indigo-100 hover:bg-indigo-100'
-        }`}>
-        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 ${color === 'emerald' ? 'bg-white text-emerald-600 shadow-emerald-200' : 'bg-white text-indigo-600 shadow-indigo-200'
-            } shadow-lg`}>
-            <Icon size={24} />
-        </div>
-        <h4 className={`font-black text-sm tracking-tight ${color === 'emerald' ? 'text-emerald-900' : 'text-indigo-900'}`}>{title}</h4>
-        <p className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${color === 'emerald' ? 'text-emerald-500' : 'text-indigo-500'}`}>{desc}</p>
-    </button>
-);
-
-const ServiceIcon = ({ name }) => {
+const ServiceIcon = ({ name, size = 24 }) => {
     const icons = {
-        'Building2': Building2,
-        'Send': Send,
-        'Calculator': Briefcase, // Fallback for Calculator
-        'Layers': Zap, // Fallback for Layers
-        'Rocket': Zap, // Fallback for Rocket
-        'Award': Shield, // Fallback for Award
-        'FileText': FileText
-    }
-    const Icon = icons[name] || FileText
-    return <Icon size={28} className="text-indigo-600" />
-}
+        'activity': Activity,
+        'shield': Shield,
+        'users': Users,
+        'zap': Zap,
+        'globe': Globe,
+        'briefcase': Briefcase,
+        'building': Building2,
+        'file-text': FileText,
+    };
+    const IconComponent = icons[name?.toLowerCase()] || Sparkles;
+    return <IconComponent size={size} />;
+};
 
 export default ClientOnboarding;

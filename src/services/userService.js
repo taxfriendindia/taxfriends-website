@@ -39,5 +39,32 @@ export const UserService = {
         } catch (e) {
             console.error("Cleanup failed:", e);
         }
+    },
+
+    async uploadDocument(userId, file, name, docType) {
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${userId}/${Math.random().toString(36).substring(7)}.${fileExt}`
+        const filePath = `documents/${fileName}`
+
+        const { error: uploadError } = await supabase.storage
+            .from('user-documents')
+            .upload(filePath, file)
+
+        if (uploadError) throw uploadError
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('user-documents')
+            .getPublicUrl(filePath)
+
+        const { error: dbError } = await supabase.from('user_documents').insert([{
+            user_id: userId,
+            name: name,
+            file_url: publicUrl,
+            doc_type: docType,
+            status: 'pending'
+        }])
+
+        if (dbError) throw dbError
+        return publicUrl
     }
 }

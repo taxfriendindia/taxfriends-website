@@ -202,6 +202,14 @@ const PartnerLayout = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
+                        <button
+                            onClick={handleLogout}
+                            className="hidden md:flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl transition-all shadow-sm group border border-rose-100"
+                            title="Sign Out"
+                        >
+                            <LogOut size={18} className="group-hover:rotate-12 transition-transform" />
+                            <span className="text-[10px] font-black uppercase tracking-widest hidden lg:inline">Sign Out</span>
+                        </button>
                         {/* Notification Bell */}
                         <div className="relative">
                             <button

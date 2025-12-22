@@ -184,6 +184,46 @@ const AdminPartners = ({ initialTab }) => {
         }
     };
 
+    const handleDeletePartner = async (partnerId) => {
+        if (!isSuperAdmin) return;
+
+        setConfirmModal({
+            isOpen: true,
+            title: 'Expel Partner?',
+            message: 'CRITICAL: This will permanently remove the partner profile and all linked client records. This action cannot be reversed. Continue?',
+            danger: true,
+            onConfirm: async () => {
+                try {
+                    setLoading(true);
+                    const { error } = await supabase
+                        .from('profiles')
+                        .delete()
+                        .eq('id', partnerId);
+
+                    if (error) throw error;
+
+                    setPartners(prev => prev.filter(p => p.id !== partnerId));
+                    setStatusModal({
+                        isOpen: true,
+                        type: 'success',
+                        title: 'Partner Expelled',
+                        message: 'The partner has been permanently removed.'
+                    });
+                } catch (error) {
+                    console.error('Delete Partner Error:', error);
+                    setStatusModal({
+                        isOpen: true,
+                        type: 'error',
+                        title: 'Expulsion Failed',
+                        message: error.message
+                    });
+                } finally {
+                    setLoading(false);
+                }
+            }
+        });
+    };
+
     const handleWalletAdjustment = async (partnerId, currentBalance, amount, reason = '') => {
         if (!isSuperAdmin) return;
         if (!amount || isNaN(amount) || amount === 0) return;
@@ -503,6 +543,7 @@ const AdminPartners = ({ initialTab }) => {
                                         onContact={(p) => setModalConfig({ type: 'contact', partner: p })}
                                         onVerify={(p) => setModalConfig({ type: 'verify', partner: p })}
                                         onEdit={(p) => setModalConfig({ type: 'edit', partner: p })}
+                                        onDelete={handleDeletePartner}
                                     />
                                 ))}
                             </motion.div>
@@ -601,7 +642,7 @@ const TabButton = ({ active, onClick, label, count }) => (
     </button>
 );
 
-const PartnerRow = ({ partner, type, onUpdate, isSuperAdmin, onWalletAdj, onContact, onVerify, onEdit }) => {
+const PartnerRow = ({ partner, type, onUpdate, isSuperAdmin, onWalletAdj, onContact, onVerify, onEdit, onDelete }) => {
     const [showMenu, setShowMenu] = useState(false);
     const menuRef = useRef(null);
 
@@ -715,6 +756,12 @@ const PartnerRow = ({ partner, type, onUpdate, isSuperAdmin, onWalletAdj, onCont
                                                         label="Force Verify KYC"
                                                         onClick={() => { setShowMenu(false); onVerify(partner); }}
                                                         color="text-rose-600"
+                                                    />
+                                                    <MenuButton
+                                                        icon={Trash2}
+                                                        label="Delete Partner"
+                                                        onClick={() => { setShowMenu(false); onDelete(partner.id); }}
+                                                        color="text-rose-600 font-black"
                                                     />
                                                 </>
                                             )}
