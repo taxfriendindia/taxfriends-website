@@ -52,7 +52,12 @@ const PartnerServices = () => {
                 .or(`partner_id.eq.${user.id},user_id.in.(${clientIds.length > 0 ? clientIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
+            if (error) {
+                console.error('Error fetching services:', error);
+            } else {
+                console.log('Fetched services:', servicesData);
+                console.log('Client IDs:', clientIds);
+            }
 
             setServices(servicesData || []);
 
@@ -75,9 +80,9 @@ const PartnerServices = () => {
 
     const filteredServices = services.filter(s => {
         const matchesSearch =
-            s.service?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.client?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.client?.organization?.toLowerCase().includes(searchTerm.toLowerCase());
+            s.service_catalog?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            s.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            s.profiles?.organization?.toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesStatus = statusFilter === 'All' || s.status === statusFilter;
 
