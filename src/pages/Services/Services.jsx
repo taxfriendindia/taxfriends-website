@@ -145,7 +145,82 @@ const Services = () => {
         applicability: 'Manufacturers, Processors, Restaurants, Hotels, Packers, Importers',
         benefits: ['Legal Requirement', 'Consumer Trust', 'Export Enablement', 'Business Expansion']
       }
+    },
+    {
+      id: 'trademark',
+      icon: '®️',
+      title: 'Trademark Registration',
+      description: 'Protect your brand identity and intellectual property with a registered trademark.',
+      features: [
+        'Trademark Search & Analysis',
+        'Trademark Application Filing',
+        'Objection Handling',
+        'Trademark Renewal',
+        'Copyright Registration',
+        'Design Registration'
+      ],
+      indianInfo: {
+        timeline: '1-2 days for filing; 6-12 months for registration',
+        documents: ['Brand Logo/Name', 'Identity Proof', 'User Affidavit', 'MSME Certificate (for discount)'],
+        eligibility: 'Individuals, Startups, Small Enterprises, Large Corporates',
+        benefits: ['Brand Protection', 'Asset Creation', 'Legal Right', 'Global Filing']
+      }
+    },
+    {
+      id: 'accounting',
+      icon: '📊',
+      title: 'Accounting & Bookkeeping',
+      description: 'Maintain perfect financial records with our professional accounting and bookkeeping services.',
+      features: [
+        'Tally/Zoho Books Setup',
+        'Monthly Bookkeeping',
+        'Bank Reconciliation',
+        'Financial Statement Prep',
+        'Payment Reminder Service',
+        'Inventory Management'
+      ],
+      indianInfo: {
+        frequency: 'Daily/Weekly/Monthly updates',
+        documents: ['Bank Statements', 'Purchase Invoices', 'Sales Invoices', 'Expense Vouchers'],
+        applicability: 'Startups, SMEs, Retailers, Freelancers',
+        benefits: ['Real-time Insights', 'Audit Ready', 'Tax Compliance', 'Better Cash Flow']
+      }
+    },
+    {
+      id: 'ngo',
+      icon: '🤝',
+      title: 'NGO & Trust Registration',
+      description: 'Register your non-profit organization as a Trust, Society, or Section 8 Company.',
+      features: [
+        'Section 8 Company Formation',
+        'Trust Deed Registration',
+        'Society Registration',
+        '12A & 80G Registration',
+        'CSR Registration',
+        'NITI Aayog Darpan Setup'
+      ],
+      indianInfo: {
+        types: 'Trust (State), Society (State), Section 8 (Central)',
+        documents: ['Affidavit of Members', 'Address Proof', 'Aims & Objectives', 'Identity Proofs'],
+        eligibility: 'Minimum 3-7 members depending on the entity type',
+        benefits: ['Tax Exemptions', 'Government Grants', 'Credibility', 'CSR Funding']
+      }
     }
+  ]
+
+  const otherServices = [
+    { title: 'TAN Registration', category: 'Taxation' },
+    { title: 'Digital Signature (DSC)', category: 'Legal' },
+    { title: 'Import Export Code (IEC)', category: 'Business' },
+    { title: 'ISO Certification', category: 'Quality' },
+    { title: 'PAN Card Services', category: 'Personal' },
+    { title: 'Professional Tax (PT)', category: 'Taxation' },
+    { title: 'Statutory Audit', category: 'Audit' },
+    { title: 'Internal Audit', category: 'Audit' },
+    { title: 'ROC Compliance', category: 'Corporate' },
+    { title: 'DIR-3 KYC', category: 'Directors' },
+    { title: 'ESIC & PF Registration', category: 'Labor Law' },
+    { title: 'Shop & Establishment', category: 'License' }
   ]
 
   const serviceFeatures = [
@@ -278,8 +353,47 @@ const Services = () => {
           </div>
         </section>
 
+        {/* Other Miscellaneous Services */}
+        <section className="py-20 bg-gray-100 dark:bg-gray-800/30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Other Important Services</h2>
+              <p className="text-gray-600 dark:text-gray-400">Need something else? We cover almost every business & tax need in India.</p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {otherServices.map((service, idx) => (
+                <div key={idx} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-between group hover:shadow-md transition-shadow">
+                  <div>
+                    <p className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors">{service.title}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">{service.category}</p>
+                  </div>
+                  <ArrowRight size={14} className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Missing Service CTA */}
+        <section className="py-16 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
+          <div className="max-w-4xl mx-auto px-4 text-center">
+            <div className="bg-blue-50 dark:bg-blue-900/10 p-10 rounded-3xl border border-dashed border-blue-200 dark:border-blue-800">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Missing a Service?</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-xl mx-auto text-lg italic">
+                "Our portfolio is vast, and we handle many custom requests for startups and NRIs. If you can't find what you need, our CA experts are just a message away."
+              </p>
+              <Link
+                to="/contact"
+                className="inline-flex items-center px-8 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl font-bold hover:scale-105 transition-transform shadow-lg"
+              >
+                Inquire About Custom Service <ArrowRight size={18} className="ml-2" />
+              </Link>
+            </div>
+          </div>
+        </section>
+
         {/* Why Choose Us for Indian Businesses */}
-        <section className="py-16 bg-white dark:bg-gray-800">
+        <section className="py-24 bg-white dark:bg-gray-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0, y: 30 }}

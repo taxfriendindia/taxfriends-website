@@ -5,6 +5,7 @@ import { ArrowRight, CheckCircle, Users, Target, Shield, Zap, MapPin, Menu, X, P
 import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../../components/Shared/Navbar'
 import Footer from '../../components/Shared/Footer'
+import TestimonialCarousel from '../../components/Home/TestimonialCarousel'
 
 const Home = () => {
   const { user, signOut } = useAuth()
@@ -298,6 +299,8 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      <TestimonialCarousel />
 
       <Footer />
     </div>

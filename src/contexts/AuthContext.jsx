@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext({})
@@ -11,48 +11,86 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchProfile = async (sessionUser) => {
-      if (!sessionUser) {
-        setUser(null)
-        setLoading(false)
-        return
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', sessionUser.id)
-          .single()
-
-        if (data) {
-          setUser({ ...sessionUser, ...data })
-        } else {
-          setUser(sessionUser)
-        }
-      } catch (error) {
-        console.error('Error fetching user profile:', error)
-        setUser(sessionUser)
-      } finally {
-        setLoading(false)
-      }
+  const fetchProfile = useCallback(async (sessionUser) => {
+    if (!sessionUser) {
+      setUser(null)
+      setLoading(false)
+      return
     }
 
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', sessionUser.id)
+        .single()
+
+      if (data) {
+        setUser({ ...sessionUser, ...data })
+      } else {
+        setUser(sessionUser)
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error)
+      setUser(sessionUser)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // 1. Initial Session & Auth Listener (Run once)
+  useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      fetchProfile(session?.user)
+      if (session?.user) {
+        fetchProfile(session.user)
+      } else {
+        setLoading(false)
+      }
     })
 
     // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      fetchProfile(session?.user)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event)
+      if (session?.user) {
+        fetchProfile(session.user)
+      } else {
+        setUser(null)
+        setLoading(false)
+      }
     })
 
-    return () => subscription.unsubscribe()
-  }, [])
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [fetchProfile])
+
+  // 2. Real-time Profile Syncing (Run when user changes)
+  useEffect(() => {
+    if (!user?.id) return
+
+    const channelName = `profile-sync-${user.id}`
+    const profileSubscription = supabase
+      .channel(channelName)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'profiles',
+        filter: `id=eq.${user.id}`
+      }, payload => {
+        console.log('Profile updated in real-time:', payload.new)
+        setUser(prev => {
+          // Only update if we have a previous user to merge with
+          if (!prev) return payload.new;
+          return { ...prev, ...payload.new };
+        })
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(profileSubscription)
+    }
+  }, [user?.id])
 
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -77,6 +115,7 @@ export const AuthProvider = ({ children }) => {
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
+    setUser(null)
   }
 
   const value = {

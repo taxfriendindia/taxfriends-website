@@ -35,6 +35,7 @@ const Navbar = () => {
                         <Link to="/services" className={`px-4 py-2 rounded-lg font-medium transition-all ${isActive('/services')}`}>Services</Link>
                         <Link to="/about" className={`px-4 py-2 rounded-lg font-medium transition-all ${isActive('/about')}`}>About</Link>
                         <Link to="/contact" className={`px-4 py-2 rounded-lg font-medium transition-all ${isActive('/contact')}`}>Contact</Link>
+                        <Link to="/partner-program" className={`px-4 py-2 rounded-lg font-medium transition-all ${isActive('/partner-program')}`}>City Partner</Link>
                         <Link to="/privacy-policy" className={`px-4 py-2 rounded-lg font-medium transition-all ${isActive('/privacy-policy')}`}>Privacy Policy</Link>
                     </div>
 
@@ -71,6 +72,7 @@ const Navbar = () => {
                             <Link to="/services" className="block text-lg font-medium text-gray-900 dark:text-white" onClick={() => setIsMobileMenuOpen(false)}>Services</Link>
                             <Link to="/about" className="block text-lg font-medium text-gray-900 dark:text-white" onClick={() => setIsMobileMenuOpen(false)}>About</Link>
                             <Link to="/contact" className="block text-lg font-medium text-gray-900 dark:text-white" onClick={() => setIsMobileMenuOpen(false)}>Contact</Link>
+                            <Link to="/partner-program" className="block text-lg font-medium text-blue-600 dark:text-blue-400 font-bold" onClick={() => setIsMobileMenuOpen(false)}>City Partner Program</Link>
                             <Link to="/privacy-policy" className="block text-lg font-medium text-gray-500 dark:text-gray-400" onClick={() => setIsMobileMenuOpen(false)}>Privacy Policy</Link>
 
                             <div className="pt-4 border-t border-gray-100 dark:border-gray-800">

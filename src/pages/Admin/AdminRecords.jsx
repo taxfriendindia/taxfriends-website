@@ -24,6 +24,7 @@ const AdminRecords = () => {
     // Filters & View State
     const [timeRange, setTimeRange] = useState('7d') // '24h', '7d', '1m', '1y'
     const [marketingFilter, setMarketingFilter] = useState('all') // 'all', 'new_users', 'pending_req', 'rejected_req'
+    const [graphMetric, setGraphMetric] = useState('overview') // 'overview', 'clients', 'partners', 'services'
 
     useEffect(() => {
         fetchAllData()
@@ -109,17 +110,16 @@ const AdminRecords = () => {
         // 2. Pre-fill Map (Continuous Axis)
         for (let i = 0; i < iterations; i++) {
             const d = getNextDate(startDate, i)
-            // Stop if future (for small 'All' ranges that pad to 7 days, or ensuring we don't go past 'now' too much)
-            // Actually nice to see up to today.
             if (d > endOfDay(now)) break;
 
             const key = formatKey(d)
             if (!dataMap.has(key)) {
                 dataMap.set(key, {
                     name: key,
-                    newUsers: 0,
-                    totalRequests: 0,
-                    filteredCount: 0,
+                    totalUsers: 0,
+                    clientsJoined: 0,
+                    partnersJoined: 0,
+                    servicesRequested: 0,
                     rawDate: d
                 })
             }
@@ -134,19 +134,16 @@ const AdminRecords = () => {
             if (dataMap.has(key)) {
                 const entry = dataMap.get(key)
                 if (type === 'profile') {
-                    if (marketingFilter === 'all' || marketingFilter === 'new_users') {
-                        entry.newUsers += 1
+                    entry.totalUsers += 1
+                    if (item.role === 'partner') entry.partnersJoined += 1
+                    else if (['admin', 'superuser'].includes(item.role)) {
+                        // Admins not specifically shown in these bars
+                    } else {
+                        // 'user', 'client', or null/undefined
+                        entry.clientsJoined += 1
                     }
                 } else if (type === 'request') {
-                    let matchesFilter = false
-                    if (marketingFilter === 'all') matchesFilter = true
-                    else if (marketingFilter === 'pending_req' && item.status === 'pending') matchesFilter = true
-                    else if (marketingFilter === 'rejected_cancelled_req' && (item.status === 'cancelled' || item.status === 'rejected')) matchesFilter = true
-
-                    if (matchesFilter) {
-                        if (marketingFilter !== 'all' && marketingFilter !== 'new_users') entry.filteredCount += 1
-                        else entry.totalRequests += 1
-                    }
+                    entry.servicesRequested += 1
                 }
             }
         }
@@ -208,55 +205,41 @@ const AdminRecords = () => {
 
             {/* Analytics Section */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div className="flex flex-col xl:flex-row xl:items-center justify-between mb-8 gap-6">
+                <div className="flex flex-wrap items-center justify-between gap-6 mb-10">
                     <div>
                         <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                            <BarChart2 className="text-indigo-600" />
+                            <BarChart2 className="text-emerald-600" />
                             {marketingFilter === 'all' ? 'Activity Overview' : 'Filtered Trends'}
                         </h2>
-                        <p className="text-sm text-slate-500 mt-1">
-                            {marketingFilter === 'all'
-                                ? 'Visual breakdown of user growth and service demand.'
-                                : `Tracking metric: ${marketingFilter === 'new_users' ? 'NEW USERS' : marketingFilter.replace('_', ' ').toUpperCase()}`
-                            }
-                        </p>
+                        <p className="text-xs text-slate-500 mt-1">Platform growth and demand analytics.</p>
                     </div>
 
-                    <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-                        {/* Filter Dropdown */}
+                    <div className="flex flex-wrap items-center gap-3">
+                        {/* Categorical Filter */}
                         <div className="relative">
                             <select
                                 value={marketingFilter}
                                 onChange={(e) => setMarketingFilter(e.target.value)}
-                                className="pl-6 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-full text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer hover:bg-slate-100 transition-colors appearance-none shadow-sm"
+                                className="pl-5 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer hover:bg-slate-100 transition-colors appearance-none shadow-sm"
                             >
-                                <option value="all">Every Registered User</option>
-                                <option value="new_users">New Users (Last 30 Days)</option>
-                                <option value="pending_req">Users with Pending Requests</option>
-                                <option value="rejected_cancelled_req">Rejected or Cancelled Requests</option>
+                                <option value="all">Global Activity</option>
+                                <option value="new_users">Recent Users</option>
+                                <option value="pending_req">Action Required</option>
+                                <option value="rejected_cancelled_req">Dropped Requests</option>
                             </select>
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
                             </div>
                         </div>
 
-                        {/* Export Button */}
-                        <button
-                            onClick={downloadCSV}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-full shadow-lg shadow-slate-900/20 transition-all active:scale-95 hover:-translate-y-0.5"
-                        >
-                            <Download size={18} />
-                            Export
-                        </button>
-
-                        {/* Time Filter */}
-                        <div className="flex bg-slate-100 p-1.5 rounded-full">
+                        {/* Time Range */}
+                        <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner h-[34px]">
                             {['24h', '7d', '1m', '1y'].map(range => (
                                 <button
                                     key={range}
                                     onClick={() => setTimeRange(range)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${timeRange === range
-                                        ? 'bg-white text-indigo-600 shadow-sm'
+                                    className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase transition-all ${timeRange === range
+                                        ? 'bg-white text-emerald-600 shadow-sm scale-105'
                                         : 'text-slate-500 hover:text-slate-700'
                                         }`}
                                 >
@@ -264,14 +247,39 @@ const AdminRecords = () => {
                                 </button>
                             ))}
                         </div>
+
+                        {/* Graph View Mode */}
+                        <div className="flex bg-emerald-50/50 p-1 rounded-xl border border-emerald-100/50 h-[34px]">
+                            {['overview', 'clients', 'partners', 'services'].map(m => (
+                                <button
+                                    key={m}
+                                    onClick={() => setGraphMetric(m)}
+                                    className={`px-3 py-1 rounded-lg text-[10px] font-black capitalize transition-all ${graphMetric === m
+                                        ? 'bg-emerald-600 text-white shadow-md'
+                                        : 'text-emerald-400 hover:text-emerald-600'
+                                        }`}
+                                >
+                                    {m === 'overview' ? 'Full View' : m}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Export Action */}
+                        <button
+                            onClick={downloadCSV}
+                            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
+                        >
+                            <Download size={14} />
+                            <span>Export</span>
+                        </button>
                     </div>
                 </div>
 
-                <div className="h-[350px] w-full">
+                <div className="h-[400px] w-full py-4">
                     {graphData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
-                            <ComposedChart data={graphData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                            <ComposedChart data={graphData} margin={{ top: 20, right: 30, bottom: 20, left: 10 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                                 <XAxis
                                     dataKey="name"
                                     axisLine={false}
@@ -286,51 +294,73 @@ const AdminRecords = () => {
                                 />
                                 <Tooltip
                                     cursor={{ fill: '#F1F5F9' }}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    content={({ active, payload, label }) => {
+                                        if (active && payload && payload.length) {
+                                            return (
+                                                <div className="bg-white p-4 rounded-2xl shadow-xl border border-slate-100 min-w-[180px]">
+                                                    <p className="text-xs font-black text-slate-400 mb-3 border-b pb-2 uppercase tracking-widest">{label}</p>
+                                                    <div className="space-y-2">
+                                                        {payload.map((entry, index) => (
+                                                            <div key={index} className="flex justify-between items-center gap-4">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                                                                    <span className="text-[10px] font-bold text-slate-500 uppercase">{entry.name}:</span>
+                                                                </div>
+                                                                <span className="text-sm font-black text-slate-800">{entry.value}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    }}
                                 />
-                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                <Legend
+                                    verticalAlign="top"
+                                    height={36}
+                                    wrapperStyle={{ paddingTop: '0px', paddingBottom: '20px' }}
+                                />
 
-                                {/* Dynamic Metrics based on Filter */}
-                                {(marketingFilter === 'all' || marketingFilter === 'new_users') && (
+                                {/* Complex Metrics */}
+                                {(graphMetric === 'overview' || graphMetric === 'clients') && (
                                     <Bar
-                                        dataKey="newUsers"
-                                        name="Registrations"
-                                        fill="#10B981"
-                                        radius={[4, 4, 0, 0]}
-                                        barSize={marketingFilter === 'all' ? 20 : 40}
+                                        dataKey="clientsJoined"
+                                        name="New Clients"
+                                        fill="#8B5CF6"
+                                        radius={[10, 10, 0, 0]}
+                                        barSize={graphMetric === 'overview' ? 12 : 60}
                                     />
                                 )}
-
-                                {marketingFilter === 'all' && (
-                                    <Line
-                                        type="monotone" // connecting line
-                                        dataKey="totalRequests"
-                                        name="Services Requested"
-                                        stroke="#6366F1"
-                                        strokeWidth={3}
-                                        dot={{ r: 4 }}
+                                {(graphMetric === 'overview' || graphMetric === 'partners') && (
+                                    <Bar
+                                        dataKey="partnersJoined"
+                                        name="New Partners"
+                                        fill="#F43F5E"
+                                        radius={[10, 10, 0, 0]}
+                                        barSize={graphMetric === 'overview' ? 12 : 60}
                                     />
                                 )}
-
-                                {marketingFilter !== 'all' && marketingFilter !== 'new_users' && (
+                                {(graphMetric === 'overview' || graphMetric === 'services') && (
                                     <Line
                                         type="monotone"
-                                        dataKey="filteredCount"
-                                        name={marketingFilter.replace('_', ' ').toUpperCase()}
-                                        stroke="#EF4444"
-                                        strokeWidth={3}
-                                        dot={{ r: 4 }}
-                                        activeDot={{ r: 6 }}
+                                        dataKey="servicesRequested"
+                                        name="Service Requests"
+                                        stroke="#F59E0B"
+                                        strokeWidth={4}
+                                        dot={{ r: 6, fill: '#F59E0B', strokeWidth: 2, stroke: '#fff' }}
+                                        activeDot={{ r: 8, strokeWidth: 0 }}
                                     />
                                 )}
-                                {marketingFilter !== 'all' && marketingFilter !== 'new_users' && (
-                                    <Bar
-                                        dataKey="filteredCount"
-                                        name="Volume"
-                                        fill="#EF4444"
-                                        opacity={0.3}
-                                        radius={[4, 4, 0, 0]}
-                                        barSize={40}
+                                {graphMetric === 'overview' && (
+                                    <Line
+                                        type="step"
+                                        dataKey="totalUsers"
+                                        name="Total Registrations"
+                                        stroke="#94A3B8"
+                                        strokeWidth={2}
+                                        strokeDasharray="8 4"
+                                        dot={false}
                                     />
                                 )}
 
@@ -347,32 +377,41 @@ const AdminRecords = () => {
 
             {/* Data Preview Table (Full Width) */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                    <h3 className="font-bold text-slate-800">Data Preview ({marketingData.length} records)</h3>
+                <div className="p-6 border-b border-slate-100 bg-white flex justify-between items-center">
+                    <div>
+                        <h3 className="font-bold text-slate-800">Recent Activity Data</h3>
+                        <p className="text-xs text-slate-400 mt-1">Showing latest {marketingData.length} entries for the selected filter.</p>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black uppercase tracking-widest">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                        Live Update
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto flex-1">
                     <table className="w-full text-left">
-                        <thead className="bg-white border-b border-slate-100">
+                        <thead className="bg-slate-50 border-b border-slate-100">
                             <tr>
-                                <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase">Name</th>
-                                <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase">Contact</th>
-                                <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase">Joined</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Subscriber / Entity</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact Information</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Registration</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
-                            {marketingData.slice(0, 10).map(u => (
-                                <tr key={u.id} className="hover:bg-slate-50">
-                                    <td className="px-6 py-3">
-                                        <div className="font-semibold text-slate-700 text-sm">{u.full_name || 'N/A'}</div>
-                                        <div className="text-xs text-slate-400">{u.organization}</div>
+                            {marketingData.slice(0, 15).map(u => (
+                                <tr key={u.id} className="hover:bg-emerald-50/30 transition-colors group">
+                                    <td className="px-6 py-4">
+                                        <div className="font-bold text-slate-700 text-sm group-hover:text-emerald-600 transition-colors">{u.full_name || 'Anonymous User'}</div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{u.organization || 'No Organization'}</div>
                                     </td>
-                                    <td className="px-6 py-3">
-                                        <div className="text-xs font-mono text-slate-600">{u.email}</div>
-                                        <div className="text-xs text-slate-400">{u.mobile}</div>
+                                    <td className="px-6 py-4">
+                                        <div className="text-xs font-bold text-slate-600 truncate max-w-[200px]">{u.email}</div>
+                                        <div className="text-[10px] font-black text-slate-400 font-mono">{u.mobile_number || 'No Phone'}</div>
                                     </td>
-                                    <td className="px-6 py-3 text-xs text-slate-500">
-                                        {new Date(u.created_at).toLocaleDateString()}
+                                    <td className="px-6 py-4 text-center">
+                                        <div className="text-xs font-black text-slate-500 bg-slate-100 inline-block px-2 py-1 rounded-md">
+                                            {new Date(u.created_at).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

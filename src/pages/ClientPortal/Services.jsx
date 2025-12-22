@@ -1,12 +1,26 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, ArrowRight, FileText, CheckCircle, X, AlertCircle } from 'lucide-react'
+import { Search, ArrowRight, CheckCircle, X, AlertCircle } from 'lucide-react'
+import * as LucideIcons from 'lucide-react'
 import { CatalogService } from '../../services/catalogService'
 import { RequestService } from '../../services/requestService'
 import { UserService } from '../../services/userService'
 import { DocumentService } from '../../services/documentService'
 import { useAuth } from '../../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
+
+const renderIcon = (iconName) => {
+    if (!iconName) return '📄'
+
+    // If it's a known Lucide icon name
+    const IconComponent = LucideIcons[iconName]
+    if (IconComponent) {
+        return <IconComponent className="w-6 h-6" />
+    }
+
+    // Otherwise assume it's an emoji or plain text
+    return iconName
+}
 
 const Services = () => {
     const { user } = useAuth()
@@ -135,13 +149,13 @@ const Services = () => {
                             key={service.id}
                             className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow flex flex-col h-full relative overflow-hidden group"
                         >
-                            {index < 2 && (
-                                <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] uppercase font-bold px-3 py-1 rounded-bl-xl shadow-sm z-10">
+                            {['GST Return Filing', 'Company Incorporation', 'Income Tax Filing', 'Income Tax Return'].includes(service.title) && (
+                                <div className="absolute top-0 right-0 bg-gradient-to-l from-blue-600 to-indigo-600 text-white text-[10px] uppercase font-black px-3 py-1.5 rounded-bl-xl shadow-lg z-10 tracking-widest">
                                     Popular
                                 </div>
                             )}
                             <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform duration-300">
-                                {service.icon || '📄'}
+                                {renderIcon(service.icon)}
                             </div>
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{service.title}</h3>
                             <p className="text-gray-500 text-sm mb-6 flex-grow">{service.description}</p>
@@ -175,7 +189,7 @@ const Services = () => {
                             <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
                                 <div className="flex items-center space-x-3">
                                     <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-xl">
-                                        {selectedService.icon || '📄'}
+                                        {renderIcon(selectedService.icon)}
                                     </div>
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-white">Confirm Request</h3>
                                 </div>

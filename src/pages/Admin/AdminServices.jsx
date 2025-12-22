@@ -30,39 +30,39 @@ const AdminServices = () => {
         try {
             setLoading(true)
 
-            // 1. Fetch Services
-            const { data: servs, error } = await supabase
-                .from('user_services')
-                .select('*')
-                .order('created_at', { ascending: false })
-
-            if (error) throw error
-
-            // 2. Fetch Profiles (Users + Admins)
-            // Get unique user IDs
-            const userIds = [...new Set((servs || []).map(s => s.user_id))]
-            const serviceIds = [...new Set((servs || []).map(s => s.service_id))]
-
-            const [profilesResponse, catalogResponse, adminsResponse] = await Promise.all([
-                supabase.from('profiles').select('id, full_name, email, mobile, role').in('id', userIds),
-                supabase.from('service_catalog').select('id, title').in('id', serviceIds),
-                supabase.from('profiles').select('id, full_name, email, role').in('role', ['admin', 'superuser']) // Fetch admins
+            // 1. Fetch raw services, profiles, and catalog in parallel for speed and reliability
+            const [servsRes, profsRes, catRes] = await Promise.all([
+                supabase.from('user_services').select('*').order('created_at', { ascending: false }),
+                supabase.from('profiles').select('id, full_name, email, mobile_number, role'),
+                supabase.from('service_catalog').select('id, title')
             ])
 
-            const profileMap = (profilesResponse.data || []).reduce((acc, p) => ({ ...acc, [p.id]: p }), {})
-            const catalogMap = (catalogResponse.data || []).reduce((acc, item) => ({ ...acc, [item.id]: item }), {})
+            if (servsRes.error) throw servsRes.error
 
-            setAdmins(adminsResponse.data || [])
+            const profileMap = (profsRes.data || []).reduce((acc, p) => ({ ...acc, [p.id]: p }), {})
+            const catalogMap = (catRes.data || []).reduce((acc, c) => ({ ...acc, [c.id]: c }), {})
 
-            const joinedServices = (servs || []).map(s => {
+            // 2. Set Admins for filters
+            setAdmins((profsRes.data || []).filter(p => ['admin', 'superuser'].includes(p.role)))
+
+            const joinedServices = (servsRes.data || []).map(s => {
                 const p = profileMap[s.user_id]
+                const cat = catalogMap[s.service_id]
+
+                // Identity Logic
+                const email = p?.email || 'No Email'
+                const fallbackName = email.includes('@') ? email.split('@')[0] : 'New Client'
+                const displayName = p?.full_name || fallbackName
+
                 return {
                     ...s,
-                    profile: p ? {
-                        ...p,
-                        full_name: p.full_name || p.email?.split('@')[0] || 'Unknown User'
-                    } : { full_name: 'Unknown User', email: 'No Email', role: 'client' },
-                    title: catalogMap[s.service_id]?.title || 'Unknown Service'
+                    profile: {
+                        full_name: displayName,
+                        email: email,
+                        role: p?.role || 'client',
+                        mobile: p?.mobile_number
+                    },
+                    title: cat?.title || s.service_type || 'Service'
                 }
             })
 
@@ -90,7 +90,7 @@ const AdminServices = () => {
 
             // 3. Admin Filter 
             if (adminFilter !== 'all') {
-                return s.admin_id === adminFilter
+                return s.handled_by === adminFilter
             }
 
             // 4. Search Query
@@ -122,23 +122,24 @@ const AdminServices = () => {
 
     const handleStatusUpdate = async (id, newStatus) => {
         try {
-            // We update the status AND the admin_id to track who performed the action
+            // We update the status
+            // Note: 'admin_id' column is currently missing in DB. Uncomment after running supabase/05_admin_tracking.sql
             const { error } = await supabase
                 .from('user_services')
                 .update({
                     status: newStatus,
-                    admin_id: user.id
+                    handled_by: user.id
                 })
                 .eq('id', id)
 
             if (error) throw error
 
             setServices(services.map(s =>
-                s.id === id ? { ...s, status: newStatus, admin_id: user.id } : s
+                s.id === id ? { ...s, status: newStatus } : s
             ))
         } catch (error) {
             console.error('Error updating status:', error)
-            alert('Failed to update status. Ensure "admin_id" column exists in database.')
+            alert('Failed to update status. Please try again.')
         }
     }
 
@@ -193,44 +194,12 @@ const AdminServices = () => {
                 )}
             </div>
 
-            {/* Performance Stats Cards (Dynamic based on Filter) */}
+            {/* Performance Stats Cards (Vibrant Gradient Theme) */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                    <div className="p-3 rounded-lg bg-indigo-50 text-indigo-600">
-                        <Activity size={24} />
-                    </div>
-                    <div>
-                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total</div>
-                        <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
-                    </div>
-                </div>
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                    <div className="p-3 rounded-lg bg-emerald-50 text-emerald-600">
-                        <CheckCircle size={24} />
-                    </div>
-                    <div>
-                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Approved</div>
-                        <div className="text-2xl font-bold text-slate-900">{stats.approved}</div>
-                    </div>
-                </div>
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                    <div className="p-3 rounded-lg bg-red-50 text-red-600">
-                        <XCircle size={24} />
-                    </div>
-                    <div>
-                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Rejected</div>
-                        <div className="text-2xl font-bold text-slate-900">{stats.rejected}</div>
-                    </div>
-                </div>
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                    <div className="p-3 rounded-lg bg-amber-50 text-amber-600">
-                        <Clock size={24} />
-                    </div>
-                    <div>
-                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pending</div>
-                        <div className="text-2xl font-bold text-slate-900">{stats.pending}</div>
-                    </div>
-                </div>
+                <StatBox label="Total" count={stats.total} icon={Activity} color="indigo" />
+                <StatBox label="Approved" count={stats.approved} icon={CheckCircle} color="emerald" />
+                <StatBox label="Rejected" count={stats.rejected} icon={XCircle} color="rose" />
+                <StatBox label="Pending" count={stats.pending} icon={Clock} color="amber" />
             </div>
 
             {/* Controls Bar */}
@@ -243,7 +212,7 @@ const AdminServices = () => {
                         placeholder="Search clients or services..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                        className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
                 </div>
 
@@ -257,7 +226,7 @@ const AdminServices = () => {
                             <select
                                 value={adminFilter}
                                 onChange={(e) => setAdminFilter(e.target.value)}
-                                className="px-3 py-2 border border-slate-200 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white cursor-pointer min-w-[160px]"
+                                className="px-3 py-2 border border-slate-200 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white cursor-pointer min-w-[160px]"
                             >
                                 <option value="all">All Admins</option>
                                 {admins.map(adm => (
@@ -273,7 +242,7 @@ const AdminServices = () => {
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="px-3 py-2 border border-slate-200 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white cursor-pointer min-w-[140px]"
+                            className="px-3 py-2 border border-slate-200 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white cursor-pointer min-w-[140px]"
                         >
                             <option value="all">All Statuses</option>
                             <option value="pending">Pending</option>
@@ -289,7 +258,7 @@ const AdminServices = () => {
                         <select
                             value={serviceTypeFilter}
                             onChange={(e) => setServiceTypeFilter(e.target.value)}
-                            className="px-3 py-2 border border-slate-200 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white cursor-pointer min-w-[180px] max-w-[250px]"
+                            className="px-3 py-2 border border-slate-200 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white cursor-pointer min-w-[180px] max-w-[250px]"
                         >
                             <option value="all">All Services</option>
                             {availableServiceTypes.map(type => (
@@ -306,7 +275,7 @@ const AdminServices = () => {
                             className="flex items-center justify-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-slate-700 text-sm hover:bg-slate-50 transition-colors bg-white min-w-[140px]"
                             title="Toggle Sort Order"
                         >
-                            <ArrowDownUp size={16} className="text-indigo-500" />
+                            <ArrowDownUp size={16} className="text-emerald-500" />
                             <span>{sortBy === 'newest' ? 'Newest' : 'Oldest'}</span>
                         </button>
                     </div>
@@ -320,125 +289,129 @@ const AdminServices = () => {
                         <p>Loading services...</p>
                     </div>
                 ) : filteredServices.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-50 border-b border-slate-200">
-                                <tr>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Client Details</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Service Requested</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {filteredServices.map(item => (
-                                    <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <div className="font-semibold text-slate-900 flex items-center gap-2">
-                                                {item.profile.full_name || 'Unknown'}
-                                                {(item.profile.role === 'admin' || item.profile.role === 'superuser') && (
-                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase tracking-wide">
-                                                        Admin
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="text-xs text-slate-500">{item.profile.email}</div>
-                                            {item.profile.mobile && <div className="text-xs text-slate-400 font-mono mt-0.5">{item.profile.mobile}</div>}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center text-slate-700 font-medium">
-                                                <div className="p-2 bg-indigo-50 rounded-lg mr-3 text-indigo-600">
-                                                    <Activity size={18} />
-                                                </div>
-                                                {item.title || 'Untitled Service'}
-                                            </div>
-                                            {item.description && (
-                                                <div className="text-xs text-slate-500 mt-1 max-w-xs truncate" title={item.description}>
-                                                    {item.description}
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 text-slate-500 text-sm">
-                                            {new Date(item.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                                            <div className="text-xs text-slate-400 mt-0.5">
-                                                {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(item.status)}`}>
-                                                {item.status === 'completed' && <CheckCircle size={12} className="mr-1.5" />}
-                                                {item.status === 'processing' && <PlayCircle size={12} className="mr-1.5" />}
-                                                {item.status === 'rejected' && <XCircle size={12} className="mr-1.5" />}
-                                                {(item.status === 'pending' || !item.status) && <Clock size={12} className="mr-1.5" />}
-                                                <span className="capitalize">{item.status || 'pending'}</span>
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right space-x-2">
-                                            {/* Action Buttons */}
-                                            {/* Action Buttons */}
-                                            {item.status !== 'processing' && item.status !== 'completed' && (
-                                                <button
-                                                    onClick={() => handleStatusUpdate(item.id, 'processing')}
-                                                    className="inline-flex items-center p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
-                                                    title="Mark as Processing"
-                                                >
-                                                    <PlayCircle size={18} />
-                                                </button>
-                                            )}
-
-                                            {item.status !== 'completed' && (
-                                                <button
-                                                    onClick={() => handleStatusUpdate(item.id, 'completed')}
-                                                    className="inline-flex items-center p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-100"
-                                                    title="Mark as Completed"
-                                                >
-                                                    <CheckCircle size={18} />
-                                                </button>
-                                            )}
-
-                                            {item.status !== 'rejected' && (
-                                                <button
-                                                    onClick={async () => {
-                                                        const reason = prompt("Enter rejection reason:", "Information incomplete/incorrect")
-                                                        if (reason === null) return
-
-                                                        // Optimistic Update
-                                                        handleStatusUpdate(item.id, 'rejected')
-
-                                                        // Send Notification
-                                                        try {
-                                                            await UserService.createNotification(
-                                                                item.user_id,
-                                                                'Service Request Rejected',
-                                                                `Your request for '${item.title}' was rejected. Reason: ${reason}. Please contact support.`,
-                                                                'error'
-                                                            )
-                                                        } catch (e) {
-                                                            console.error("Notify failed", e)
-                                                        }
-                                                    }}
-                                                    className="inline-flex items-center p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                                                    title="Reject & Notify"
-                                                >
-                                                    <XCircle size={18} />
-                                                </button>
-                                            )}
-
-                                            {/* Delete Option */}
-                                            <button
-                                                onClick={() => deleteServiceRequest(item.id)}
-                                                className="inline-flex items-center p-2 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
-                                                title="Delete Permanently"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </td>
+                    <>
+                        {/* Table View (Desktop) */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                    <tr className="bg-slate-50/50">
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Client Identity</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Service Requested</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date / Time</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {filteredServices.map(item => (
+                                        <tr key={item.id} className="hover:bg-slate-50/80 transition-all group">
+                                            <td className="px-8 py-5">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 ${item.profile.role === 'admin' || item.profile.role === 'superuser'
+                                                        ? 'bg-rose-500 text-white shadow-rose-200'
+                                                        : 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-indigo-200'
+                                                        }`}>
+                                                        {(item.profile.full_name?.[0] || item.profile.email?.[0] || 'U').toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-black text-slate-800 text-[14px] tracking-tight leading-none">
+                                                                {item.profile.full_name || 'New Client'}
+                                                            </p>
+                                                            {(item.profile.role === 'admin' || item.profile.role === 'superuser') && (
+                                                                <span className="px-1.5 py-0.5 rounded-[4px] text-[7px] font-black bg-rose-500 text-white uppercase tracking-tighter">
+                                                                    Admin
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-[11px] font-bold text-slate-400 mt-1 lowercase tracking-tight">
+                                                            {item.profile.email || 'no-email-synced'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100">
+                                                        <Activity size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[13px] font-black text-slate-700 leading-tight">{item.title || 'Untitled Service'}</p>
+                                                        {item.description && <p className="text-[10px] text-slate-400 font-medium truncate max-w-[150px]">{item.description}</p>}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <div className="text-[11px] font-black text-slate-700 uppercase tracking-widest">
+                                                    {new Date(item.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                                                </div>
+                                                <div className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase">
+                                                    {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border shadow-sm transition-all ${item.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                    item.status === 'processing' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
+                                                        item.status === 'rejected' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                                                            'bg-amber-50 text-amber-600 border-amber-100'
+                                                    }`}>
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${item.status === 'completed' ? 'bg-emerald-500' :
+                                                        item.status === 'processing' ? 'bg-indigo-500 animate-pulse' :
+                                                            item.status === 'rejected' ? 'bg-rose-500' :
+                                                                'bg-amber-500 animate-pulse'
+                                                        }`} />
+                                                    {item.status || 'pending'}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-5 text-right">
+                                                <ServiceActions item={item} onUpdate={handleStatusUpdate} onDelete={deleteServiceRequest} />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Card View (Mobile) */}
+                        <div className="md:hidden divide-y divide-slate-100">
+                            {filteredServices.map(item => (
+                                <div key={item.id} className="p-4 space-y-4">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <div className="font-bold text-slate-900 leading-tight">
+                                                {item.profile.full_name || (item.profile.email?.includes('@') ? item.profile.email.split('@')[0] : item.profile.email) || 'New Client'}
+                                            </div>
+                                            <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                                                {new Date(item.created_at).toLocaleDateString()} at {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                        </div>
+                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${getStatusColor(item.status)}`}>
+                                            {item.status || 'pending'}
+                                        </span>
+                                    </div>
+
+                                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                        <div className="text-xs font-bold text-slate-700 flex items-center gap-2">
+                                            <Activity size={14} className="text-indigo-600" />
+                                            {item.title}
+                                        </div>
+                                        {item.profile.mobile && (
+                                            <div className="text-[10px] text-slate-500 mt-2 font-mono">
+                                                Mobile: {item.profile.mobile}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex justify-between items-center gap-2 pt-2">
+                                        <div className="text-[10px] text-slate-400 italic">Actions</div>
+                                        <div className="flex gap-1">
+                                            <ServiceActions item={item} onUpdate={handleStatusUpdate} onDelete={deleteServiceRequest} />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </>
                 ) : (
                     <div className="py-20 flex flex-col items-center justify-center text-center">
                         <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 text-slate-300">
@@ -452,7 +425,7 @@ const AdminServices = () => {
                                 setServiceTypeFilter('all');
                                 setSearchQuery('');
                             }}
-                            className="mt-4 px-4 py-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                            className="mt-4 px-4 py-2 text-sm text-emerald-600 hover:text-emerald-800 font-medium"
                         >
                             Clear all filters
                         </button>
@@ -464,3 +437,80 @@ const AdminServices = () => {
 }
 
 export default AdminServices
+
+// Reusable Sub-components for Cleanliness & Responsiveness
+const StatBox = ({ label, count, icon: Icon, color }) => {
+    const colorStyles = {
+        emerald: "bg-emerald-50 text-emerald-600 border-emerald-100 shadow-emerald-100",
+        rose: "bg-rose-50 text-rose-600 border-rose-100 shadow-rose-100",
+        amber: "bg-amber-50 text-amber-600 border-amber-100 shadow-amber-100",
+        indigo: "bg-indigo-50 text-indigo-600 border-indigo-100 shadow-indigo-100"
+    };
+
+    return (
+        <div className={`bg-white p-4 md:p-6 rounded-[2rem] shadow-sm border border-slate-200 flex items-center gap-4 group hover:shadow-xl transition-all duration-500 hover:-translate-y-1`}>
+            <div className={`p-4 rounded-2xl ${colorStyles[color]} border transition-all duration-500 group-hover:scale-110 group-hover:rotate-6`}>
+                <Icon size={24} />
+            </div>
+            <div>
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-2">{label}</div>
+                <div className="text-xl md:text-3xl font-black text-slate-800 leading-none">{count}</div>
+            </div>
+        </div>
+    );
+}
+
+const ServiceActions = ({ item, onUpdate, onDelete }) => (
+    <div className="flex items-center justify-end gap-1">
+        {item.status !== 'processing' && item.status !== 'completed' && (
+            <button
+                onClick={() => onUpdate(item.id, 'processing')}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-indigo-200"
+                title="Start Processing"
+            >
+                <PlayCircle size={14} />
+                Process
+            </button>
+        )}
+
+        {item.status !== 'completed' && (
+            <button
+                onClick={() => onUpdate(item.id, 'completed')}
+                className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all border border-transparent hover:border-emerald-100"
+                title="Mark as Completed"
+            >
+                <CheckCircle size={20} />
+            </button>
+        )}
+
+        {item.status !== 'rejected' && (
+            <button
+                onClick={async () => {
+                    const reason = prompt("Enter rejection reason:", "Information incomplete/incorrect")
+                    if (reason === null) return
+                    onUpdate(item.id, 'rejected')
+                    try {
+                        await UserService.createNotification(
+                            item.user_id,
+                            'Service Request Rejected',
+                            `Your request for '${item.title}' was rejected. Reason: ${reason}.`,
+                            'error'
+                        )
+                    } catch (e) { console.error(e) }
+                }}
+                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                title="Reject & Notify"
+            >
+                <XCircle size={18} />
+            </button>
+        )}
+
+        <button
+            onClick={() => onDelete(item.id)}
+            className="p-2 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
+            title="Delete Permanently"
+        >
+            <Trash2 size={18} />
+        </button>
+    </div>
+)

@@ -15,6 +15,8 @@ const ClientLayout = () => {
     const [showNotifications, setShowNotifications] = useState(false)
     const [imgError, setImgError] = useState(false)
     const [toast, setToast] = useState(null)
+    const [profileIncomplete, setProfileIncomplete] = useState(false)
+    const [dismissTimer, setDismissTimer] = useState(5)
 
     // Navigation Items
     const navItems = [
@@ -28,34 +30,67 @@ const ClientLayout = () => {
         if (user) {
             fetchNotifications()
 
-            // Subscribe to realtime notifications
-            const channel = supabase
-                .channel('realtime:notifications')
+            // Check for profile completeness (Allow either mobile field key)
+            const hasMobile = user.mobile_number || user.mobile;
+            const isIncomplete = !user.full_name || !hasMobile
+            const isAtProfilePage = location.pathname.includes('/profile')
+
+            if (isIncomplete && !isAtProfilePage) {
+                setProfileIncomplete(true)
+            } else {
+                setProfileIncomplete(false)
+            }
+
+            // 1. Personal Channel (Specific to User)
+            const personalChannel = supabase
+                .channel(`notif:personal:${user.id}`)
                 .on(
                     'postgres_changes',
-                    {
-                        event: 'INSERT',
-                        schema: 'public',
-                        table: 'notifications',
-                        filter: `user_id=eq.${user.id}`,
-                    },
-                    (payload) => {
-                        const newNotif = payload.new
-                        setNotifications(prev => [newNotif, ...prev])
-                        setUnreadCount(prev => prev + 1)
-                        setToast(newNotif)
-
-                        // Auto-hide toast after 5s
-                        setTimeout(() => setToast(null), 5000)
-                    }
+                    { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+                    (payload) => handleIncomingNotif(payload.new)
                 )
                 .subscribe()
 
+            // 2. Global Channel (For Broadcasts)
+            const globalChannel = supabase
+                .channel('notif:global')
+                .on(
+                    'postgres_changes',
+                    { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=is.null` },
+                    (payload) => handleIncomingNotif(payload.new)
+                )
+                .subscribe()
+
+            const handleIncomingNotif = (newNotif) => {
+                // Check if already dismissed (unlikely for new but safe)
+                const dismissed = JSON.parse(localStorage.getItem('dismissed_notifs') || '[]')
+                if (dismissed.includes(newNotif.id)) return
+
+                setNotifications(prev => [newNotif, ...prev])
+                setUnreadCount(prev => prev + 1)
+                setToast(newNotif)
+                setTimeout(() => setToast(null), 5000)
+            }
+
             return () => {
-                supabase.removeChannel(channel)
+                supabase.removeChannel(personalChannel)
+                supabase.removeChannel(globalChannel)
             }
         }
     }, [user])
+
+    // Auto-dismiss countdown for profile warning
+    useEffect(() => {
+        let interval;
+        if (profileIncomplete && dismissTimer > 0) {
+            interval = setInterval(() => {
+                setDismissTimer((prev) => prev - 1)
+            }, 1000)
+        } else if (profileIncomplete && dismissTimer === 0) {
+            setProfileIncomplete(false) // Auto dismiss
+        }
+        return () => clearInterval(interval)
+    }, [profileIncomplete, dismissTimer])
 
     // Close sidebar on route change (Mobile UX)
     useEffect(() => {
@@ -64,13 +99,17 @@ const ClientLayout = () => {
 
     const fetchNotifications = async () => {
         try {
+            // Rule: Auto-expire broadcasts older than 7 days for lightweight DB
+            const sevenDaysAgo = new Date()
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
             const { data, error } = await supabase
                 .from('notifications')
                 .select('*')
-                // Fetch BOTH personal and broadcast
                 .or(`user_id.eq.${user.id},user_id.is.null`)
+                .gt('created_at', sevenDaysAgo.toISOString()) // Filter old notifications
                 .order('created_at', { ascending: false })
-                .limit(20)
+                .limit(50) // Increased limit for better coverage
 
             if (data) {
                 // Filter out locally dismissed broadcasts
@@ -146,15 +185,19 @@ const ClientLayout = () => {
         setUnreadCount(0)
 
         try {
-            // 2. Delete Personal from DB
-            if (personalIds.length > 0) {
-                await supabase
-                    .from('notifications')
-                    .delete()
-                    .in('id', personalIds)
+            // 2. Delete ALL Personal Notifications from DB for this user
+            const { error } = await supabase
+                .from('notifications')
+                .delete()
+                .eq('user_id', user.id)
+
+            if (error) {
+                // If RLS blocks the delete, throw to catch block
+                console.error("Delete failed details:", error);
+                throw new Error("Permission denied. Run the 'IMPORTANT' SQL script.");
             }
 
-            // 3. Dismiss Broadcasts in LocalStorage
+            // 3. Dismiss ALL currently loaded Broadcasts in LocalStorage
             if (broadcastIds.length > 0) {
                 const dismissed = JSON.parse(localStorage.getItem('dismissed_notifs') || '[]')
                 const newDismissed = [...new Set([...dismissed, ...broadcastIds])]
@@ -162,6 +205,8 @@ const ClientLayout = () => {
             }
         } catch (error) {
             console.error('Error clearing notifications:', error)
+            alert('Failed to delete notifications permanently. Please ask Admin to run the "FIX_USER_CANCEL.sql" script.')
+            // Revert optimistic update if needed or just let them retry
         }
     }
 

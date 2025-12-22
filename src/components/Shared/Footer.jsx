@@ -8,19 +8,7 @@ const Footer = () => {
     const officeAddress = "Mohanth Sah Chowk Naka Number 1, SK Color Lab Gali, Sitamarhi, Bihar 843302"
     const mapUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(officeAddress)}`
 
-    // Handle scroll to services
-    const handleServiceClick = (e, serviceName) => {
-        e.preventDefault()
-        // Determine target ID based on service (you might need to update Home.jsx to have these IDs)
-        // For now, general scroll to services section
-        navigate('/')
-        setTimeout(() => {
-            const section = document.getElementById('services')
-            if (section) {
-                section.scrollIntoView({ behavior: 'smooth' })
-            }
-        }, 100)
-    }
+
 
     return (
         <footer className="bg-gray-100 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 pt-16 pb-8 transition-colors duration-300">
@@ -56,6 +44,7 @@ const Footer = () => {
                             {[
                                 { name: 'Home', path: '/' },
                                 { name: 'About Us', path: '/about' },
+                                { name: 'City Partner', path: '/partner-program' },
                                 { name: 'Contact', path: '/contact' },
                                 { name: 'Login', path: '/login' },
                                 { name: 'Privacy Policy', path: '/privacy-policy' }
@@ -78,21 +67,21 @@ const Footer = () => {
                         </h4>
                         <ul className="space-y-3">
                             {[
-                                { name: 'Income Tax Filing', path: '/#services' },
-                                { name: 'GST Registration', path: '/#services' },
-                                { name: 'Company Formation', path: '/#services' },
-                                { name: 'MSME Registration', path: '/#services' },
-                                { name: 'TDS Filing', path: '/#services' }
+                                { name: 'Income Tax Filing', path: '/services#itr' },
+                                { name: 'GST Registration', path: '/services#gst' },
+                                { name: 'Company Formation', path: '/services#company' },
+                                { name: 'Trademark Registration', path: '/services#trademark' },
+                                { name: 'MSME Registration', path: '/services#msme' },
+                                { name: 'Accounting & TDS', path: '/services#accounting' }
                             ].map((service) => (
                                 <li key={service.name}>
-                                    <a
-                                        href={service.path}
-                                        onClick={(e) => handleServiceClick(e, service.name)}
-                                        className="cursor-pointer text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 flex items-center group"
+                                    <Link
+                                        to={service.path}
+                                        className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 flex items-center group"
                                     >
                                         <ChevronRight size={14} className="mr-2 opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all duration-200" />
                                         <span className="group-hover:translate-x-1 transition-transform">{service.name}</span>
-                                    </a>
+                                    </Link>
                                 </li>
                             ))}
                         </ul>

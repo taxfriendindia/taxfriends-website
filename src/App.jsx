@@ -20,6 +20,13 @@ import AdminRequests from './pages/Admin/AdminRequests'
 import AdminServices from './pages/Admin/AdminServices'
 import AdminRecords from './pages/Admin/AdminRecords'
 import AdminAnnouncements from './pages/Admin/AdminAnnouncements'
+import AdminPartners from './pages/Admin/AdminPartners'
+import PartnerProgram from './pages/Partner/PartnerProgram'
+import PartnerLayout from './pages/Partner/PartnerLayout'
+import PartnerDashboard from './pages/Partner/PartnerDashboard'
+import ClientOnboarding from './pages/Partner/ClientOnboarding'
+import PartnerClients from './pages/Partner/PartnerClients'
+import WalletHistory from './pages/Partner/WalletHistory'
 
 import PublicServices from './pages/Services/Services'
 
@@ -43,19 +50,22 @@ const PrivateRoute = ({ children }) => {
   return children
 }
 
-// Admin Protected Route (Role Based)
+// Partner Protected Route
+const PartnerRoute = ({ children }) => {
+  const { user, loading } = useAuth()
+  if (loading) return <LoadingScreen />
+  if (!user) return <Navigate to="/login" />
+  if (user.role !== 'partner') return <Navigate to="/dashboard" replace />
+  return children
+}
+
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth()
-
   if (loading) return <LoadingScreen />
-
   if (!user) return <Navigate to="/login" />
-
-  // STRICT SECURITY CHECK
   if (user.role !== 'admin' && user.role !== 'superuser') {
     return <Navigate to="/dashboard" replace />
   }
-
   return children
 }
 
@@ -63,7 +73,7 @@ const AdminRoute = ({ children }) => {
 
 function App() {
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ScrollToTop />
       <AuthProvider>
         <Routes>
@@ -74,6 +84,7 @@ function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<Terms />} />
+          <Route path="/partner-program" element={<PartnerProgram />} />
           <Route path="/login" element={<Login />} />
 
           {/* Client Portal Routes */}
@@ -82,6 +93,16 @@ function App() {
             <Route path="services" element={<Services />} />
             <Route path="documents" element={<Documents />} />
             <Route path="history" element={<History />} />
+            <Route path="profile" element={<Profile />} />
+          </Route>
+
+          {/* Partner Portal Routes (Protected) */}
+          <Route path="/partner" element={<PartnerRoute><PartnerLayout /></PartnerRoute>}>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<PartnerDashboard />} />
+            <Route path="onboard" element={<ClientOnboarding />} />
+            <Route path="clients" element={<PartnerClients />} />
+            <Route path="wallet" element={<WalletHistory />} />
             <Route path="profile" element={<Profile />} />
           </Route>
 
@@ -94,6 +115,7 @@ function App() {
             <Route path="services" element={<AdminServices />} />
             <Route path="records" element={<AdminRecords />} />
             <Route path="announcements" element={<AdminAnnouncements />} />
+            <Route path="partners" element={<AdminPartners />} />
             {/* Manage Admins merged into Admin Services */}
             <Route path="profile" element={<Profile />} />
             <Route path="*" element={<div className="p-8 text-gray-500">Page Under Construction</div>} />

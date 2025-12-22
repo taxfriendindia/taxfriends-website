@@ -5,20 +5,21 @@ export const CatalogService = {
         const { data, error } = await supabase
             .from('service_catalog')
             .select('*')
-            .order('title')
+            .order('created_at', { ascending: false }) // Get newest first for deduplication
         if (error) throw error
 
-        // Definte priority order
+        // Define priority order (Top 2 get the "Popular" badge)
         const priorityOrder = [
+            'GST Return Filing',
+            'Company Incorporation',
             'GST Registration',
             'Income Tax Filing',
             'Accounting & Bookkeeping',
             'Trademark Registration',
-            'Food License (FSSAI)',
-            'Company Incorporation'
+            'Food License (FSSAI)'
         ]
 
-        // Remove duplicates based on title
+        // Remove duplicates based on title (favoring the newest which come first)
         const uniqueServices = data.reduce((acc, current) => {
             const x = acc.find(item => item.title === current.title);
             if (!x) {

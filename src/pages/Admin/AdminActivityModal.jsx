@@ -26,7 +26,7 @@ const AdminActivityModal = ({ isOpen, onClose, admin }) => {
             // This is a tradeoff. Ideally update user_services to track 'updated_by'
             const { data, error } = await supabase
                 .from('user_services')
-                .select('*, profiles:user_id(full_name, residential_city, city)')
+                .select('*, profiles:user_id(full_name, email, residential_city, city)')
                 .order('updated_at', { ascending: false })
                 .limit(50)
 
@@ -35,7 +35,7 @@ const AdminActivityModal = ({ isOpen, onClose, admin }) => {
             const formatted = data.map(item => ({
                 id: item.id,
                 type: item.status || 'pending',
-                client: item.profiles?.full_name || 'Unknown User',
+                client: item.profiles?.full_name || item.profiles?.email?.split('@')[0] || 'Unknown User',
                 location: item.profiles?.residential_city || item.profiles?.city || 'Unknown',
                 service: item.title,
                 date: new Date(item.updated_at || item.created_at).toLocaleDateString(),
@@ -98,7 +98,7 @@ const AdminActivityModal = ({ isOpen, onClose, admin }) => {
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
                                     className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${activeTab === tab
-                                        ? 'bg-white text-indigo-600 shadow-sm scale-100'
+                                        ? 'bg-white text-emerald-600 shadow-sm scale-100'
                                         : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
                                 >
                                     {tab}
@@ -114,7 +114,7 @@ const AdminActivityModal = ({ isOpen, onClose, admin }) => {
                                 placeholder="Search logs..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all focus:bg-white"
+                                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all focus:bg-white"
                             />
                         </div>
                     </div>

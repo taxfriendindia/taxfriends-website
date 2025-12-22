@@ -25,10 +25,10 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
     }, [client])
 
     const handleRoleToggle = (newRole) => {
-        // Only allow toggle if it's actually a change (though UI prevents this mostly)
         if (newRole === client.role) return
 
-        const action = newRole === 'admin' ? 'PROMOTE to Admin' : 'DEMOTE to Client'
+        const roles = { admin: 'Admin', partner: 'City Partner', client: 'Client' }
+        const action = `CHANGE Role to ${roles[newRole] || newRole}`
         setRoleModal({ isOpen: true, newRole, action })
         setConfirmInput('')
     }
@@ -40,10 +40,11 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
         }
 
         try {
-            const { error } = await supabase
-                .from('profiles')
-                .update({ role: roleModal.newRole })
-                .eq('id', client.id)
+            // Use RPC function to safely update role (bypassing RLS complexity)
+            const { error } = await supabase.rpc('update_user_role', {
+                target_user_id: client.id,
+                new_role: roleModal.newRole
+            })
 
             if (error) throw error
 
@@ -52,7 +53,7 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
             setRoleModal({ isOpen: false, newRole: null, action: '' })
         } catch (error) {
             console.error('Error changing role:', error)
-            alert('Failed to change role. Check permissions.')
+            alert(`Failed to change role: ${error.message}`)
         }
     }
 
@@ -101,18 +102,37 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
 
     const handleSave = async () => {
         try {
-            const { error } = await supabase
+            // Filter only updatable fields to prevent RLS errors on ID/Email/Role
+            const updatableFields = [
+                'full_name', 'mobile_number', 'mothers_name', 'dob',
+                'organization', 'gst_number',
+                'residential_address', 'residential_city', 'residential_state', 'residential_pincode',
+                'business_address', 'business_city', 'business_state', 'business_pincode',
+                'avatar_url'
+            ]
+
+            const updateData = {}
+            updatableFields.forEach(field => {
+                if (formData[field] !== undefined) {
+                    updateData[field] = formData[field]
+                }
+            })
+
+            const { data, error } = await supabase
                 .from('profiles')
-                .update(formData)
+                .update(updateData)
                 .eq('id', client.id)
+                .select()
 
             if (error) throw error
-            onUpdate(formData) // Update parent state
+            if (!data || data.length === 0) throw new Error('Update blocked by Security Policies (RLS).')
+
+            onUpdate({ ...client, ...updateData }) // Update parent state with merged data
             setIsEditing(false)
             alert('Profile updated successfully!')
         } catch (error) {
             console.error('Error updating profile:', error)
-            alert('Failed to update profile.')
+            alert(`Failed to update profile: ${error.message || 'Check permissions'}`)
         }
     }
 
@@ -182,7 +202,7 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
                                             type="text"
                                             value={confirmInput}
                                             onChange={(e) => setConfirmInput(e.target.value)}
-                                            className="w-full bg-white px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                                            className="w-full bg-white px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-medium"
                                             placeholder="confirm"
                                             autoFocus
                                         />
@@ -198,7 +218,7 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
                                         <button
                                             onClick={executeRoleChange}
                                             disabled={confirmInput.toLowerCase() !== 'confirm'}
-                                            className="flex-1 px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                                            className="flex-1 px-4 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                                         >
                                             Confirm
                                         </button>
@@ -210,7 +230,7 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
                     {/* Header */}
                     <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                         <div className="flex items-center space-x-4">
-                            <div className="w-14 h-14 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xl overflow-hidden shadow-sm border-2 border-white">
+                            <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xl overflow-hidden shadow-sm border-2 border-white">
                                 {client.avatar_url ? (
                                     <img src={client.avatar_url} alt="" className="w-full h-full object-cover" />
                                 ) : (
@@ -246,12 +266,12 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
                                     <div className="flex items-center gap-4">
                                         {/* Superuser Role Management */}
                                         {currentUser?.role === 'superuser' && client.role !== 'superuser' && (
-                                            <div className="flex items-center space-x-3 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-                                                <span className="text-xs font-bold text-slate-400 px-2 uppercase">Role:</span>
-                                                <div className="flex bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
+                                            <div className="flex flex-col items-start gap-1 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                                                <span className="text-[9px] font-black text-slate-400 px-2 uppercase tracking-tighter">User Privileges</span>
+                                                <div className="flex bg-white rounded-lg p-1 border border-slate-200 shadow-sm gap-1">
                                                     <button
                                                         onClick={() => handleRoleToggle('client')}
-                                                        className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${client.role === 'client'
+                                                        className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${client.role === 'client'
                                                             ? 'bg-blue-600 text-white shadow-sm'
                                                             : 'text-slate-500 hover:text-slate-700'
                                                             }`}
@@ -259,9 +279,18 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
                                                         Client
                                                     </button>
                                                     <button
+                                                        onClick={() => handleRoleToggle('partner')}
+                                                        className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${client.role === 'partner'
+                                                            ? 'bg-emerald-600 text-white shadow-sm'
+                                                            : 'text-slate-500 hover:text-slate-700'
+                                                            }`}
+                                                    >
+                                                        Partner
+                                                    </button>
+                                                    <button
                                                         onClick={() => handleRoleToggle('admin')}
-                                                        className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${client.role === 'admin'
-                                                            ? 'bg-blue-600 text-white shadow-sm'
+                                                        className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${client.role === 'admin'
+                                                            ? 'bg-emerald-600 text-white shadow-sm'
                                                             : 'text-slate-500 hover:text-slate-700'
                                                             }`}
                                                     >
@@ -273,13 +302,13 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
 
                                         {currentUser?.role === 'superuser' && (
                                             !isEditing ? (
-                                                <button onClick={() => setIsEditing(true)} className="text-indigo-600 font-semibold hover:underline text-sm flex items-center">
+                                                <button onClick={() => setIsEditing(true)} className="text-emerald-600 font-semibold hover:underline text-sm flex items-center">
                                                     <EditIcon size={16} className="mr-1" /> Edit Profile
                                                 </button>
                                             ) : (
                                                 <div className="flex space-x-3">
                                                     <button onClick={() => setIsEditing(false)} className="text-slate-500 hover:text-slate-700 text-sm font-medium">Cancel</button>
-                                                    <button onClick={handleSave} className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-700 flex items-center">
+                                                    <button onClick={handleSave} className="bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm hover:bg-emerald-700 flex items-center">
                                                         <Save size={14} className="mr-1.5" /> Save Changes
                                                     </button>
                                                 </div>
@@ -364,7 +393,7 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
                                 <p className="text-slate-500 text-sm mb-6">Send a direct in-app notification to the user's notification center.</p>
 
                                 <textarea
-                                    className="flex-1 w-full bg-white border border-slate-200 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 outline-none resize-none shadow-sm mb-4"
+                                    className="flex-1 w-full bg-white border border-slate-200 rounded-xl p-4 focus:ring-2 focus:ring-emerald-500 outline-none resize-none shadow-sm mb-4"
                                     placeholder="Type your notification message here..."
                                     value={message}
                                     onChange={(e) => setMessage(e.target.value)}
@@ -373,7 +402,7 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
                                 <button
                                     onClick={handleSendNotification}
                                     disabled={!message.trim() || sendingMsg}
-                                    className="bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/30 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="bg-emerald-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-500/30 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <Send size={18} className="mr-2" /> {sendingMsg ? 'Sending...' : 'Send Notification'}
                                 </button>
@@ -389,7 +418,7 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
 const TabButton = ({ active, onClick, icon: Icon, label }) => (
     <button
         onClick={onClick}
-        className={`flex-1 py-4 flex items-center justify-center font-medium text-sm transition-colors border-b-2 ${active ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+        className={`flex-1 py-4 flex items-center justify-center font-medium text-sm transition-colors border-b-2 ${active ? 'border-emerald-600 text-emerald-600 bg-emerald-50/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
             }`}
     >
         <Icon size={18} className="mr-2" /> {label}
@@ -400,7 +429,7 @@ const InputGroup = ({ label, disabled, className = "", ...props }) => (
     <div className={className}>
         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{label}</label>
         <input
-            className={`w-full px-3 py-2.5 rounded-lg border ${disabled ? 'bg-slate-50 border-slate-200 text-slate-500' : 'bg-white border-slate-300 text-slate-900 focus:ring-2 focus:ring-indigo-500'
+            className={`w-full px-3 py-2.5 rounded-lg border ${disabled ? 'bg-slate-50 border-slate-200 text-slate-500' : 'bg-white border-slate-300 text-slate-900 focus:ring-2 focus:ring-emerald-500'
                 } outline-none transition-all text-sm font-medium`}
             disabled={disabled}
             {...props}

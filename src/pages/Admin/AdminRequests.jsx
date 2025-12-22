@@ -51,17 +51,27 @@ const AdminRequests = () => {
             // 2. Fetch Profiles with organization and mobile
             if (docs && docs.length > 0) {
                 const userIds = [...new Set(docs.map(d => d.user_id))]
-                const { data: profiles } = await supabase
+                const validUserIds = userIds.filter(Boolean)
+                const { data: profiles, error: pError } = await supabase
                     .from('profiles')
-                    .select('id, full_name, email, mobile, organization')
-                    .in('id', userIds)
+                    .select('id, full_name, email, mobile_number, organization')
+                    .in('id', validUserIds)
 
-                const profileMap = (profiles || []).reduce((acc, p) => ({ ...acc, [p.id]: p }), {})
+                if (pError) {
+                    console.error("Error fetching profiles for documents:", pError)
+                }
 
-                const joinedDocs = docs.map(doc => ({
-                    ...doc,
-                    profiles: profileMap[doc.user_id] || { full_name: 'Unknown User', email: 'No Email' }
-                }))
+                const profileMap = (profiles || []).reduce((acc, p) => ({ ...acc, [p.id.toLowerCase()]: p }), {})
+
+                // 3. Join documents with profile data
+                const joinedDocs = docs.map(doc => {
+                    const uid = doc.user_id?.toLowerCase()
+                    const p = profileMap[uid]
+                    return {
+                        ...doc,
+                        profiles: p || { id: doc.user_id, full_name: null, email: 'ID: ' + doc.user_id?.slice(0, 8) }
+                    }
+                })
 
                 setAllDocuments(joinedDocs)
             } else {
@@ -216,7 +226,7 @@ const AdminRequests = () => {
                         placeholder="Search by client, company, or email..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                     />
                 </div>
 
@@ -227,7 +237,7 @@ const AdminRequests = () => {
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer min-w-[160px]"
+                            className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer min-w-[160px]"
                         >
                             <option value="all">Show All</option>
                             <option value="has_pending">Has Pending Action</option>
@@ -241,7 +251,7 @@ const AdminRequests = () => {
                         <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
-                            className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer min-w-[140px]"
+                            className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer min-w-[140px]"
                         >
                             <option value="newest">Newest First</option>
                             <option value="oldest">Oldest First</option>
@@ -271,79 +281,153 @@ const AdminRequests = () => {
                         )}
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-50 border-b border-slate-200">
-                                <tr>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Client Name</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company / Email</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Mobile</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Docs Overview</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {groupedUsers.map(group => (
-                                    <tr
-                                        key={group.userId}
-                                        className="hover:bg-indigo-50/50 transition-colors cursor-pointer group"
-                                        onClick={() => setSelectedUserId(group.userId)}
-                                    >
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center">
-                                                <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold mr-3">
-                                                    {group.user.full_name?.[0]?.toUpperCase() || 'U'}
+                    <>
+                        {/* Table View (Desktop) */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-50/50 border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Client Identity</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Affiliation</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact Node</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Verification Status</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 bg-white">
+                                    {groupedUsers.map(group => (
+                                        <tr
+                                            key={group.userId}
+                                            className="hover:bg-indigo-50/20 transition-all cursor-pointer group"
+                                            onClick={() => setSelectedUserId(group.userId)}
+                                        >
+                                            <td className="px-8 py-5">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 text-emerald-600 flex items-center justify-center font-black shadow-sm shrink-0 group-hover:scale-105 transition-transform duration-300">
+                                                        {(group.user.full_name?.[0] || group.user.email?.[0] || 'U').toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-slate-900 text-[14px] tracking-tight leading-tight group-hover:text-emerald-600 transition-colors">
+                                                            {group.user.full_name || (group.user.email?.includes('@') ? group.user.email.split('@')[0] : group.user.email) || 'Unnamed Client'}
+                                                        </p>
+                                                        <p className="text-[11px] font-semibold text-slate-400 mt-1 flex items-center gap-1">
+                                                            <Mail size={10} /> {group.user.email || 'No Email Sync'}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <div className="font-bold text-slate-900">{group.user.full_name || 'Unknown'}</div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col">
+                                            </td>
+                                            <td className="px-6 py-5">
                                                 {group.user.organization ? (
-                                                    <div className="flex items-center font-medium text-slate-700">
-                                                        <Briefcase size={14} className="mr-1.5 text-slate-400" /> {group.user.organization}
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center font-black text-slate-700 text-[10px] uppercase tracking-wider">
+                                                            {group.user.organization}
+                                                        </div>
+                                                        <div className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-widest">Registered Entity</div>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-slate-400 italic text-sm">-</span>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Individual</span>
+                                                        <span className="text-[9px] text-slate-300 italic">No Organization</span>
+                                                    </div>
                                                 )}
-                                                <div className="text-xs text-slate-400 mt-0.5">{group.user.email}</div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {group.user.mobile ? (
-                                                <div className="flex items-center text-slate-600 text-sm font-mono">
-                                                    <Smartphone size={14} className="mr-1.5 text-slate-400" />
-                                                    {group.user.mobile}
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                {group.user.mobile_number ? (
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center text-slate-600 text-[11px] font-black font-mono">
+                                                            {group.user.mobile_number}
+                                                        </div>
+                                                        <div className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-widest">Direct Line</div>
+                                                    </div>
+                                                ) : <span className="text-slate-300 text-[10px] italic">Not Provided</span>}
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <div className="flex items-center gap-3">
+                                                    {group.stats.pending > 0 ? (
+                                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 text-[9px] font-black uppercase rounded-lg border border-amber-200/50 shadow-sm animate-pulse-slow">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                                            {group.stats.pending} Pending
+                                                        </div>
+                                                    ) : group.stats.verified > 0 ? (
+                                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase rounded-lg border border-emerald-200/50">
+                                                            <CheckCircle size={10} className="text-emerald-500" />
+                                                            Fully Verified
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[9px] font-black text-slate-300 uppercase bg-slate-50 px-2 py-1 rounded">No Records</span>
+                                                    )}
+                                                    <div className="w-6 h-6 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-[9px] font-black text-slate-400 shadow-inner">
+                                                        {group.stats.total}
+                                                    </div>
                                                 </div>
-                                            ) : <span className="text-slate-400 text-xs">-</span>}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                {group.stats.pending > 0 ? (
-                                                    <span className="px-2.5 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full border border-amber-200 shadow-sm animate-pulse-slow">
-                                                        {group.stats.pending} Pending
-                                                    </span>
-                                                ) : group.stats.verified > 0 ? (
-                                                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-600 text-xs font-medium rounded-full border border-emerald-100">
-                                                        All Verified
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-xs text-slate-400">No active docs</span>
-                                                )}
-                                                <span className="text-xs text-slate-400">({group.stats.total} Total)</span>
+                                            </td>
+                                            <td className="px-8 py-5 text-right">
+                                                <button className="inline-flex items-center gap-2 px-5 py-3 bg-slate-900 hover:bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-900/10 hover:shadow-emerald-600/20 transition-all active:scale-95 group/btn">
+                                                    <span>View Docs</span>
+                                                    <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Card View (Mobile) */}
+                        <div className="md:hidden divide-y divide-slate-100">
+                            {groupedUsers.map(group => (
+                                <div
+                                    key={group.userId}
+                                    className="p-4 space-y-4 hover:bg-slate-50 transition-colors cursor-pointer"
+                                    onClick={() => setSelectedUserId(group.userId)}
+                                >
+                                    <div className="flex justify-between items-start gap-4">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
+                                                {(group.user.full_name?.[0] || 'C').toUpperCase()}
                                             </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <button className="px-4 py-2 bg-white border border-slate-200 text-indigo-600 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-all flex items-center gap-2 ml-auto">
-                                                <span>View Docs</span>
-                                                <ChevronRight size={16} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                            <div className="min-w-0">
+                                                <div className="font-bold text-slate-900 leading-tight truncate">
+                                                    {group.user.full_name || 'New Client'}
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 font-medium truncate">
+                                                    {group.user.email}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {group.stats.pending > 0 ? (
+                                            <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 text-amber-700 text-[8px] font-black uppercase rounded-lg border border-amber-200/50 shrink-0">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                                {group.stats.pending}
+                                            </div>
+                                        ) : (
+                                            <div className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[8px] font-black uppercase rounded-lg border border-emerald-200/50 shrink-0">
+                                                Verified
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1 bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center justify-between">
+                                            <div className="flex flex-col">
+                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Documents</span>
+                                                <span className="text-xs font-black text-slate-700">{group.stats.total} Total</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Organization</span>
+                                                <span className="block text-[10px] font-bold text-slate-600 truncate max-w-[120px]">
+                                                    {group.user.organization || 'Individual'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-emerald-600/20 shrink-0">
+                                            <ChevronRight size={20} />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
 
@@ -359,51 +443,52 @@ const AdminRequests = () => {
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Modal Header */}
-                            <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-slate-50">
-                                <div className="flex items-center gap-5">
-                                    <div className="w-16 h-16 bg-white text-indigo-600 rounded-2xl shadow-sm flex items-center justify-center border border-slate-100">
-                                        <FolderOpen size={32} />
+                            <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between items-start bg-slate-50">
+                                <div className="flex items-center gap-3 md:gap-5">
+                                    <div className="w-12 h-12 md:w-16 md:h-16 bg-white text-indigo-600 rounded-xl md:rounded-2xl shadow-sm flex items-center justify-center border border-slate-100 shrink-0">
+                                        <FolderOpen size={window.innerWidth < 768 ? 24 : 32} />
                                     </div>
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-slate-900">{selectedGroup.user.full_name}</h2>
-                                        <div className="flex flex-wrap items-center text-sm text-slate-500 gap-4 mt-1">
+                                    <div className="overflow-hidden">
+                                        <h2 className="text-lg md:text-2xl font-bold text-slate-900 truncate">
+                                            {selectedGroup.user.full_name || selectedGroup.user.email?.split('@')[0] || 'Client Profile'}
+                                        </h2>
+                                        <div className="flex flex-wrap items-center text-[10px] md:text-sm text-slate-500 gap-2 md:gap-4 mt-1">
                                             {selectedGroup.user.organization && (
-                                                <span className="flex items-center gap-1.5 font-medium text-slate-700 bg-slate-200/50 px-2 py-0.5 rounded">
-                                                    <Briefcase size={14} /> {selectedGroup.user.organization}
+                                                <span className="flex items-center gap-1 font-medium text-slate-700 bg-slate-200/50 px-1.5 py-0.5 rounded">
+                                                    <Briefcase size={12} /> {selectedGroup.user.organization}
                                                 </span>
                                             )}
-                                            <span className="flex items-center gap-1.5"><Mail size={14} /> {selectedGroup.user.email}</span>
-                                            {selectedGroup.user.mobile && <span className="flex items-center gap-1.5"><Phone size={14} /> {selectedGroup.user.mobile}</span>}
+                                            <span className="flex items-center gap-1"><Mail size={12} /> {selectedGroup.user.email}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <button onClick={() => setSelectedUserId(null)} className="p-2 hover:bg-slate-200/80 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
-                                    <X size={24} />
+                                    <X size={20} />
                                 </button>
                             </div>
 
                             {/* Toolbar */}
-                            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-20">
-                                <div className="text-sm font-medium text-slate-500">
-                                    Reviewing <strong>{selectedGroup.documents.length}</strong> uploaded documents
+                            <div className="px-4 md:px-6 py-3 md:py-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center bg-white sticky top-0 z-20 gap-3">
+                                <div className="text-[10px] md:text-sm font-medium text-slate-500 uppercase tracking-widest">
+                                    <strong>{selectedGroup.documents.length}</strong> DOCUMENTS DOWNLOADABLE
                                 </div>
-                                <div className="flex gap-3">
+                                <div className="flex w-full md:w-auto gap-2">
                                     <button
                                         onClick={() => DocumentService.downloadAsZip(selectedGroup.documents, `${selectedGroup.user.full_name}_docs`)}
-                                        className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-sm font-bold transition-all active:scale-95"
+                                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs md:text-sm font-bold transition-all"
                                     >
-                                        <Download size={18} />
-                                        Download Zip
+                                        <Download size={16} />
+                                        ZIP
                                     </button>
 
                                     {selectedGroup.stats.pending > 0 && (
                                         <button
                                             onClick={() => handleVerifyAll(selectedGroup.userId)}
                                             disabled={processingId === 'verify-all'}
-                                            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50 active:scale-95"
+                                            className="flex-[2] md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs md:text-sm font-bold shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50"
                                         >
-                                            <ShieldCheck size={18} />
-                                            {processingId === 'verify-all' ? 'Verifying...' : 'Approve All Pending'}
+                                            <ShieldCheck size={16} />
+                                            {processingId === 'verify-all' ? '...' : 'Verify All'}
                                         </button>
                                     )}
                                 </div>
@@ -411,176 +496,113 @@ const AdminRequests = () => {
 
                             {/* Documents List */}
                             <div className="overflow-y-auto flex-1 p-0 bg-slate-50/50">
-                                <table className="w-full text-left border-collapse">
-                                    <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                        <tr>
-                                            <th className="px-6 py-3">Document</th>
-                                            <th className="px-6 py-3">Uploaded</th>
-                                            <th className="px-6 py-3">Status</th>
-                                            <th className="px-6 py-3 text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 bg-white">
-                                        {selectedGroup.documents.map(doc => (
-                                            <tr key={doc.id} className="hover:bg-indigo-50/30 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center text-slate-800 font-medium">
-                                                        <FileText size={20} className="mr-3 text-indigo-400" />
-                                                        <span className="truncate max-w-[200px]" title={doc.name}>{doc.name}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-slate-500 text-sm">
-                                                    {new Date(doc.created_at).toLocaleDateString()}
-                                                    <span className="text-xs text-slate-300 ml-1.5">{new Date(doc.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${getStatusColor(doc.status)}`}>
-                                                        {doc.status || 'pending'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right space-x-1">
-                                                    {doc.file_url && isValidUrl(doc.file_url) ? (
-                                                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-9 h-9 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg border border-transparent hover:border-indigo-100 transition-all" title="View Document">
-                                                            <ExternalLink size={18} />
-                                                        </a>
-                                                    ) : (
-                                                        <span className="inline-flex items-center justify-center w-9 h-9 text-slate-300 cursor-not-allowed" title="No valid link">
-                                                            <ExternalLink size={18} />
-                                                        </span>
-                                                    )}
-
-                                                    {doc.status !== 'verified' && (
-                                                        <button
-                                                            onClick={() => handleStatusUpdate(doc.id, 'verified')}
-                                                            disabled={processingId === doc.id}
-                                                            className="inline-flex items-center justify-center w-9 h-9 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                                                            title="Verify"
-                                                        >
-                                                            {processingId === doc.id ? <div className="animate-spin w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full" /> : <CheckCircle size={18} />}
-                                                        </button>
-                                                    )}
-                                                    {doc.status !== 'rejected' && (
-                                                        <button
-                                                            onClick={async () => {
-                                                                const reason = prompt("Enter rejection reason for client notification:", "Document unclear/incorrect")
-                                                                if (reason === null) return // Cancelled
-
-                                                                if (!confirm(`Reject '${doc.name}'? This will delete the file from storage and notify the user.`)) return
-
-                                                                try {
-                                                                    setProcessingId(doc.id)
-
-                                                                    // 1. Delete actual file from storage to save space (Security/Efficiency)
-                                                                    if (doc.file_url) {
-                                                                        await DocumentService.deleteDocument(doc.id, doc.file_url).catch(e => console.warn("File delete skip/fail", e))
-                                                                    }
-                                                                    // Note: deleteDocument above currently DELETES the row. 
-                                                                    // We want to KEEP the row for history but mark rejected.
-                                                                    // So we should have split deleteDocument logic. 
-                                                                    // However, per previous instructions, "remove from server". 
-                                                                    // If we deleted the ROW, we can't show "Rejected" status.
-                                                                    // I will re-insert a "Rejected Record" or use a specialized update.
-
-                                                                    // FIX: Since deleteDocument removes the row, let's just update the row HERE instead of calling deleteDocument.
-                                                                    // And manually delete storage.
-
-                                                                    // Clean Storage
-                                                                    if (doc.file_url && doc.file_url.includes('client-docs')) {
-                                                                        const parts = decodeURIComponent(doc.file_url).split('/client-docs/')
-                                                                        if (parts[1]) {
-                                                                            const path = parts[1].split('?')[0]
-                                                                            await supabase.storage.from('client-docs').remove([path])
-                                                                        }
-                                                                    }
-
-                                                                    // Update DB Status (Keep Record, clear URL)
-                                                                    const { error } = await supabase
-                                                                        .from('user_documents')
-                                                                        .update({
-                                                                            status: 'rejected',
-                                                                            file_url: null, // Remove link to deleted file
-                                                                            name: `${doc.name} (Rejected)`
-                                                                        })
-                                                                        .eq('id', doc.id)
-
-                                                                    if (error) throw error
-
-                                                                    // Notify User
-                                                                    await UserService.createNotification(
-                                                                        doc.user_id,
-                                                                        'Document Rejected',
-                                                                        `Your document '${doc.name}' was rejected. Reason: ${reason}. Please re-upload.`,
-                                                                        'error'
-                                                                    )
-
-                                                                    // Update UI
-                                                                    setAllDocuments(prev => prev.map(d =>
-                                                                        d.id === doc.id ? { ...d, status: 'rejected', file_url: null } : d
-                                                                    ))
-
-                                                                    alert('Document rejected, file deleted, and user notified.')
-
-                                                                } catch (err) {
-                                                                    console.error(err)
-                                                                    alert('Failed to process rejection.')
-                                                                } finally {
-                                                                    setProcessingId(null)
-                                                                }
-                                                            }}
-                                                            disabled={processingId === doc.id}
-                                                            className="inline-flex items-center justify-center w-9 h-9 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                            title="Reject, Delete File & Notify"
-                                                        >
-                                                            {processingId === doc.id ? <div className="animate-spin w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full" /> : <XCircle size={18} />}
-                                                        </button>
-                                                    )}
-
-                                                    {/* Delete Permanently */}
-                                                    <button
-                                                        onClick={async () => {
-                                                            if (!confirm(`Permanently delete '${doc.name}'? This will remove the file and record.`)) return
-                                                            try {
-                                                                setProcessingId(doc.id)
-
-                                                                // Notify User
-                                                                await UserService.createNotification(
-                                                                    doc.user_id,
-                                                                    'Document Deleted',
-                                                                    `Your document '${doc.name}' was deleted by admin. Contact us if you need more details.`,
-                                                                    'error'
-                                                                )
-
-                                                                // Delete from Storage & DB
-                                                                await DocumentService.deleteDocument(doc.id, doc.file_url)
-
-                                                                // Update UI
-                                                                setAllDocuments(prev => prev.filter(d => d.id !== doc.id))
-
-                                                            } catch (err) {
-                                                                console.error("Delete failed", err)
-                                                                alert("Failed to delete document.")
-                                                            } finally {
-                                                                setProcessingId(null)
-                                                            }
-                                                        }}
-                                                        disabled={processingId === doc.id}
-                                                        className="inline-flex items-center justify-center w-9 h-9 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all"
-                                                        title="Delete Permanently"
-                                                    >
-                                                        {processingId === doc.id ? <div className="animate-spin w-4 h-4 border-2 border-red-700 border-t-transparent rounded-full" /> : <Trash2 size={18} />}
-                                                    </button>
-                                                </td>
+                                <div className="hidden md:block">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                            <tr>
+                                                <th className="px-6 py-3">Document</th>
+                                                <th className="px-6 py-3">Uploaded</th>
+                                                <th className="px-6 py-3">Status</th>
+                                                <th className="px-6 py-3 text-right">Actions</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 bg-white">
+                                            {selectedGroup.documents.map(doc => (
+                                                <tr key={doc.id} className="hover:bg-indigo-50/30 transition-colors">
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center text-slate-800 font-medium">
+                                                            <FileText size={20} className="mr-3 text-indigo-400" />
+                                                            <span className="truncate max-w-[200px]" title={doc.name}>{doc.name}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-slate-500 text-sm">
+                                                        {new Date(doc.created_at).toLocaleDateString()}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${getStatusColor(doc.status)}`}>
+                                                            {doc.status || 'pending'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right space-x-1">
+                                                        <DocActions doc={doc} processingId={processingId} onUpdate={handleStatusUpdate} onRefresh={fetchRequests} userId={selectedGroup.userId} />
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Mobile Cards for Documents */}
+                                <div className="md:hidden divide-y divide-slate-100 bg-white">
+                                    {selectedGroup.documents.map(doc => (
+                                        <div key={doc.id} className="p-4 space-y-3">
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex items-center gap-2 max-w-[70%]">
+                                                    <FileText size={18} className="text-indigo-500 shrink-0" />
+                                                    <span className="text-xs font-bold text-slate-800 truncate">{doc.name}</span>
+                                                </div>
+                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${getStatusColor(doc.status)} uppercase`}>
+                                                    {doc.status || 'pending'}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-[10px] text-slate-400">{new Date(doc.created_at).toLocaleDateString()}</span>
+                                                <div className="flex gap-2">
+                                                    <DocActions doc={doc} processingId={processingId} onUpdate={handleStatusUpdate} onRefresh={fetchRequests} userId={selectedGroup.userId} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </motion.div>
                     </div>
                 )}
             </AnimatePresence>
-        </div>
+        </div >
     )
 }
 
 export default AdminRequests
+
+const DocActions = ({ doc, processingId, onUpdate, onRefresh, userId }) => {
+    const isValidUrl = (string) => {
+        try { return Boolean(new URL(string)); } catch (e) { return false; }
+    }
+
+    return (
+        <div className="flex items-center justify-end gap-1">
+            {doc.file_url && isValidUrl(doc.file_url) ? (
+                <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg" title="View">
+                    <ExternalLink size={18} />
+                </a>
+            ) : (
+                <span className="p-2 text-slate-200 cursor-not-allowed"><ExternalLink size={18} /></span>
+            )}
+
+            {doc.status !== 'verified' && (
+                <button
+                    onClick={() => onUpdate(doc.id, 'verified')}
+                    disabled={processingId === doc.id}
+                    className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                >
+                    {processingId === doc.id ? <div className="animate-spin w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full" /> : <CheckCircle size={18} />}
+                </button>
+            )}
+
+            <button
+                onClick={async () => {
+                    if (!confirm("Delete this document?")) return;
+                    try {
+                        await DocumentService.deleteDocument(doc.id, doc.file_url);
+                        window.location.reload(); // Simple refresh for now
+                    } catch (e) { console.error(e) }
+                }}
+                disabled={processingId === doc.id}
+                className="p-2 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all"
+            >
+                <Trash2 size={18} />
+            </button>
+        </div>
+    )
+}
