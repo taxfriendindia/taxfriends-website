@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import {
     Users, FileText, Activity, Clock, TrendingUp, BarChart,
-    PieChart as PieIcon, MapPin, Shield, Zap, Filter, ChevronDown, Download
+    PieChart as PieIcon, MapPin, Shield, Zap, Filter, ChevronDown, Download, Trash2
 } from 'lucide-react';
 import { AdminService } from '../../services/adminService';
 import { useNavigate } from 'react-router-dom';
@@ -106,6 +106,22 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleSystemReset = async () => {
+        if (!window.confirm('CRITICAL: This will wipe all transactional data, wallet balances, and active requests. This cannot be undone. Continue?')) return;
+
+        try {
+            setLoading(true);
+            const { error } = await supabase.rpc('super_reset_system');
+            if (error) throw error;
+            alert('System has been reset to factory state.');
+            window.location.reload();
+        } catch (e) {
+            alert('Reset failed: ' + e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const isSuper = user?.role === 'superuser';
 
     return (
@@ -129,6 +145,12 @@ const AdminDashboard = () => {
                         </button>
                         <button onClick={() => navigate('/admin/records')} className="flex-[2] md:flex-none px-4 py-2 bg-emerald-600 border border-emerald-600 rounded-xl text-xs md:text-sm font-bold text-white hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20">
                             <Download size={14} /> Export Reports
+                        </button>
+                        <button
+                            onClick={handleSystemReset}
+                            className="flex-1 md:flex-none px-4 py-2 bg-rose-50 border border-rose-100 rounded-xl text-xs md:text-sm font-bold text-rose-600 hover:bg-rose-600 hover:text-white transition-all flex items-center justify-center gap-2 shadow-sm group"
+                        >
+                            <Trash2 size={14} className="group-hover:rotate-12 transition-transform" /> System Reset
                         </button>
                     </div>
                 )}

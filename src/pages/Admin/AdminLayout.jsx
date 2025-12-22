@@ -58,7 +58,7 @@ const AdminLayout = () => {
                 </div>
 
                 <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                    <nav className="flex-1 overflow-y-auto p-4 space-y-2 py-6 scrollbar-thin scrollbar-thumb-emerald-500/20 scrollbar-track-transparent hover:scrollbar-thumb-emerald-500/40 transition-all">
+                    <nav className="flex-1 overflow-y-auto p-4 space-y-2 py-6 scrollbar-thin scrollbar-thumb-emerald-500/40 scrollbar-track-transparent hover:scrollbar-thumb-emerald-500/60 transition-all">
                         {finalMenuItems.map(item => (
                             <NavItem key={item.to} to={item.to} icon={item.icon} label={item.label} isOpen={isSidebarOpen} />
                         ))}

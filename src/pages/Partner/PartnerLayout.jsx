@@ -135,7 +135,7 @@ const PartnerLayout = () => {
                     </div>
                 </div>
 
-                <nav className="flex-1 overflow-y-auto p-4 space-y-2 mt-4 scrollbar-thin scrollbar-thumb-blue-500/20 scrollbar-track-transparent hover:scrollbar-thumb-blue-500/40 transition-all">
+                <nav className="flex-1 overflow-y-auto p-4 space-y-2 mt-4 scrollbar-thin scrollbar-thumb-blue-500/40 scrollbar-track-transparent hover:scrollbar-thumb-blue-500/60 transition-all">
                     {navItems.map((item) => (
                         <NavLink
                             key={item.to}
