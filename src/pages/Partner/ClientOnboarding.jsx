@@ -154,8 +154,9 @@ const ClientOnboarding = () => {
                 setFileStatus(`Uploading ${files.length} Document(s)...`);
                 try {
                     for (const file of files) {
-                        await UserService.uploadDocument(clientId, file, file.name, 'general');
+                        await UserService.uploadDocument(clientId, file, file.name, 'general', user.id);
                     }
+                    console.log('Documents uploaded successfully');
                 } catch (uploadError) {
                     console.warn('Document upload failed (storage not configured):', uploadError);
                     // Continue anyway - documents can be uploaded later

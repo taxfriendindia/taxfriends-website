@@ -41,7 +41,7 @@ export const UserService = {
         }
     },
 
-    async uploadDocument(userId, file, name, docType) {
+    async uploadDocument(userId, file, name, docType, uploadedBy = null) {
         const fileExt = file.name.split('.').pop()
         const fileName = `${userId}/${Math.random().toString(36).substring(7)}.${fileExt}`
         const filePath = `documents/${fileName}`
@@ -56,13 +56,20 @@ export const UserService = {
             .from('user-documents')
             .getPublicUrl(filePath)
 
-        const { error: dbError } = await supabase.from('user_documents').insert([{
+        const documentData = {
             user_id: userId,
             name: name,
             file_url: publicUrl,
             doc_type: docType,
             status: 'pending'
-        }])
+        };
+
+        // Add uploaded_by if provided (for partner uploads)
+        if (uploadedBy) {
+            documentData.uploaded_by = uploadedBy;
+        }
+
+        const { error: dbError } = await supabase.from('user_documents').insert([documentData])
 
         if (dbError) throw dbError
         return publicUrl

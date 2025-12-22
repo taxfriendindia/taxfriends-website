@@ -88,7 +88,10 @@ DROP POLICY IF EXISTS "Services: Admins manage all" ON public.user_services;
 CREATE POLICY "Services: Admins manage all" ON public.user_services FOR ALL USING (public.is_admin());
 
 DROP POLICY IF EXISTS "Services: Partners view their clients" ON public.user_services;
-CREATE POLICY "Services: Partners view their clients" ON public.user_services FOR SELECT USING (partner_id = auth.uid());
+CREATE POLICY "Services: Partners view their clients" ON public.user_services FOR SELECT USING (
+    partner_id = auth.uid() OR
+    user_id IN (SELECT id FROM public.profiles WHERE partner_id = auth.uid())
+);
 
 DROP POLICY IF EXISTS "Services: Partners create for clients" ON public.user_services;
 CREATE POLICY "Services: Partners create for clients" ON public.user_services FOR INSERT WITH CHECK (
