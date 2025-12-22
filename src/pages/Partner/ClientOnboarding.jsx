@@ -136,7 +136,6 @@ const ClientOnboarding = () => {
                     user_id: clientId,
                     service_id: selectedService.id,
                     partner_id: user.id,
-                    is_assisted_service: true,
                     status: 'pending'
                 }])
                 .select()
