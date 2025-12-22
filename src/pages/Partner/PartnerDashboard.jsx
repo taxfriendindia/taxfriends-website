@@ -49,17 +49,29 @@ const PartnerDashboard = () => {
 
             // Fetch all services with full details
             const clientIds = (clientsData || []).map(c => c.id);
-            const { data: servicesData, error: sError } = await supabase
+
+            let servicesQuery = supabase
                 .from('user_services')
                 .select(`
                     *,
-                    client:user_id(id, full_name, email, mobile_number, organization),
-                    service:service_id(id, title, description, icon)
+                    profiles!user_services_user_id_fkey(id, full_name, email, mobile_number, organization, avatar_url),
+                    service_catalog(id, title, description, icon)
                 `)
-                .or(`user_id.in.(${clientIds.length > 0 ? clientIds.join(',') : '00000000-0000-0000-0000-000000000000'}),partner_id.eq.${user.id}`)
                 .order('created_at', { ascending: false });
 
-            if (sError) throw sError;
+            // Apply filter based on whether we have clients
+            if (clientIds.length > 0) {
+                servicesQuery = servicesQuery.or(`user_id.in.(${clientIds.join(',')}),partner_id.eq.${user.id}`);
+            } else {
+                servicesQuery = servicesQuery.eq('partner_id', user.id);
+            }
+
+            const { data: servicesData, error: sError } = await servicesQuery;
+
+            if (sError) {
+                console.error('Services fetch error:', sError);
+                // Don't throw, just use empty array
+            }
 
             // Fetch wallet balance
             const { data: profile, error: pError } = await supabase
@@ -186,8 +198,8 @@ const PartnerDashboard = () => {
                             <button
                                 onClick={() => setActiveTab('clients')}
                                 className={`flex-1 px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'clients'
-                                        ? 'bg-white text-slate-900 shadow-sm'
-                                        : 'text-slate-400 hover:text-slate-600'
+                                    ? 'bg-white text-slate-900 shadow-sm'
+                                    : 'text-slate-400 hover:text-slate-600'
                                     }`}
                             >
                                 <Users size={16} className="inline mr-2" />
@@ -196,8 +208,8 @@ const PartnerDashboard = () => {
                             <button
                                 onClick={() => setActiveTab('services')}
                                 className={`flex-1 px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'services'
-                                        ? 'bg-white text-slate-900 shadow-sm'
-                                        : 'text-slate-400 hover:text-slate-600'
+                                    ? 'bg-white text-slate-900 shadow-sm'
+                                    : 'text-slate-400 hover:text-slate-600'
                                     }`}
                             >
                                 <History size={16} className="inline mr-2" />
@@ -375,14 +387,14 @@ const PartnerDashboard = () => {
                                                                 </span>
                                                             </div>
                                                             <h4 className="font-black text-slate-900 text-sm tracking-tight mb-1">
-                                                                {service.service?.title || 'Unknown Service'}
+                                                                {service.service_catalog?.title || 'Unknown Service'}
                                                             </h4>
                                                             <p className="text-xs text-slate-600 font-bold">
-                                                                Client: {service.client?.full_name || 'Unknown'}
+                                                                Client: {service.profiles?.full_name || 'Unknown'}
                                                             </p>
-                                                            {service.client?.organization && (
+                                                            {service.profiles?.organization && (
                                                                 <p className="text-[10px] text-indigo-600 font-black uppercase tracking-wider mt-1">
-                                                                    {service.client.organization}
+                                                                    {service.profiles.organization}
                                                                 </p>
                                                             )}
                                                         </div>
@@ -417,13 +429,13 @@ const PartnerDashboard = () => {
                                                                     <div>
                                                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Service Description</p>
                                                                         <p className="text-xs text-slate-700 font-medium">
-                                                                            {service.service?.description || 'No description available'}
+                                                                            {service.service_catalog?.description || 'No description available'}
                                                                         </p>
                                                                     </div>
                                                                     <div>
                                                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Client Contact</p>
                                                                         <p className="text-xs text-slate-700 font-medium">
-                                                                            {service.client?.email || service.client?.mobile_number || 'Not provided'}
+                                                                            {service.profiles?.email || service.profiles?.mobile_number || 'Not provided'}
                                                                         </p>
                                                                     </div>
                                                                 </div>
@@ -484,8 +496,8 @@ const PartnerDashboard = () => {
                                 <div key={service.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-white hover:border-indigo-200 hover:shadow-sm transition-all">
                                     <div className="flex justify-between items-start mb-2">
                                         <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-1 rounded ${service.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                                                service.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                                                    'bg-indigo-100 text-indigo-700'
+                                            service.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                                                'bg-indigo-100 text-indigo-700'
                                             }`}>
                                             {service.status}
                                         </span>
@@ -494,10 +506,10 @@ const PartnerDashboard = () => {
                                         </span>
                                     </div>
                                     <p className="text-xs font-black text-slate-800 tracking-tight truncate">
-                                        {service.service?.title || 'Unknown Service'}
+                                        {service.service_catalog?.title || 'Unknown Service'}
                                     </p>
                                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1 truncate">
-                                        {service.client?.full_name || 'Client'}
+                                        {service.profiles?.full_name || 'Client'}
                                     </p>
                                 </div>
                             ))}

@@ -46,8 +46,8 @@ const PartnerServices = () => {
                 .from('user_services')
                 .select(`
                     *,
-                    client:user_id(id, full_name, email, mobile_number, organization, avatar_url),
-                    service:service_id(id, title, description, icon)
+                    profiles!user_services_user_id_fkey(id, full_name, email, mobile_number, organization, avatar_url),
+                    service_catalog(id, title, description, icon)
                 `)
                 .or(`partner_id.eq.${user.id},user_id.in.(${clientIds.length > 0 ? clientIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
                 .order('created_at', { ascending: false });
@@ -257,10 +257,10 @@ const PartnerServices = () => {
                                             <div className="flex items-start gap-4 flex-1 min-w-0">
                                                 {/* Client Avatar */}
                                                 <div className="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-sm shrink-0">
-                                                    {service.client?.avatar_url ? (
-                                                        <img src={service.client.avatar_url} className="w-full h-full object-cover rounded-xl" crossOrigin="anonymous" />
+                                                    {service.profiles?.avatar_url ? (
+                                                        <img src={service.profiles.avatar_url} className="w-full h-full object-cover rounded-xl" crossOrigin="anonymous" />
                                                     ) : (
-                                                        service.client?.full_name?.[0]?.toUpperCase() || 'C'
+                                                        service.profiles?.full_name?.[0]?.toUpperCase() || 'C'
                                                     )}
                                                 </div>
 
@@ -276,17 +276,17 @@ const PartnerServices = () => {
                                                         </span>
                                                     </div>
                                                     <h4 className="font-black text-slate-900 text-base tracking-tight mb-1">
-                                                        {service.service?.title || 'Unknown Service'}
+                                                        {service.service_catalog?.title || 'Unknown Service'}
                                                     </h4>
                                                     <div className="flex items-center gap-4 text-xs text-slate-600 font-bold">
                                                         <span className="flex items-center gap-1">
                                                             <User size={14} className="text-slate-400" />
-                                                            {service.client?.full_name || 'Unknown Client'}
+                                                            {service.profiles?.full_name || 'Unknown Client'}
                                                         </span>
-                                                        {service.client?.organization && (
+                                                        {service.profiles?.organization && (
                                                             <span className="flex items-center gap-1">
                                                                 <Briefcase size={14} className="text-slate-400" />
-                                                                {service.client.organization}
+                                                                {service.profiles.organization}
                                                             </span>
                                                         )}
                                                         <span className="flex items-center gap-1">
@@ -323,17 +323,17 @@ const PartnerServices = () => {
                                                         <div>
                                                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Service Description</p>
                                                             <p className="text-sm text-slate-700 font-medium bg-white p-4 rounded-xl border border-slate-200">
-                                                                {service.service?.description || 'No description available'}
+                                                                {service.service_catalog?.description || 'No description available'}
                                                             </p>
                                                         </div>
                                                         <div>
                                                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Client Contact</p>
                                                             <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
                                                                 <p className="text-sm text-slate-700 font-medium">
-                                                                    📧 {service.client?.email || 'Not provided'}
+                                                                    📧 {service.profiles?.email || 'Not provided'}
                                                                 </p>
                                                                 <p className="text-sm text-slate-700 font-medium">
-                                                                    📱 {service.client?.mobile_number || 'Not provided'}
+                                                                    📱 {service.profiles?.mobile_number || 'Not provided'}
                                                                 </p>
                                                             </div>
                                                         </div>
