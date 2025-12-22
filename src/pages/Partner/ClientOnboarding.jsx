@@ -128,18 +128,26 @@ const ClientOnboarding = () => {
 
             // 2. Create Service Request
             setFileStatus('Creating Service Ticket...');
+            console.log('Creating service request for client:', clientId, 'service:', selectedService.id, 'partner:', user.id);
+
             const { data: serviceReq, error: serviceError } = await supabase
                 .from('user_services')
                 .insert([{
                     user_id: clientId,
                     service_id: selectedService.id,
                     partner_id: user.id,
+                    is_assisted_service: true,
                     status: 'pending'
                 }])
                 .select()
                 .single();
 
-            if (serviceError) throw serviceError;
+            if (serviceError) {
+                console.error('Service creation error:', serviceError);
+                throw serviceError;
+            }
+
+            console.log('Service created successfully:', serviceReq);
 
             // 3. Upload Documents (Optional - skip if storage not configured)
             if (files.length > 0) {

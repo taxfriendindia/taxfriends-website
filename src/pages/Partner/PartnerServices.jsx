@@ -32,31 +32,50 @@ const PartnerServices = () => {
     const fetchServices = async () => {
         try {
             setLoading(true);
+            console.log('=== FETCHING SERVICES ===');
+            console.log('Partner user ID:', user.id);
 
             // First, get all clients onboarded by this partner
-            const { data: clients } = await supabase
+            const { data: clients, error: clientError } = await supabase
                 .from('profiles')
-                .select('id')
+                .select('id, full_name')
                 .eq('partner_id', user.id);
 
-            const clientIds = (clients || []).map(c => c.id);
+            if (clientError) {
+                console.error('Error fetching clients:', clientError);
+            } else {
+                console.log('Found clients:', clients);
+            }
 
-            // Fetch all services - both partner-created and client-requested
-            const { data: servicesData, error } = await supabase
+            const clientIds = (clients || []).map(c => c.id);
+            console.log('Client IDs:', clientIds);
+
+            // Build the query
+            let query = supabase
                 .from('user_services')
                 .select(`
                     *,
                     profiles!user_services_user_id_fkey(id, full_name, email, mobile_number, organization, avatar_url),
                     service_catalog(id, title, description, icon)
                 `)
-                .or(`partner_id.eq.${user.id},user_id.in.(${clientIds.length > 0 ? clientIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
                 .order('created_at', { ascending: false });
+
+            // Apply OR filter for partner_id OR user_id in client list
+            if (clientIds.length > 0) {
+                query = query.or(`partner_id.eq.${user.id},user_id.in.(${clientIds.join(',')})`);
+            } else {
+                // If no clients, just get services where partner_id matches
+                query = query.eq('partner_id', user.id);
+            }
+
+            const { data: servicesData, error } = await query;
 
             if (error) {
                 console.error('Error fetching services:', error);
+                console.error('Error details:', JSON.stringify(error, null, 2));
             } else {
                 console.log('Fetched services:', servicesData);
-                console.log('Client IDs:', clientIds);
+                console.log('Number of services:', servicesData?.length || 0);
             }
 
             setServices(servicesData || []);
@@ -69,10 +88,11 @@ const PartnerServices = () => {
             const rejected = servicesData?.filter(s => s.status === 'rejected').length || 0;
             const cancelled = servicesData?.filter(s => s.status === 'cancelled').length || 0;
 
+            console.log('Stats:', { total, pending, processing, completed, rejected, cancelled });
             setStats({ total, pending, processing, completed, rejected, cancelled });
 
         } catch (error) {
-            console.error('Error fetching services:', error);
+            console.error('Unexpected error in fetchServices:', error);
         } finally {
             setLoading(false);
         }
