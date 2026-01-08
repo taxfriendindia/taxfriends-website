@@ -34,3 +34,9 @@ Thumbs.db
 # Logs
 logs
 *.log
+
+# Internal Agent Data
+.agent/
+
+# Database Schema (Optional: remove if you want to keep schema in git)
+supabase/COMPLETE_DATABASE_SETUP.sql

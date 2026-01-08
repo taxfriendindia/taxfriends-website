@@ -6,7 +6,7 @@ const STATIC_REVIEWS = [
     { id: 1, full_name: "Aman Gupta", organization: "Gupta Electronics", rating: 5, comment: "Excellent service for GST registration. Got my number in just 1 day as promised! 🚀" },
     { id: 2, full_name: "Priya Sharma", organization: "Fashion Hub", rating: 5, comment: "Very professional team. They handled my income tax filing smoothly and maximized my refund. 💸" },
     { id: 3, full_name: "Rahul Mehra", organization: "Mehra & Sons", rating: 4, comment: "Good support for MSME registration. The process was quite fast and efficient. 🏢" },
-    { id: 4, full_name: "Anjali Verma", organization: "Vertex Solutions", rating: 5, comment: "TaxFriends makes compliance so easy. I don't have to worry about deadlines anymore. 🛡️" },
+    { id: 4, full_name: "Anjali Verma", organization: "Vertex Solutions", rating: 5, comment: "Apna TaxFriend makes compliance so easy. I don't have to worry about deadlines anymore. 🛡️" },
     { id: 5, full_name: "Sandeep Kumar", organization: "Kumar Traders", rating: 5, comment: "Highly recommended for business registration. Their expert guidance was invaluable. 🤝" },
     { id: 6, full_name: "Megha Jain", organization: "Jain Decor", rating: 5, comment: "Reliable and efficient. The digital process is very convenient for busy business owners. 📱" },
     { id: 7, full_name: "Vikram Singh", organization: "Singh Logistics", rating: 4, comment: "Great experience with their TDS filing service. Very detailed and accurate record keeping. 📊" },
@@ -14,14 +14,14 @@ const STATIC_REVIEWS = [
     { id: 9, full_name: "Sneha Reddy", organization: "Reddy Organics", rating: 5, comment: "Quick FSSAI license process. Very happy with the support team and their responsiveness. 🥦" },
     { id: 10, full_name: "Arjun Das", organization: "Das Enterprises", rating: 5, comment: "Best tax partner for startups. They handle everything from A-Z with total transparency. ✨" },
     { id: 11, full_name: "Kavita Singh", organization: "Singh & Co.", rating: 4, comment: "Professional and timely. Very satisfied with their corporate registration service. 🏛️" },
-    { id: 12, full_name: "Rohan Kapoor", organization: "Kapoor Textiles", rating: 5, comment: "GST returns are now a breeze. Thank you TaxFriends for the amazing automation! ⚡" },
+    { id: 12, full_name: "Rohan Kapoor", organization: "Kapoor Textiles", rating: 5, comment: "GST returns are now a breeze. Thank you Apna TaxFriend for the amazing automation! ⚡" },
     { id: 13, full_name: "Sonia Bansal", organization: "Bansal Boutique", rating: 5, comment: "Great value for money. Exceptional tax planning advice that saved us a lot of profit. 💰" },
     { id: 14, full_name: "Manish Agarwal", organization: "Agarwal Agencies", rating: 5, comment: "The digital portal is very user-friendly. Document tracking is a great and helpful feature. 💻" },
     { id: 15, full_name: "Ritu Malhotra", organization: "Malhotra Interiors", rating: 4, comment: "Excellent communication and prompt responses to my queries regarding audit reports. 📞" },
     { id: 16, full_name: "Sanjay Joshi", organization: "Joshi Tech", rating: 5, comment: "They saved me from heavy penalties. Their expert advice is worth every penny indeed. 🏆" },
     { id: 17, full_name: "Anita Desai", organization: "Desai Flowers", rating: 5, comment: "Seamless experience for ITR filing. Transparent, trustworthy and highly recommended. 🌟" },
     { id: 18, full_name: "Vivek Tiwari", organization: "Tiwari Builders", rating: 5, comment: "Their knowledge of commercial laws and taxation is impressive. Genuine tax experts. 🧠" },
-    { id: 19, full_name: "Preeti Goyal", organization: "Goyal Sweets", rating: 5, comment: "Prompt and accurate. I always recommend TaxFriends to my friends and family. 👩‍👩‍👧" },
+    { id: 19, full_name: "Preeti Goyal", organization: "Goyal Sweets", rating: 5, comment: "Prompt and accurate. I always recommend Apna TaxFriend to my friends and family. 👩‍👩‍👧" },
     { id: 20, full_name: "Sameer Khan", organization: "Khan Auto", rating: 4, comment: "A solid tax partner for any small business owner. Very helpful and knowledgeable staff. ✅" }
 ];
 
@@ -56,7 +56,7 @@ const TestimonialCarousel = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                 <div className="text-center mb-16">
                     <h4 className="text-blue-600 font-black text-xs uppercase tracking-[0.3em] mb-4">Wall of Trust</h4>
-                    <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">Voices of TaxFriends</h2>
+                    <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">Voices of Apna TaxFriend</h2>
                     <p className="text-slate-500 mt-4 font-medium">Trusted by 500+ businesses across India for tax & compliance.</p>
                 </div>
 

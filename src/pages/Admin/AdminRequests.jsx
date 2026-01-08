@@ -7,8 +7,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useOutletContext } from 'react-router-dom'
 import StatusModal from '../../components/StatusModal'
 import ConfirmationModal from '../../components/ConfirmationModal'
+import { useAuth } from '../../contexts/AuthContext'
 
 const AdminRequests = () => {
+    const { user } = useAuth()
     const { setSidebarOpen } = useOutletContext() || { setSidebarOpen: () => { } }
     const [allDocuments, setAllDocuments] = useState([])
     const [loading, setLoading] = useState(true)
@@ -52,17 +54,13 @@ const AdminRequests = () => {
                 return
             }
 
-            // 2. Fetch Profiles (both users and partners who uploaded)
             if (docs && docs.length > 0) {
-                const userIds = [...new Set(docs.map(d => d.user_id))]
-                const partnerIds = [...new Set(docs.map(d => d.uploaded_by).filter(Boolean))]
-                const allIds = [...new Set([...userIds, ...partnerIds])]
+                const userIds = [...new Set(docs.map(d => d.user_id).filter(Boolean))]
 
-                const validIds = allIds.filter(Boolean)
                 const { data: profiles, error: pError } = await supabase
                     .from('profiles')
                     .select('id, full_name, email, mobile_number, organization, role')
-                    .in('id', validIds)
+                    .in('id', userIds)
 
                 if (pError) {
                     console.error("Error fetching profiles for documents:", pError)
@@ -73,14 +71,11 @@ const AdminRequests = () => {
                 // 3. Join documents with profile data
                 const joinedDocs = docs.map(doc => {
                     const uid = doc.user_id?.toLowerCase()
-                    const pid = doc.uploaded_by?.toLowerCase()
                     const userProfile = profileMap[uid]
-                    const partnerProfile = profileMap[pid]
 
                     return {
                         ...doc,
-                        profiles: userProfile || { id: doc.user_id, full_name: null, email: 'ID: ' + doc.user_id?.slice(0, 8) },
-                        uploaded_by_profile: partnerProfile || null
+                        profiles: userProfile || { id: doc.user_id, full_name: null, email: 'ID: ' + doc.user_id?.slice(0, 8) }
                     }
                 })
 
@@ -101,7 +96,10 @@ const AdminRequests = () => {
             setProcessingId(id)
             const { error } = await supabase
                 .from('user_documents')
-                .update({ status: newStatus })
+                .update({
+                    status: newStatus,
+                    handled_by: user?.id
+                })
                 .eq('id', id)
 
             if (error) throw error
@@ -142,7 +140,10 @@ const AdminRequests = () => {
 
             const { error } = await supabase
                 .from('user_documents')
-                .update({ status: 'verified' })
+                .update({
+                    status: 'verified',
+                    handled_by: user?.id
+                })
                 .in('id', docIds)
 
             if (error) throw error

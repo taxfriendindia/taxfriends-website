@@ -22,11 +22,7 @@ export const AdminService = {
             serviceQuery = serviceQuery.eq('handled_by', filters.admin)
             rejectedQuery = rejectedQuery.eq('handled_by', filters.admin)
         }
-        if (filters.partner && filters.partner !== 'All') {
-            profileQuery = profileQuery.eq('partner_id', filters.partner)
-            serviceQuery = serviceQuery.eq('profiles.partner_id', filters.partner)
-            rejectedQuery = rejectedQuery.eq('profiles.partner_id', filters.partner)
-        }
+
 
         // 2. Fetch Counts
         const [usersRes, reqsRes, rejectedRes] = await Promise.all([
@@ -38,20 +34,13 @@ export const AdminService = {
         const recentTime = subDays(new Date(), 30).toISOString()
         const { count: newUsers } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', recentTime)
 
-        // 3. Fetch Total Settled Payouts
-        const { data: payouts } = await supabase
-            .from('payout_requests')
-            .select('amount')
-            .eq('status', 'completed')
 
-        const totalPayouts = (payouts || []).reduce((sum, p) => sum + Number(p.amount), 0)
 
         return {
             totalUsers: usersRes.count || 0,
             newUsers: newUsers || 0,
             totalReqs: reqsRes.count || 0,
-            rejectedReqs: rejectedRes.count || 0,
-            totalPayouts: totalPayouts
+            rejectedReqs: rejectedRes.count || 0
         }
     },
 
@@ -108,27 +97,49 @@ export const AdminService = {
 
     async getAdminPerformance() {
         try {
-            const { data, error } = await supabase
+            // 1. Fetch performance from Services
+            const { data: servs, error: sErr } = await supabase
                 .from('user_services')
                 .select('handled_by, status')
                 .not('handled_by', 'is', null);
 
-            if (error) throw error;
+            if (sErr) throw sErr;
 
-            return (data || []).reduce((acc, curr) => {
-                const adminId = curr.handled_by;
-                if (!acc[adminId]) {
-                    acc[adminId] = { total: 0, completed: 0, rejected: 0, verified: 0, pending: 0, processing: 0 };
-                }
-                acc[adminId].total += 1;
-                const status = curr.status?.toLowerCase();
-                if (status === 'completed') acc[adminId].completed += 1;
-                else if (status === 'rejected' || status === 'cancelled') acc[adminId].rejected += 1;
-                else if (status === 'verified') acc[adminId].verified += 1;
-                else if (status === 'processing' || status === 'in_progress') acc[adminId].processing += 1;
-                else if (status === 'pending') acc[adminId].pending += 1;
-                return acc;
-            }, {});
+            // 2. Fetch performance from Documents (Verifications)
+            const { data: docs, error: dErr } = await supabase
+                .from('user_documents')
+                .select('handled_by, status')
+                .not('handled_by', 'is', null);
+
+            if (dErr) throw dErr;
+
+            const performance = {};
+
+            // Helper to initialize and update performance object
+            const updatePerf = (records, isDoc = false) => {
+                records.forEach(curr => {
+                    const adminId = curr.handled_by;
+                    if (!performance[adminId]) {
+                        performance[adminId] = { total: 0, completed: 0, rejected: 0, verified: 0, pending: 0, processing: 0 };
+                    }
+                    performance[adminId].total += 1;
+                    const status = curr.status?.toLowerCase();
+
+                    if (status === 'completed') performance[adminId].completed += 1;
+                    else if (status === 'rejected' || status === 'cancelled') performance[adminId].rejected += 1;
+                    else if (status === 'verified') {
+                        performance[adminId].verified += 1;
+                        if (isDoc) performance[adminId].completed += 1; // Count doc verification as a resolved task
+                    }
+                    else if (status === 'processing') performance[adminId].processing += 1;
+                    else if (status === 'pending') performance[adminId].pending += 1;
+                });
+            };
+
+            updatePerf(servs || []);
+            updatePerf(docs || [], true);
+
+            return performance;
         } catch (e) {
             console.error("Admin Performance Error:", e);
             return {};

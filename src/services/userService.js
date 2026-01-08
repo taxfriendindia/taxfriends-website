@@ -35,7 +35,6 @@ export const UserService = {
                 .lt('created_at', yesterday.toISOString());
 
             if (error) throw error;
-            console.log("Cleanup: Old automated notifications removed.");
         } catch (e) {
             console.error("Cleanup failed:", e);
         }
@@ -43,8 +42,8 @@ export const UserService = {
 
     async uploadDocument(userId, file, name, docType, uploadedBy = null) {
         const fileExt = file.name.split('.').pop()
-        const fileName = `${userId}/${Math.random().toString(36).substring(7)}.${fileExt}`
-        const filePath = `documents/${fileName}`
+        const fileName = `${Math.random().toString(36).substring(7)}.${fileExt}`
+        const filePath = `${userId}/documents/${fileName}`
 
         const { error: uploadError } = await supabase.storage
             .from('user-documents')
@@ -64,7 +63,7 @@ export const UserService = {
             status: 'pending'
         };
 
-        // Add uploaded_by if provided (for partner uploads)
+
         if (uploadedBy) {
             documentData.uploaded_by = uploadedBy;
         }

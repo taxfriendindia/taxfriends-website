@@ -78,11 +78,11 @@ export const DocumentService = {
             // 2. Construct File Path
             const timestamp = Date.now()
             const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_')
-            const filePath = `${folderName}/${timestamp}_${cleanFileName}`
+            const filePath = `${userId}/${folderName}/${timestamp}_${cleanFileName}`
 
-            // 3. Upload to 'client-docs' bucket
+            // 3. Upload to 'user-documents' bucket
             const { data, error } = await supabase.storage
-                .from('client-docs')
+                .from('user-documents')
                 .upload(filePath, file, {
                     cacheControl: '3600',
                     upsert: false
@@ -92,7 +92,7 @@ export const DocumentService = {
 
             // 4. Generate URL (Signed for 10 years access)
             const { data: signedData } = await supabase.storage
-                .from('client-docs')
+                .from('user-documents')
                 .createSignedUrl(filePath, 315360000)
 
             const publicUrl = signedData?.signedUrl
@@ -118,27 +118,61 @@ export const DocumentService = {
         }
     },
 
+    // Upload completed work for a service
+    async uploadCompletedServiceFile(userId, serviceRequestId, file, profileData) {
+        try {
+            const cleanName = (profileData.full_name || 'User').replace(/[^a-zA-Z0-9]/g, '_')
+            const timestamp = Date.now()
+            const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_')
+            const filePath = `${userId}/COMPLETED/${serviceRequestId}/${timestamp}_${cleanFileName}`
+
+            const { data, error } = await supabase.storage
+                .from('user-documents')
+                .upload(filePath, file)
+
+            if (error) throw error
+
+            const { data: signedData } = await supabase.storage
+                .from('user-documents')
+                .createSignedUrl(filePath, 315360000)
+
+            const publicUrl = signedData?.signedUrl
+
+            // Update the service request with the file URL
+            const { error: dbError } = await supabase
+                .from('user_services')
+                .update({ completed_file_url: publicUrl, status: 'completed' })
+                .eq('id', serviceRequestId)
+
+            if (dbError) throw dbError
+            return publicUrl
+
+        } catch (e) {
+            console.error('Work Upload Error:', e)
+            throw e
+        }
+    },
+
     async deleteDocument(id, fileUrl) {
         try {
             // 1. If file stored in Supabase (not just email log), delete from Storage first
             // URL pattern: .../client-docs/FOLDER/FILE?token...
             // Or signed url: /storage/v1/object/sign/client-docs/...
 
-            if (fileUrl && fileUrl.includes('client-docs')) {
+            if (fileUrl && fileUrl.includes('user-documents')) {
                 // Try to extract path
                 // Decode URI component to handle %20 etc
                 const decoded = decodeURIComponent(fileUrl)
 
-                // Typical Signed URL: https://.../storage/v1/object/sign/client-docs/Folder/File?token=...
+                // Typical Signed URL: https://.../storage/v1/object/sign/user-documents/Folder/File?token=...
                 // We need 'Folder/File'
-                const parts = decoded.split('/client-docs/')
+                const parts = decoded.split('/user-documents/')
                 if (parts.length > 1) {
-                    // Take the part after client-docs/ and before '?'
+                    // Take the part after user-documents/ and before '?'
                     let storagePath = parts[1].split('?')[0]
-                    console.log("Attempting storage delete:", storagePath)
 
                     const { error: storageError } = await supabase.storage
-                        .from('client-docs')
+                        .from('user-documents')
                         .remove([storagePath])
 
                     if (storageError) console.warn("Storage delete warning:", storageError)
@@ -189,7 +223,7 @@ export const DocumentService = {
 
             if (count > 0) {
                 const content = await zip.generateAsync({ type: "blob" })
-                saveAs(content, `${zipName}_taxfriends.zip`)
+                saveAs(content, `${zipName}_apnataxfriend.zip`)
             } else {
                 alert("No accessible files found to zip. Check console for errors. (CORS or Invalid URL)")
             }

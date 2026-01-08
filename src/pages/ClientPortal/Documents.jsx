@@ -18,7 +18,7 @@ const Documents = () => {
     const [latestService, setLatestService] = useState(null)
     const [userProfile, setUserProfile] = useState(null)
 
-    const ADMIN_EMAIL = 'support@taxfriends.com'
+    const ADMIN_EMAIL = 'support@apnataxfriend.com'
 
     useEffect(() => {
         if (user) {
@@ -142,8 +142,8 @@ const Documents = () => {
     const handleWhatsApp = () => {
         const serviceName = latestService?.service?.title
         const text = serviceName
-            ? `Hello TaxFriends, I want to share documents for my service request: "${serviceName}". Please guide me on WhatsApp upload.`
-            : "Hello TaxFriends, I want to share documents for my service request. Please guide me on WhatsApp upload."
+            ? `Hello Apna TaxFriend, I want to share documents for my service request: "${serviceName}". Please guide me on WhatsApp upload.`
+            : "Hello Apna TaxFriend, I want to share documents for my service request. Please guide me on WhatsApp upload."
 
         const message = encodeURIComponent(text)
         window.open(`https://wa.me/918409847102?text=${message}`, '_blank')

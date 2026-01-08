@@ -18,7 +18,7 @@ const Terms = () => {
 
                     <section>
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">2. Services</h2>
-                        <p>TaxFriend provides tax filing and business registration services. All services are subject to the acceptance of your documentation and compliance with government regulations.</p>
+                        <p>Apna TaxFriend provides tax filing and business registration services. All services are subject to the acceptance of your documentation and compliance with government regulations.</p>
                     </section>
 
                     <section>

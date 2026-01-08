@@ -19,16 +19,15 @@ const AdminDashboard = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState({ totalUsers: 0, newUsers: 0, totalReqs: 0, rejectedReqs: 0, totalPayouts: 0 });
+    const [stats, setStats] = useState({ totalUsers: 0, newUsers: 0, totalReqs: 0, rejectedReqs: 0 });
     const [chartData, setChartData] = useState([]);
     const [recentActivity, setRecentActivity] = useState([]);
     const [adminPerformance, setAdminPerformance] = useState({});
     const [expandedAdmin, setExpandedAdmin] = useState(null);
 
     // Advanced Filters (Super User only)
-    const [filters, setFilters] = useState({ state: 'All', city: 'All', admin: 'All', partner: 'All' });
+    const [filters, setFilters] = useState({ state: 'All', city: 'All', admin: 'All' });
     const [allAdmins, setAllAdmins] = useState([]);
-    const [allPartners, setAllPartners] = useState([]);
     const [availableStates, setAvailableStates] = useState(['All']);
     const [availableCities, setAvailableCities] = useState(['All']);
 
@@ -82,9 +81,8 @@ const AdminDashboard = () => {
 
             // Fetch admins and partners for filters (Allowed for both Admin and SuperUser)
             try {
-                const { data: staff } = await supabase.from('profiles').select('id, full_name, role').in('role', ['admin', 'superuser', 'partner']);
+                const { data: staff } = await supabase.from('profiles').select('id, full_name, role').in('role', ['admin', 'superuser']);
                 setAllAdmins(staff?.filter(s => ['admin', 'superuser'].includes(s.role)) || []);
-                setAllPartners(staff?.filter(s => s.role === 'partner') || []);
 
                 // Fetch dynamic locations
                 const { data: locs } = await supabase.from('profiles').select('residential_state, residential_city, business_state, business_city').not('role', 'in', '("admin","superuser")');
@@ -138,7 +136,7 @@ const AdminDashboard = () => {
                 {isSuper && (
                     <div className="flex flex-wrap gap-2">
                         <button
-                            onClick={() => setFilters({ state: 'All', city: 'All', admin: 'All', partner: 'All' })}
+                            onClick={() => setFilters({ state: 'All', city: 'All', admin: 'All' })}
                             className="flex-1 md:flex-none px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs md:text-sm font-bold text-slate-400 hover:text-emerald-600 hover:border-emerald-200 transition-all shadow-sm"
                         >
                             Reset
@@ -181,13 +179,6 @@ const AdminDashboard = () => {
                         onChange={v => setFilters({ ...filters, admin: v })}
                         color="emerald"
                     />
-                    <DashboardFilter
-                        label="Partner"
-                        icon={Zap}
-                        value={filters.partner}
-                        options={[{ label: 'All', value: 'All' }, ...allPartners.map(p => ({ label: p.full_name, value: p.id }))]}
-                        onChange={v => setFilters({ ...filters, partner: v })}
-                    />
                     <button className="col-span-2 lg:col-span-1 h-[42px] bg-slate-900 text-white rounded-xl font-bold text-[10px] md:text-xs uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10">
                         <Filter size={14} /> Apply Filters
                     </button>
@@ -195,11 +186,9 @@ const AdminDashboard = () => {
             )}
 
             {/* Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 md:gap-6">
                 <StatCard title="Total Clients" count={stats.totalUsers} sub="Network Size" icon={Users} color="bg-violet-600" shadow="shadow-violet-500/20" path="/admin/clients" />
                 <StatCard title="Active Requests" count={stats.totalReqs} sub="Pipeline" icon={Activity} color="bg-amber-500" shadow="shadow-amber-500/20" path="/admin/services" />
-                <StatCard title="Total Payouts" count={`₹${stats.totalPayouts.toLocaleString()}`} sub="Paid Out" icon={Shield} color="bg-teal-600" shadow="shadow-teal-500/20" path="/admin/partners" />
-                <StatCard title="Total Partners" count={allPartners.length} sub="Franchisees" icon={Zap} color="bg-rose-500" shadow="shadow-rose-500/20" path="/admin/clients?view=partners" />
             </div>
 
             {/* Graphs Section */}
@@ -248,8 +237,7 @@ const AdminDashboard = () => {
                                 <Pie
                                     data={[
                                         { name: 'Clients', value: stats.totalUsers },
-                                        { name: 'Sudo Admins', value: allAdmins.length },
-                                        { name: 'Partners', value: allPartners.length }
+                                        { name: 'Sudo Admins', value: allAdmins.length }
                                     ]}
                                     innerRadius={60}
                                     outerRadius={80}
@@ -258,20 +246,15 @@ const AdminDashboard = () => {
                                 >
                                     <Cell fill="#8b5cf6" />
                                     <Cell fill="#f59e0b" />
-                                    <Cell fill="#ec4899" />
                                 </Pie>
                                 <Tooltip />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-slate-100">
+                    <div className="flex justify-center mt-8 pt-8 border-t border-slate-100">
                         <div className="text-center">
                             <div className="text-2xl font-black text-slate-800">{allAdmins.length}</div>
                             <div className="text-[10px] font-bold text-slate-400 uppercase">Sudo Admins</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="text-2xl font-black text-slate-800">{allPartners.length}</div>
-                            <div className="text-[10px] font-bold text-slate-400 uppercase">Franchisess</div>
                         </div>
                     </div>
                 </div>

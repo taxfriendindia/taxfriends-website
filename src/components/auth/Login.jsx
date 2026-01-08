@@ -15,8 +15,6 @@ const Login = () => {
     if (user) {
       if (user.role === 'admin' || user.role === 'superuser') {
         navigate('/admin/dashboard')
-      } else if (user.role === 'partner') {
-        navigate('/partner/dashboard')
       } else {
         navigate('/dashboard')
       }
@@ -67,7 +65,7 @@ const Login = () => {
             <Shield className="w-8 h-8 text-white" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
-            Welcome to TaxFriends
+            Welcome to Apna TaxFriend
           </h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Secure login to access your dashboard

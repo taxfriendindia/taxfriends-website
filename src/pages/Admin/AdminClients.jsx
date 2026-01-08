@@ -53,7 +53,7 @@ const AdminClients = () => {
 
     // View Mode
     const [searchParams] = useSearchParams()
-    const [viewMode, setViewMode] = useState(searchParams.get('view') || 'clients') // 'clients' | 'admins' | 'partners'
+    const [viewMode, setViewMode] = useState(searchParams.get('view') || 'clients') // 'clients' | 'admins'
 
     useEffect(() => {
         const view = searchParams.get('view')
@@ -103,8 +103,7 @@ const AdminClients = () => {
     // --- STATS ---
     const stats = useMemo(() => {
         return {
-            clients: clients.filter(c => !['admin', 'superuser', 'partner'].includes(c.role)).length,
-            partners: clients.filter(c => c.role === 'partner').length,
+            clients: clients.filter(c => !['admin', 'superuser'].includes(c.role)).length,
             admins: clients.filter(c => ['admin', 'superuser'].includes(c.role)).length
         }
     }, [clients])
@@ -116,9 +115,8 @@ const AdminClients = () => {
         // 0. View Mode (Role Filter - Inclusive)
         if (viewMode === 'clients') {
             // Clients view includes 'client', 'user', or empty role
-            if (['admin', 'superuser', 'partner'].includes(client.role)) return false
+            if (['admin', 'superuser'].includes(client.role)) return false
         }
-        if (viewMode === 'partners' && client.role !== 'partner') return false
         if (viewMode === 'admins' && !['admin', 'superuser'].includes(client.role)) return false
 
         // 1. Search
@@ -168,7 +166,7 @@ const AdminClients = () => {
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
         const link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
-        link.download = `taxfriends_export_${new Date().toISOString().split('T')[0]}.csv`
+        link.download = `apnataxfriend_export_${new Date().toISOString().split('T')[0]}.csv`
         link.click()
         document.body.removeChild(link)
     }
@@ -188,10 +186,6 @@ const AdminClients = () => {
                             <div className="text-xl font-black text-emerald-600 leading-none">{stats.clients}</div>
                             <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Clients</div>
                         </div>
-                        <div className="flex items-center gap-2 border-r border-slate-100 pr-4">
-                            <div className="text-xl font-black text-emerald-600 leading-none">{stats.partners}</div>
-                            <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Partners</div>
-                        </div>
                         <div className="flex items-center gap-2 pr-2">
                             <div className="text-xl font-black text-slate-800 leading-none">{stats.admins}</div>
                             <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Admins</div>
@@ -209,7 +203,7 @@ const AdminClients = () => {
                 <div className="flex flex-wrap items-center gap-4">
                     {/* View Switcher */}
                     <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner min-w-max">
-                        {['clients', 'partners', 'admins'].map(mode => (
+                        {['clients', 'admins'].map(mode => (
                             <button
                                 key={mode}
                                 onClick={() => setViewMode(mode)}

@@ -20,12 +20,11 @@ const AdminRecords = () => {
     // Raw Data
     const [profiles, setProfiles] = useState([])
     const [requests, setRequests] = useState([])
-    const [payouts, setPayouts] = useState([])
 
     // Filters & View State
     const [timeRange, setTimeRange] = useState('7d') // '24h', '7d', '1m', '1y'
     const [marketingFilter, setMarketingFilter] = useState('all') // 'all', 'new_users', 'pending_req', 'rejected_req'
-    const [graphMetric, setGraphMetric] = useState('overview') // 'overview', 'clients', 'partners', 'services'
+    const [graphMetric, setGraphMetric] = useState('overview') // 'overview', 'clients', 'services'
 
     useEffect(() => {
         fetchAllData()
@@ -50,14 +49,8 @@ const AdminRecords = () => {
                 .select('*')
                 .order('created_at', { ascending: true })
 
-            const { data: payoutsRes } = await supabase
-                .from('payout_requests')
-                .select('*')
-                .order('created_at', { ascending: true })
-
             setProfiles(profs || [])
             setRequests(servsRes || [])
-            setPayouts(payoutsRes || [])
 
         } catch (e) {
             console.error(e)
@@ -125,10 +118,7 @@ const AdminRecords = () => {
                     name: key,
                     totalUsers: 0,
                     clientsJoined: 0,
-                    partnersJoined: 0,
                     servicesRequested: 0,
-                    payoutsCompleted: 0,
-                    payoutsPending: 0,
                     rawDate: d
                 })
             }
@@ -144,8 +134,7 @@ const AdminRecords = () => {
                 const entry = dataMap.get(key)
                 if (type === 'profile') {
                     entry.totalUsers += 1
-                    if (item.role === 'partner') entry.partnersJoined += 1
-                    else if (['admin', 'superuser'].includes(item.role)) {
+                    if (['admin', 'superuser'].includes(item.role)) {
                         // Admins not specifically shown in these bars
                     } else {
                         // 'user', 'client', or null/undefined
@@ -153,19 +142,15 @@ const AdminRecords = () => {
                     }
                 } else if (type === 'request') {
                     entry.servicesRequested += 1
-                } else if (type === 'payout') {
-                    if (item.status === 'completed') entry.payoutsCompleted += 1
-                    else if (item.status === 'pending') entry.payoutsPending += 1
                 }
             }
         }
 
         profiles.forEach(p => processItem(p.created_at, 'profile', p))
         requests.forEach(r => processItem(r.created_at, 'request', r))
-        payouts.forEach(p => processItem(p.created_at, 'payout', p))
 
         return Array.from(dataMap.values())
-    }, [profiles, requests, payouts, timeRange, loading, marketingFilter])
+    }, [profiles, requests, timeRange, loading, marketingFilter])
 
     // --- Marketing Data Filter (List View) ---
     const marketingData = useMemo(() => {
@@ -263,7 +248,7 @@ const AdminRecords = () => {
 
                         {/* Graph View Mode */}
                         <div className="flex bg-emerald-50/50 p-1 rounded-xl border border-emerald-100/50 h-[34px]">
-                            {['overview', 'clients', 'partners', 'services', 'payouts'].map(m => (
+                            {['overview', 'clients', 'services'].map(m => (
                                 <button
                                     key={m}
                                     onClick={() => setGraphMetric(m)}
@@ -345,15 +330,7 @@ const AdminRecords = () => {
                                         barSize={graphMetric === 'overview' ? 12 : 60}
                                     />
                                 )}
-                                {(graphMetric === 'overview' || graphMetric === 'partners') && (
-                                    <Bar
-                                        dataKey="partnersJoined"
-                                        name="New Partners"
-                                        fill="#F43F5E"
-                                        radius={[10, 10, 0, 0]}
-                                        barSize={graphMetric === 'overview' ? 12 : 60}
-                                    />
-                                )}
+
                                 {(graphMetric === 'overview' || graphMetric === 'services') && (
                                     <Line
                                         type="monotone"
@@ -365,26 +342,7 @@ const AdminRecords = () => {
                                         activeDot={{ r: 8, strokeWidth: 0 }}
                                     />
                                 )}
-                                {(graphMetric === 'overview' || graphMetric === 'payouts') && (
-                                    <Bar
-                                        dataKey="payoutsCompleted"
-                                        name="Settled Payouts"
-                                        fill="#10B981"
-                                        radius={[10, 10, 0, 0]}
-                                        barSize={graphMetric === 'overview' ? 12 : 60}
-                                    />
-                                )}
-                                {(graphMetric === 'overview' || graphMetric === 'payouts') && (
-                                    <Line
-                                        type="monotone"
-                                        dataKey="payoutsPending"
-                                        name="Pending Payouts"
-                                        stroke="#EF4444"
-                                        strokeWidth={2}
-                                        strokeDasharray="4 4"
-                                        dot={{ r: 4, fill: '#EF4444' }}
-                                    />
-                                )}
+
                                 {graphMetric === 'overview' && (
                                     <Line
                                         type="step"

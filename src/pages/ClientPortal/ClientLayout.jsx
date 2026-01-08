@@ -193,10 +193,7 @@ const ClientLayout = () => {
 
             if (error) throw error;
 
-            // 3. IF PARTNER: Also clear rejected payout history for storage optimization as requested
-            if (user.role === 'partner') {
-                await supabase.rpc('clear_partner_history', { target_partner_id: user.id });
-            }
+
 
             // 4. Dismiss ALL currently loaded Broadcasts in LocalStorage
             if (broadcastIds.length > 0) {
@@ -229,8 +226,13 @@ const ClientLayout = () => {
     }, [showNotifications])
 
     const handleLogout = async () => {
-        await signOut()
-        navigate('/login')
+        try {
+            await signOut()
+            navigate('/login')
+        } catch (error) {
+            console.error('Logout error:', error)
+            navigate('/login')
+        }
     }
 
     return (
@@ -257,9 +259,9 @@ const ClientLayout = () => {
                 <div className="h-20 flex items-center px-8 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center space-x-2 text-blue-600 dark:text-blue-400">
                         <div className="bg-blue-600 text-white p-1.5 rounded-lg">
-                            <span className="font-bold text-xl">TF</span>
+                            <span className="font-bold text-xl">ATF</span>
                         </div>
-                        <span className="text-xl font-bold text-gray-900 dark:text-white">TaxFriends</span>
+                        <span className="text-xl font-bold text-gray-900 dark:text-white">Apna TaxFriend</span>
                     </div>
                     <button
                         onClick={() => setIsSidebarOpen(false)}

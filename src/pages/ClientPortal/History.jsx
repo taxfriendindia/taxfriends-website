@@ -315,12 +315,46 @@ const History = () => {
                                                     )}
 
                                                     {req.status === 'completed' && (
-                                                        <div className="w-full flex items-start space-x-3 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-sm">
-                                                            <CheckCircle2 size={18} className="mt-0.5 shrink-0" />
-                                                            <div>
-                                                                <p className="font-bold">Service Completed!</p>
-                                                                <p className="text-xs mt-1">Please connect with our team via Email or WhatsApp to collect your final documents.</p>
+                                                        <div className="w-full space-y-3">
+                                                            <div className="flex items-start space-x-3 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-sm transition-all hover:shadow-md hover:shadow-emerald-500/5">
+                                                                <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-emerald-600" />
+                                                                <div className="flex-1">
+                                                                    <p className="font-black text-emerald-900 uppercase tracking-wide text-xs">Service Completed Successfully</p>
+                                                                    <p className="text-xs mt-1 text-emerald-700 font-medium">Your request has been processed and verified by our team.</p>
+                                                                </div>
                                                             </div>
+
+                                                            {req.completed_file_url ? (
+                                                                <div className="flex flex-col sm:flex-row gap-3">
+                                                                    <a
+                                                                        href={req.completed_file_url}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="flex-1 flex items-center justify-center space-x-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/20 text-sm font-black uppercase tracking-widest"
+                                                                    >
+                                                                        <Download size={18} />
+                                                                        <span>Download Work Copy</span>
+                                                                    </a>
+                                                                    <button className="px-6 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl hover:bg-slate-50 transition-all font-black text-[10px] uppercase tracking-widest">
+                                                                        Report Issue
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-6">
+                                                                    <div className="flex-1">
+                                                                        <p className="text-sm font-black text-slate-800 tracking-tight">Digital Copy Not Yet Linked</p>
+                                                                        <p className="text-xs text-slate-500 font-medium mt-1">Please reach out to our support channel to collect your final service documents.</p>
+                                                                    </div>
+                                                                    <div className="flex gap-2 w-full md:w-auto">
+                                                                        <a href="mailto:taxfriend.tax@gmail.com" className="flex-1 md:flex-none px-4 py-3 bg-slate-900 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-800 transition-all text-center">
+                                                                            Email Support
+                                                                        </a>
+                                                                        <a href="https://wa.me/919420720491" target="_blank" className="flex-1 md:flex-none px-4 py-3 bg-emerald-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-700 transition-all text-center">
+                                                                            WhatsApp
+                                                                        </a>
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>

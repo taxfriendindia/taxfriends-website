@@ -14,15 +14,19 @@ const AdminLayout = () => {
     const [isMobileMenuOpen, setMobileMenuOpen] = useState(false)
 
     const handleLogout = async () => {
-        await signOut()
-        navigate('/login')
+        try {
+            await signOut()
+            navigate('/login')
+        } catch (error) {
+            console.error('Logout error:', error)
+            navigate('/login')
+        }
     }
 
     if (!user) return null
 
     const menuItems = [
         { to: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-        { to: "/admin/partners", icon: Shield, label: "Partners" },
         { to: "/admin/clients", icon: Users, label: "Clients" },
         { to: "/admin/documents", icon: FileText, label: "Documents" },
         { to: "/admin/services", icon: Activity, label: "Services" },

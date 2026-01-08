@@ -6,8 +6,10 @@ import Login from './components/auth/Login'
 import Home from './pages/Home/Home'
 import About from './pages/About/About'
 import Contact from './pages/Contact/Contact'
-import PrivacyPolicy from './pages/PrivacyPolicy/PrivacyPolicy'
+import PrivacyPolicy from './pages/Policies/PrivacyPolicy'
 import Terms from './pages/Policies/Terms'
+import RefundPolicy from './pages/Policies/RefundPolicy'
+import TermsOfService from './pages/Policies/TermsOfService'
 import ClientLayout from './pages/ClientPortal/ClientLayout'
 import Services from './pages/ClientPortal/Services'
 import Documents from './pages/ClientPortal/Documents'
@@ -20,15 +22,8 @@ import AdminRequests from './pages/Admin/AdminRequests'
 import AdminServices from './pages/Admin/AdminServices'
 import AdminRecords from './pages/Admin/AdminRecords'
 import AdminAnnouncements from './pages/Admin/AdminAnnouncements'
-import AdminPartners from './pages/Admin/AdminPartners'
+
 import SuperReset from './pages/Admin/SuperReset'
-import PartnerProgram from './pages/Partner/PartnerProgram'
-import PartnerLayout from './pages/Partner/PartnerLayout'
-import PartnerDashboard from './pages/Partner/PartnerDashboard'
-import ClientOnboarding from './pages/Partner/ClientOnboarding'
-import PartnerClients from './pages/Partner/PartnerClients'
-import PartnerServices from './pages/Partner/PartnerServices'
-import WalletHistory from './pages/Partner/WalletHistory'
 
 import PublicServices from './pages/Services/Services'
 
@@ -50,19 +45,7 @@ const PrivateRoute = ({ children }) => {
   if (user.role === 'admin' || user.role === 'superuser') {
     return <Navigate to="/admin" replace />
   }
-  if (user.role === 'partner') {
-    return <Navigate to="/partner" replace />
-  }
 
-  return children
-}
-
-// Partner Protected Route
-const PartnerRoute = ({ children }) => {
-  const { user, loading } = useAuth()
-  if (loading) return <LoadingScreen />
-  if (!user) return <Navigate to="/login" />
-  if (user.role !== 'partner') return <Navigate to="/dashboard" replace />
   return children
 }
 
@@ -91,7 +74,8 @@ function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<Terms />} />
-          <Route path="/partner-program" element={<PartnerProgram />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
+          <Route path="/refund-policy" element={<RefundPolicy />} />
           <Route path="/login" element={<Login />} />
 
           {/* Client Portal Routes */}
@@ -100,17 +84,6 @@ function App() {
             <Route path="services" element={<Services />} />
             <Route path="documents" element={<Documents />} />
             <Route path="history" element={<History />} />
-            <Route path="profile" element={<Profile />} />
-          </Route>
-
-          {/* Partner Portal Routes (Protected) */}
-          <Route path="/partner" element={<PartnerRoute><PartnerLayout /></PartnerRoute>}>
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<PartnerDashboard />} />
-            <Route path="onboard" element={<ClientOnboarding />} />
-            <Route path="clients" element={<PartnerClients />} />
-            <Route path="services" element={<PartnerServices />} />
-            <Route path="wallet" element={<WalletHistory />} />
             <Route path="profile" element={<Profile />} />
           </Route>
 
@@ -123,10 +96,6 @@ function App() {
             <Route path="services" element={<AdminServices />} />
             <Route path="records" element={<AdminRecords />} />
             <Route path="announcements" element={<AdminAnnouncements />} />
-            <Route path="partners" element={<AdminPartners />} />
-            <Route path="payouts" element={<AdminPartners initialTab="payouts" />} />
-            <Route path="payout-history" element={<AdminPartners initialTab="history" />} />
-            {/* Manage Admins merged into Admin Services */}
             <Route path="super-reset" element={<SuperReset />} />
             <Route path="profile" element={<Profile />} />
             <Route path="*" element={<div className="p-8 text-gray-500">Page Under Construction</div>} />

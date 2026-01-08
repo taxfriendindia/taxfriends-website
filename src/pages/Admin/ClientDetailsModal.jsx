@@ -17,7 +17,6 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
     const [confirmInput, setConfirmInput] = useState('')
     const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'info', title: '', message: '' })
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => { }, danger: false })
-    const [clearing, setClearing] = useState(false)
 
     useEffect(() => {
         if (client) {
@@ -32,7 +31,7 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
     const handleRoleToggle = (newRole) => {
         if (newRole === client.role) return
 
-        const roles = { admin: 'Admin', partner: 'City Partner', client: 'Client' }
+        const roles = { admin: 'Admin', client: 'Client' }
         const action = `CHANGE Role to ${roles[newRole] || newRole}`
         setRoleModal({ isOpen: true, newRole, action })
         setConfirmInput('')
@@ -173,40 +172,7 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
         }
     }
 
-    const handleClearHistory = async () => {
-        setConfirmModal({
-            isOpen: true,
-            title: 'Purge History?',
-            message: 'CRITICAL: This will permanently wipe all royalty and payout history for this partner. Wallet balance is preserved. Do you wish to continue?',
-            danger: true,
-            onConfirm: async () => {
-                setClearing(true);
-                try {
-                    const { error } = await supabase.rpc('clear_partner_history', {
-                        target_partner_id: client.id
-                    });
-                    if (error) throw error;
 
-                    fetchServices(client.id); // Refresh
-                    setStatusModal({
-                        isOpen: true,
-                        type: 'success',
-                        title: 'History Purged',
-                        message: 'All transaction records for this partner have been deleted.'
-                    });
-                } catch (error) {
-                    setStatusModal({
-                        isOpen: true,
-                        type: 'error',
-                        title: 'Purge Failed',
-                        message: error.message
-                    });
-                } finally {
-                    setClearing(false);
-                }
-            }
-        });
-    };
 
     if (!isOpen || !client) return null
 
@@ -322,15 +288,7 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
                                                     >
                                                         Client
                                                     </button>
-                                                    <button
-                                                        onClick={() => handleRoleToggle('partner')}
-                                                        className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${client.role === 'partner'
-                                                            ? 'bg-emerald-600 text-white shadow-sm'
-                                                            : 'text-slate-500 hover:text-slate-700'
-                                                            }`}
-                                                    >
-                                                        Partner
-                                                    </button>
+
                                                     <button
                                                         onClick={() => handleRoleToggle('admin')}
                                                         className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${client.role === 'admin'
@@ -361,37 +319,12 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
                                     </div>
                                 </div>
 
-                                {client.role === 'partner' && (
-                                    <div className="bg-slate-900 text-white p-6 rounded-3xl mb-8 flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden group">
-                                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500 rounded-full blur-3xl -mr-16 -mt-16 opacity-20 group-hover:opacity-30 transition-opacity" />
-                                        <div className="flex items-center gap-4 relative z-10">
-                                            <div className="p-4 bg-white/10 rounded-2xl border border-white/5 backdrop-blur-sm">
-                                                <Wallet size={28} className="text-emerald-400" />
-                                            </div>
-                                            <div>
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Available Franchise Balance</span>
-                                                <div className="flex items-center gap-2">
-                                                    <IndianRupee size={24} className="text-emerald-500" />
-                                                    <span className="text-3xl font-black text-white">{(client.wallet_balance || 0).toLocaleString()}</span>
-                                                </div>
-                                            </div>
-                                        </div>
 
-                                        <button
-                                            onClick={handleClearHistory}
-                                            disabled={clearing}
-                                            className="px-6 py-3 bg-white/10 hover:bg-rose-600 text-white rounded-2xl border border-white/10 transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2 relative z-10 disabled:opacity-50"
-                                        >
-                                            {clearing ? <Zap size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                                            {clearing ? 'Purging...' : 'Purge All History'}
-                                        </button>
-                                    </div>
-                                )}
 
                                 {/* Form Grid */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <InputGroup label="Full Name" name="full_name" value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} disabled={!isEditing} />
-                                    <InputGroup label="Mobile Number" name="mobile" value={formData.mobile} onChange={(e) => setFormData({ ...formData, mobile: e.target.value })} disabled={!isEditing} />
+                                    <InputGroup label="Mobile Number" name="mobile_number" value={formData.mobile_number} onChange={(e) => setFormData({ ...formData, mobile_number: e.target.value })} disabled={!isEditing} />
                                     <InputGroup label="Mother's Name" name="mothers_name" value={formData.mothers_name} onChange={(e) => setFormData({ ...formData, mothers_name: e.target.value })} disabled={!isEditing} />
                                     <InputGroup label="Date of Birth" name="dob" type="date" value={formData.dob} onChange={(e) => setFormData({ ...formData, dob: e.target.value })} disabled={!isEditing} />
 
@@ -421,6 +354,8 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
                                             <InputGroup label="Pincode" name="business_pincode" value={formData.business_pincode} onChange={(e) => setFormData({ ...formData, business_pincode: e.target.value })} disabled={!isEditing} />
                                         </div>
                                     </div>
+
+
                                 </div>
                             </div>
                         )}

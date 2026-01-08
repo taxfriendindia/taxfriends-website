@@ -18,9 +18,9 @@ const Footer = () => {
                     <div>
                         <Link to="/" className="flex items-center space-x-2 mb-6 group">
                             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform duration-300">
-                                TF
+                                ATF
                             </div>
-                            <span className="font-bold text-2xl text-gray-900 dark:text-white tracking-tight">TaxFriend</span>
+                            <span className="font-bold text-2xl text-gray-900 dark:text-white tracking-tight">Apna TaxFriend</span>
                         </Link>
                         <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed text-sm">
                             Your trusted partner for all tax and business compliance needs. Simplifying finance for businesses across India since 2013.
@@ -44,7 +44,6 @@ const Footer = () => {
                             {[
                                 { name: 'Home', path: '/' },
                                 { name: 'About Us', path: '/about' },
-                                { name: 'City Partner', path: '/partner-program' },
                                 { name: 'Contact', path: '/contact' },
                                 { name: 'Login', path: '/login' },
                                 { name: 'Privacy Policy', path: '/privacy-policy' }
@@ -136,7 +135,7 @@ const Footer = () => {
 
                 {/* Copyright */}
                 <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400">
-                    <p>© {new Date().getFullYear()} TaxFriend. All rights reserved.</p>
+                    <p>© {new Date().getFullYear()} Apna TaxFriend. All rights reserved.</p>
                     <div className="flex space-x-6 mt-4 md:mt-0">
                         <Link to="/privacy-policy" className="hover:text-blue-600 transition-colors">Privacy Policy</Link>
                         <Link to="/terms" className="hover:text-blue-600 transition-colors">Terms of Service</Link>

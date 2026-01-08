@@ -402,7 +402,7 @@ const Services = () => {
               className="text-center mb-16"
             >
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                Why Indian Businesses Trust TaxFriends?
+                Why Indian Businesses Trust Apna TaxFriend?
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
                 We understand the unique challenges faced by Indian businesses and provide tailored solutions

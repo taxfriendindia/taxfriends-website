@@ -20,14 +20,14 @@ const Navbar = () => {
     const isActive = (path) => location.pathname === path ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20" : "text-gray-600 dark:text-gray-300 hover:text-blue-600"
 
     return (
-        <nav className="fixed top-0 w-full z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 transition-all duration-300">
+        <nav className="fixed top-0 w-full z-50 bg-white/60 dark:bg-gray-900/60 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 transition-all duration-300">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-20">
                     <Link to="/" className="flex items-center space-x-2 group">
                         <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform">
-                            TF
+                            ATF
                         </div>
-                        <span className="font-bold text-2xl text-gray-900 dark:text-white tracking-tight">TaxFriend</span>
+                        <span className="font-bold text-2xl text-gray-900 dark:text-white tracking-tight">Apna TaxFriend</span>
                     </Link>
 
                     <div className="hidden md:flex items-center space-x-6 lg:space-x-8">
@@ -35,7 +35,7 @@ const Navbar = () => {
                         <Link to="/services" className={`px-4 py-2 rounded-lg font-medium transition-all ${isActive('/services')}`}>Services</Link>
                         <Link to="/about" className={`px-4 py-2 rounded-lg font-medium transition-all ${isActive('/about')}`}>About</Link>
                         <Link to="/contact" className={`px-4 py-2 rounded-lg font-medium transition-all ${isActive('/contact')}`}>Contact</Link>
-                        <Link to="/partner-program" className={`px-4 py-2 rounded-lg font-medium transition-all ${isActive('/partner-program')}`}>City Partner</Link>
+
                         <Link to="/privacy-policy" className={`px-4 py-2 rounded-lg font-medium transition-all ${isActive('/privacy-policy')}`}>Privacy Policy</Link>
                     </div>
 
@@ -72,7 +72,7 @@ const Navbar = () => {
                             <Link to="/services" className="block text-lg font-medium text-gray-900 dark:text-white" onClick={() => setIsMobileMenuOpen(false)}>Services</Link>
                             <Link to="/about" className="block text-lg font-medium text-gray-900 dark:text-white" onClick={() => setIsMobileMenuOpen(false)}>About</Link>
                             <Link to="/contact" className="block text-lg font-medium text-gray-900 dark:text-white" onClick={() => setIsMobileMenuOpen(false)}>Contact</Link>
-                            <Link to="/partner-program" className="block text-lg font-medium text-blue-600 dark:text-blue-400 font-bold" onClick={() => setIsMobileMenuOpen(false)}>City Partner Program</Link>
+
                             <Link to="/privacy-policy" className="block text-lg font-medium text-gray-500 dark:text-gray-400" onClick={() => setIsMobileMenuOpen(false)}>Privacy Policy</Link>
 
                             <div className="pt-4 border-t border-gray-100 dark:border-gray-800">

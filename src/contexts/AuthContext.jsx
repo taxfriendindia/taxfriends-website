@@ -51,7 +51,6 @@ export const AuthProvider = ({ children }) => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event)
       if (session?.user) {
         fetchProfile(session.user)
       } else {
@@ -78,7 +77,6 @@ export const AuthProvider = ({ children }) => {
         table: 'profiles',
         filter: `id=eq.${user.id}`
       }, payload => {
-        console.log('Profile updated in real-time:', payload.new)
         setUser(prev => {
           // Only update if we have a previous user to merge with
           if (!prev) return payload.new;

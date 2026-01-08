@@ -5,6 +5,9 @@ import { UserService } from '../../services/userService'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import StatusModal from '../../components/StatusModal'
+import { DocumentService } from '../../services/documentService'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Upload, X, CheckCircle2 } from 'lucide-react'
 
 const AdminServices = () => {
     const { user } = useAuth()
@@ -12,6 +15,7 @@ const AdminServices = () => {
     const [services, setServices] = useState([])
     const [loading, setLoading] = useState(true)
     const [rejectionModal, setRejectionModal] = useState({ isOpen: false, serviceId: null, userId: null, title: '' })
+    const [completionModal, setCompletionModal] = useState({ isOpen: false, service: null })
     const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'success', title: '', message: '' })
 
     // Filters State
@@ -126,7 +130,6 @@ const AdminServices = () => {
     const handleStatusUpdate = async (id, newStatus) => {
         try {
             // We update the status
-            // Note: 'admin_id' column is currently missing in DB. Uncomment after running supabase/05_admin_tracking.sql
             const { error } = await supabase
                 .from('user_services')
                 .update({
@@ -138,7 +141,7 @@ const AdminServices = () => {
             if (error) throw error
 
             setServices(services.map(s =>
-                s.id === id ? { ...s, status: newStatus } : s
+                s.id === id ? { ...s, status: newStatus, handled_by: user.id } : s
             ))
         } catch (error) {
             console.error('Error updating status:', error)
@@ -372,7 +375,18 @@ const AdminServices = () => {
                                                 </span>
                                             </td>
                                             <td className="px-8 py-5 text-right">
-                                                <ServiceActions item={item} onUpdate={handleStatusUpdate} onDelete={deleteServiceRequest} />
+                                                <ServiceActions
+                                                    item={item}
+                                                    onUpdate={handleStatusUpdate}
+                                                    onDelete={deleteServiceRequest}
+                                                    onReject={(serviceId, userId, title) => setRejectionModal({
+                                                        isOpen: true,
+                                                        serviceId,
+                                                        userId,
+                                                        title
+                                                    })}
+                                                    onComplete={(service) => setCompletionModal({ isOpen: true, service })}
+                                                />
                                             </td>
                                         </tr>
                                     ))}
@@ -413,7 +427,18 @@ const AdminServices = () => {
                                     <div className="flex justify-between items-center gap-2 pt-2">
                                         <div className="text-[10px] text-slate-400 italic">Actions</div>
                                         <div className="flex gap-1">
-                                            <ServiceActions item={item} onUpdate={handleStatusUpdate} onDelete={deleteServiceRequest} />
+                                            <ServiceActions
+                                                item={item}
+                                                onUpdate={handleStatusUpdate}
+                                                onDelete={deleteServiceRequest}
+                                                onReject={(serviceId, userId, title) => setRejectionModal({
+                                                    isOpen: true,
+                                                    serviceId,
+                                                    userId,
+                                                    title
+                                                })}
+                                                onComplete={(service) => setCompletionModal({ isOpen: true, service })}
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -494,7 +519,135 @@ const AdminServices = () => {
                 title={statusModal.title}
                 message={statusModal.message}
             />
+
+            <CompletionModal
+                isOpen={completionModal.isOpen}
+                onClose={() => setCompletionModal({ isOpen: false, service: null })}
+                service={completionModal.service}
+                onSuccess={(id, url) => {
+                    setServices(services.map(s => s.id === id ? { ...s, status: 'completed', completed_file_url: url, handled_by: user.id } : s))
+                    setStatusModal({
+                        isOpen: true,
+                        type: 'success',
+                        title: 'Task Completed',
+                        message: 'Service marked as completed and client notified.'
+                    })
+                }}
+                adminUser={user}
+            />
         </div>
+    )
+}
+
+const CompletionModal = ({ isOpen, onClose, service, onSuccess, adminUser }) => {
+    const [file, setFile] = useState(null)
+    const [uploading, setUploading] = useState(false)
+
+    if (!isOpen || !service) return null
+
+    const handleComplete = async (withFile) => {
+        try {
+            setUploading(true)
+            let fileUrl = null
+
+            if (withFile && file) {
+                fileUrl = await DocumentService.uploadCompletedServiceFile(
+                    service.user_id,
+                    service.id,
+                    file,
+                    service.profile
+                )
+            } else {
+                // Direct complete without file
+                const { error } = await supabase
+                    .from('user_services')
+                    .update({ status: 'completed', handled_by: adminUser.id })
+                    .eq('id', service.id)
+                if (error) throw error
+            }
+
+            onSuccess(service.id, fileUrl)
+            onClose()
+        } catch (e) {
+            console.error(e)
+            alert('Completion failed: ' + e.message)
+        } finally {
+            setUploading(false)
+            setFile(null)
+        }
+    }
+
+    return (
+        <AnimatePresence>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                    className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100"
+                >
+                    <div className="p-8">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-800 tracking-tight">Complete Service</h3>
+                                <p className="text-slate-500 font-medium text-sm mt-1">{service.title} for {service.profile.full_name}</p>
+                            </div>
+                            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-3xl flex items-center gap-4">
+                                <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
+                                    <CheckCircle2 size={24} />
+                                </div>
+                                <div>
+                                    <p className="font-black text-emerald-900 text-sm">Finishing Request</p>
+                                    <p className="text-emerald-700 text-xs font-medium">Marking this service as resolved.</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Upload Work Copy (Optional)</label>
+                                <div className={`relative border-2 border-dashed rounded-3xl p-8 transition-all ${file ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30'}`}>
+                                    <input
+                                        type="file"
+                                        onChange={(e) => setFile(e.target.files[0])}
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                    />
+                                    <div className="flex flex-col items-center text-center">
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${file ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                                            <Upload size={20} />
+                                        </div>
+                                        <p className="text-sm font-bold text-slate-700">{file ? file.name : 'Choose file or drag & drop'}</p>
+                                        <p className="text-[10px] text-slate-400 font-medium mt-1">PDF, Images or Doc files</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mt-8">
+                            <button
+                                onClick={() => handleComplete(false)}
+                                disabled={uploading}
+                                className="px-6 py-4 bg-slate-100 text-slate-600 border border-slate-200 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all disabled:opacity-50"
+                            >
+                                Complete Only
+                            </button>
+                            <button
+                                onClick={() => handleComplete(true)}
+                                disabled={uploading || !file}
+                                className="px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {uploading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Upload size={14} />}
+                                Upload & Finish
+                            </button>
+                        </div>
+                    </div>
+                </motion.div>
+            </div>
+        </AnimatePresence>
     )
 }
 
@@ -522,13 +675,13 @@ const StatBox = ({ label, count, icon: Icon, color }) => {
     );
 }
 
-const ServiceActions = ({ item, onUpdate, onDelete }) => {
-    const isActionable = item.status !== 'completed';
+const ServiceActions = ({ item, onUpdate, onDelete, onReject, onComplete }) => {
+    const isActionable = !['completed', 'rejected', 'cancelled'].includes(item.status);
     const isProcessing = item.status === 'processing';
 
     return (
         <div className="flex items-center justify-end gap-2">
-            {!isProcessing && item.status !== 'completed' && (
+            {isActionable && !isProcessing && (
                 <button
                     onClick={() => onUpdate(item.id, 'processing')}
                     className="px-6 py-2.5 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-xl shadow-indigo-200 active:scale-95"
@@ -541,7 +694,7 @@ const ServiceActions = ({ item, onUpdate, onDelete }) => {
             {isProcessing && (
                 <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl animate-in fade-in zoom-in duration-300">
                     <button
-                        onClick={() => onUpdate(item.id, 'completed')}
+                        onClick={() => onComplete(item)}
                         className="flex items-center gap-2 px-4 py-2 bg-white text-emerald-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-50 transition-all shadow-sm border border-emerald-100"
                         title="Mark as Completed"
                     >
@@ -549,12 +702,7 @@ const ServiceActions = ({ item, onUpdate, onDelete }) => {
                         Complete
                     </button>
                     <button
-                        onClick={() => setRejectionModal({
-                            isOpen: true,
-                            serviceId: item.id,
-                            userId: item.user_id,
-                            title: item.title
-                        })}
+                        onClick={() => onReject(item.id, item.user_id, item.title)}
                         className="flex items-center gap-2 px-4 py-2 bg-white text-rose-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-50 transition-all shadow-sm border border-rose-100"
                         title="Reject & Notify"
                     >
