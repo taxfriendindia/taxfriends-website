@@ -34,45 +34,45 @@ const AdminLayout = () => {
         { to: "/admin/announcements", icon: Megaphone, label: "Broadcast" },
     ]
 
-    const isSuper = user?.role === 'superuser' || user?.email === 'taxfriend.tax@gmail.com'
-    const finalMenuItems = isSuper
-        ? [...menuItems, { to: "/admin/super-reset", icon: Zap, label: "System Reset" }]
-        : menuItems
+    const finalMenuItems = menuItems
 
     return (
-        <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 bg-[url('https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=2629&auto=format&fit=crop')] bg-cover bg-fixed relative">
+        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-emerald-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-indigo-950/20 flex font-sans text-gray-900 dark:text-white relative">
             {/* Overlay */}
-            <div className="fixed inset-0 bg-slate-100/90 backdrop-blur-sm z-0 pointer-events-none"></div>
+            <div className="fixed inset-0 bg-gradient-to-br from-indigo-50/50 via-transparent to-emerald-50/30 dark:from-transparent z-0 pointer-events-none"></div>
 
             {/* Sidebar (Desktop) */}
             <aside
                 onMouseEnter={() => setSidebarOpen(true)}
                 onMouseLeave={() => setSidebarOpen(false)}
-                className={`fixed inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out border-r border-white/20 shadow-2xl ${isSidebarOpen ? 'w-64' : 'w-20'} hidden lg:block
-                bg-slate-900/80 backdrop-blur-md text-white`}
+                className={`fixed inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out border-r border-indigo-100/50 dark:border-gray-800 shadow-2xl ${isSidebarOpen ? 'w-64' : 'w-20'} hidden lg:block
+                bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl`}
             >
                 {/* Header */}
-                <div className="h-16 flex items-center justify-between px-4 border-b border-white/10 relative">
+                <div className="h-16 flex items-center justify-between px-4 border-b border-indigo-100/50 dark:border-gray-800 bg-gradient-to-r from-indigo-50/50 to-transparent dark:from-indigo-950/20 relative">
                     <div className={`flex items-center ${!isSidebarOpen && 'justify-center w-full'}`}>
-                        <Shield className="text-emerald-400 flex-shrink-0" size={24} />
-                        <span className={`font-bold text-lg ml-3 whitespace-nowrap transition-opacity duration-200 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 hidden'}`}>
+                        <div className="relative">
+                            <Shield className="text-indigo-700 dark:text-indigo-400 flex-shrink-0" size={24} />
+                            <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full"></div>
+                        </div>
+                        <span className={`font-black text-lg ml-3 whitespace-nowrap transition-opacity duration-200 text-gray-900 dark:text-white ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 hidden'}`}>
                             Admin Panel
                         </span>
                     </div>
                 </div>
 
                 <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                    <nav className="flex-1 overflow-y-auto p-4 space-y-2 py-6 scrollbar-thin scrollbar-thumb-emerald-500/40 scrollbar-track-transparent hover:scrollbar-thumb-emerald-500/60 transition-all">
+                    <nav className="flex-1 overflow-y-auto p-4 space-y-2 py-6 scrollbar-thin scrollbar-thumb-indigo-200 dark:scrollbar-thumb-indigo-800 scrollbar-track-transparent hover:scrollbar-thumb-indigo-300 dark:hover:scrollbar-thumb-indigo-700 transition-all">
                         {finalMenuItems.map(item => (
                             <NavItem key={item.to} to={item.to} icon={item.icon} label={item.label} isOpen={isSidebarOpen} />
                         ))}
                     </nav>
 
-                    <div className="p-4 border-t border-white/10 bg-slate-900/60 backdrop-blur-md space-y-3 shrink-0">
+                    <div className="p-4 border-t border-indigo-100/50 dark:border-gray-800 bg-gradient-to-b from-transparent to-indigo-50/30 dark:to-indigo-950/10 space-y-3 shrink-0">
                         <NavItem to="/admin/profile" icon={User} label="My Profile" isOpen={isSidebarOpen} />
                         <button
                             onClick={handleLogout}
-                            className={`flex items-center w-full p-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white group border border-rose-500/20 shadow-lg shadow-rose-500/5 ${!isSidebarOpen && 'justify-center'}`}
+                            className={`flex items-center w-full p-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-600 dark:hover:bg-rose-600 hover:text-white group border border-rose-200 dark:border-rose-800 shadow-lg shadow-rose-100 dark:shadow-none ${!isSidebarOpen && 'justify-center'}`}
                             title="Logout System"
                         >
                             <LogOut size={20} className="shrink-0 group-hover:scale-110 transition-transform" />
@@ -85,17 +85,20 @@ const AdminLayout = () => {
             </aside>
 
             {/* Mobile Header */}
-            <header className="lg:hidden fixed top-0 w-full bg-slate-900/90 backdrop-blur-md text-white z-[60] h-16 flex items-center justify-between px-4 shadow-md border-b border-white/10">
+            <header className="lg:hidden fixed top-0 w-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl text-gray-900 dark:text-white z-[60] h-16 flex items-center justify-between px-4 shadow-lg border-b border-indigo-100/50 dark:border-gray-800">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => setMobileMenuOpen(true)}
-                        className="p-2 hover:bg-white/10 rounded-lg"
+                        className="p-2.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-xl transition-colors"
                     >
-                        <Menu size={24} />
+                        <Menu size={22} />
                     </button>
-                    <div className="flex items-center">
-                        <Shield className="text-emerald-400 mr-2" size={20} />
-                        <span className="font-bold text-sm">ADMIN HUB</span>
+                    <div className="flex items-center gap-2">
+                        <div className="relative">
+                            <Shield className="text-indigo-700 dark:text-indigo-400" size={20} />
+                            <div className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+                        </div>
+                        <span className="font-black text-sm uppercase tracking-wider">Admin Hub</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -122,17 +125,20 @@ const AdminLayout = () => {
                             initial={{ x: '-100%' }}
                             animate={{ x: 0 }}
                             exit={{ x: '-100%' }}
-                            className="fixed inset-y-0 left-0 w-72 bg-slate-900 z-[80] lg:hidden flex flex-col p-6 shadow-2xl border-r border-white/10"
+                            className="fixed inset-y-0 left-0 w-72 bg-white dark:bg-gray-900 z-[80] lg:hidden flex flex-col p-6 shadow-2xl border-r border-indigo-100/50 dark:border-gray-800"
                         >
                             <div className="flex items-center justify-between mb-10">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white font-bold">A</div>
-                                    <span className="font-bold text-xl tracking-tight text-white">Admin Hub</span>
+                                    <div className="relative">
+                                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-700 to-indigo-900 rounded-xl flex items-center justify-center text-white font-black">TF</div>
+                                        <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white dark:border-gray-900"></div>
+                                    </div>
+                                    <span className="font-black text-xl tracking-tight text-gray-900 dark:text-white">Admin Hub</span>
                                 </div>
-                                <button onClick={() => setMobileMenuOpen(false)} className="p-2 hover:bg-white/10 rounded-lg text-white"><X size={24} /></button>
+                                <button onClick={() => setMobileMenuOpen(false)} className="p-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl text-gray-900 dark:text-white transition-colors"><X size={24} /></button>
                             </div>
 
-                            <nav className="space-y-4">
+                            <nav className="space-y-3">
                                 {finalMenuItems.map((item) => (
                                     <NavLink
                                         key={item.to}
@@ -140,8 +146,8 @@ const AdminLayout = () => {
                                         onClick={() => setMobileMenuOpen(false)}
                                         className={({ isActive }) =>
                                             `flex items-center p-4 rounded-2xl font-bold transition-all ${isActive
-                                                ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-500/30'
-                                                : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                                                ? 'bg-indigo-600 dark:bg-indigo-700 text-white shadow-xl shadow-indigo-200 dark:shadow-none'
+                                                : 'text-gray-600 dark:text-gray-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300'
                                             }`
                                         }
                                     >
@@ -151,14 +157,14 @@ const AdminLayout = () => {
                                 ))}
                             </nav>
 
-                            <div className="mt-auto space-y-4 pt-6 border-t border-white/10">
+                            <div className="mt-auto space-y-3 pt-6 border-t border-indigo-100/50 dark:border-gray-800">
                                 <NavLink
                                     to="/admin/profile"
                                     onClick={() => setMobileMenuOpen(false)}
                                     className={({ isActive }) =>
                                         `flex items-center p-4 rounded-2xl font-bold transition-all ${isActive
-                                            ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-500/30'
-                                            : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                                            ? 'bg-indigo-600 dark:bg-indigo-700 text-white shadow-xl shadow-indigo-200 dark:shadow-none'
+                                            : 'text-gray-600 dark:text-gray-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300'
                                         }`
                                     }
                                 >
@@ -166,7 +172,7 @@ const AdminLayout = () => {
                                 </NavLink>
                                 <button
                                     onClick={handleLogout}
-                                    className="flex items-center p-4 w-full text-red-400 bg-red-400/10 rounded-2xl font-bold"
+                                    className="flex items-center p-4 w-full text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-600 dark:hover:bg-rose-600 hover:text-white rounded-2xl font-bold transition-all border border-rose-200 dark:border-rose-800"
                                 >
                                     <LogOut size={22} className="mr-4" /> Logout Admin
                                 </button>
@@ -212,9 +218,9 @@ const NavItem = ({ to, icon: Icon, label, isOpen }) => (
     <NavLink
         to={to}
         className={({ isActive }) =>
-            `flex items-center p-3 rounded-xl transition-all duration-200 whitespace-nowrap ${isActive
-                ? 'bg-emerald-600/80 text-white shadow-lg shadow-emerald-500/30 backdrop-blur-sm border border-white/10'
-                : 'text-slate-300 hover:bg-white/10 hover:text-white'
+            `flex items-center p-3 rounded-xl transition-all duration-200 whitespace-nowrap font-semibold ${isActive
+                ? 'bg-indigo-600 dark:bg-indigo-700 text-white shadow-lg shadow-indigo-200 dark:shadow-none border border-indigo-500/20'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300'
             } ${!isOpen && 'justify-center'}`
         }
         title={!isOpen ? label : ''}

@@ -4,6 +4,7 @@ import { Menu, X, ArrowRight, User } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLocation } from 'react-router-dom'
+import ThemeToggle from './ThemeToggle'
 
 const Navbar = () => {
     const { user, signOut } = useAuth()
@@ -26,7 +27,7 @@ const Navbar = () => {
                     <Link to="/" className="flex items-center space-x-3 group">
                         <div className="relative">
                             <div className="w-11 h-11 bg-gradient-to-br from-indigo-700 to-indigo-900 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-xl shadow-indigo-500/20 group-hover:scale-110 transition-transform duration-500">
-                                TFI
+                                TF
                             </div>
                             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-gray-900"></div>
                         </div>
@@ -42,6 +43,7 @@ const Navbar = () => {
                     </div>
 
                     <div className="hidden md:flex items-center space-x-4">
+                        <ThemeToggle />
                         {user ? (
                             <div className="flex items-center space-x-4">
                                 <Link to="/dashboard" className="flex items-center space-x-2 px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 rounded-full text-indigo-700 dark:text-indigo-300 font-bold transition-all border border-indigo-100 dark:border-indigo-800 shadow-sm">
@@ -70,6 +72,10 @@ const Navbar = () => {
                 {isMobileMenuOpen && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="md:hidden overflow-hidden bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-indigo-100 dark:border-gray-800 shadow-2xl">
                         <div className="px-5 py-8 space-y-4">
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-sm font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">Theme</span>
+                                <ThemeToggle />
+                            </div>
                             <Link to="/" className="block text-xl font-bold text-gray-900 dark:text-white hover:text-indigo-700" onClick={() => setIsMobileMenuOpen(false)}>Home</Link>
                             <Link to="/services" className="block text-xl font-bold text-gray-900 dark:text-white hover:text-indigo-700" onClick={() => setIsMobileMenuOpen(false)}>Services</Link>
                             <Link to="/about" className="block text-xl font-bold text-gray-900 dark:text-white hover:text-indigo-700" onClick={() => setIsMobileMenuOpen(false)}>About</Link>

@@ -188,11 +188,11 @@ const AdminServices = () => {
     }
 
     return (
-        <div className="space-y-6 font-sans text-slate-900">
+        <div className="space-y-6 font-sans text-gray-900 dark:text-white">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Service Requests</h1>
-                    <p className="text-slate-500 mt-1">Manage, filter, and track service performance.</p>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Service Requests</h1>
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">Manage, filter, and track service performance.</p>
                 </div>
                 {services.some(s => s.status === 'rejected') && user?.role === 'superuser' && (
                     <button
@@ -214,16 +214,16 @@ const AdminServices = () => {
             </div>
 
             {/* Controls Bar */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4 md:space-y-0 md:flex md:items-center md:gap-4">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-4 md:space-y-0 md:flex md:items-center md:gap-4">
                 {/* Search */}
                 <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input
                         type="text"
                         placeholder="Search clients or services..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                        className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
                 </div>
 
@@ -233,11 +233,11 @@ const AdminServices = () => {
                     {/* Admin Filter - Replaces Manage Admins Page */}
                     {(user?.role === 'superuser' || admins.length > 0) && (
                         <div className="flex flex-col">
-                            <label className="text-[10px] uppercase font-bold text-slate-400 pl-1 mb-0.5">Filter by Admin</label>
+                            <label className="text-[10px] uppercase font-bold text-gray-400 pl-1 mb-0.5">Filter by Admin</label>
                             <select
                                 value={adminFilter}
                                 onChange={(e) => setAdminFilter(e.target.value)}
-                                className="px-3 py-2 border border-slate-200 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white cursor-pointer min-w-[160px]"
+                                className="px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white dark:bg-gray-700 cursor-pointer min-w-[160px]"
                             >
                                 <option value="all">All Admins</option>
                                 {admins.map(adm => (
@@ -249,11 +249,11 @@ const AdminServices = () => {
 
                     {/* Status Filter */}
                     <div className="flex flex-col">
-                        <label className="text-[10px] uppercase font-bold text-slate-400 pl-1 mb-0.5">Status</label>
+                        <label className="text-[10px] uppercase font-bold text-gray-400 pl-1 mb-0.5">Status</label>
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="px-3 py-2 border border-slate-200 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white cursor-pointer min-w-[140px]"
+                            className="px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white dark:bg-gray-700 cursor-pointer min-w-[140px]"
                         >
                             <option value="all">All Statuses</option>
                             <option value="pending">Pending</option>
@@ -265,11 +265,11 @@ const AdminServices = () => {
 
                     {/* Service Type Filter */}
                     <div className="flex flex-col">
-                        <label className="text-[10px] uppercase font-bold text-slate-400 pl-1 mb-0.5">Service Type</label>
+                        <label className="text-[10px] uppercase font-bold text-gray-400 pl-1 mb-0.5">Service Type</label>
                         <select
                             value={serviceTypeFilter}
                             onChange={(e) => setServiceTypeFilter(e.target.value)}
-                            className="px-3 py-2 border border-slate-200 rounded-lg text-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white cursor-pointer min-w-[180px] max-w-[250px]"
+                            className="px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white dark:bg-gray-700 cursor-pointer min-w-[180px] max-w-[250px]"
                         >
                             <option value="all">All Services</option>
                             {availableServiceTypes.map(type => (
@@ -280,10 +280,10 @@ const AdminServices = () => {
 
                     {/* Sort Order */}
                     <div className="flex flex-col">
-                        <label className="text-[10px] uppercase font-bold text-slate-400 pl-1 mb-0.5">Sort</label>
+                        <label className="text-[10px] uppercase font-bold text-gray-400 pl-1 mb-0.5">Sort</label>
                         <button
                             onClick={() => setSortBy(prev => prev === 'newest' ? 'oldest' : 'newest')}
-                            className="flex items-center justify-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-slate-700 text-sm hover:bg-slate-50 transition-colors bg-white min-w-[140px]"
+                            className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors bg-white dark:bg-gray-800 min-w-[140px]"
                             title="Toggle Sort Order"
                         >
                             <ArrowDownUp size={16} className="text-emerald-500" />
@@ -293,9 +293,9 @@ const AdminServices = () => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 {loading ? (
-                    <div className="p-12 text-center text-slate-500">
+                    <div className="p-12 text-center text-gray-500 dark:text-gray-400">
                         <div className="animate-spin inline-block w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full mb-2"></div>
                         <p>Loading services...</p>
                     </div>
@@ -304,18 +304,18 @@ const AdminServices = () => {
                         {/* Table View (Desktop) */}
                         <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-50 border-b border-slate-200">
-                                    <tr className="bg-slate-50/50">
-                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Client Identity</th>
-                                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Service Requested</th>
-                                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date / Time</th>
-                                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                                <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                                    <tr className="bg-gray-50/50 dark:bg-gray-900/50">
+                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Client Identity</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Requested</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date / Time</th>
+                                        <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                                     {filteredServices.map(item => (
-                                        <tr key={item.id} className="hover:bg-slate-50/80 transition-all group">
+                                        <tr key={item.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-700/50 transition-all group">
                                             <td className="px-8 py-5">
                                                 <div className="flex items-center gap-4">
                                                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 ${item.profile.role === 'admin' || item.profile.role === 'superuser'
@@ -326,7 +326,7 @@ const AdminServices = () => {
                                                     </div>
                                                     <div>
                                                         <div className="flex items-center gap-2">
-                                                            <p className="font-black text-slate-800 text-[14px] tracking-tight leading-none">
+                                                            <p className="font-black text-gray-900 dark:text-white text-[14px] tracking-tight leading-none">
                                                                 {item.profile.full_name || 'New Client'}
                                                             </p>
                                                             {(item.profile.role === 'admin' || item.profile.role === 'superuser') && (
@@ -335,7 +335,7 @@ const AdminServices = () => {
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <p className="text-[11px] font-bold text-slate-400 mt-1 lowercase tracking-tight">
+                                                        <p className="text-[11px] font-bold text-gray-500 dark:text-gray-300 mt-1 lowercase tracking-tight">
                                                             {item.profile.email || 'no-email-synced'}
                                                         </p>
                                                     </div>
@@ -343,20 +343,20 @@ const AdminServices = () => {
                                             </td>
                                             <td className="px-6 py-5">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100">
+                                                    <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-800">
                                                         <Activity size={16} />
                                                     </div>
                                                     <div>
-                                                        <p className="text-[13px] font-black text-slate-700 leading-tight">{item.title || 'Untitled Service'}</p>
-                                                        {item.description && <p className="text-[10px] text-slate-400 font-medium truncate max-w-[150px]">{item.description}</p>}
+                                                        <p className="text-[13px] font-black text-gray-900 dark:text-white leading-tight">{item.title || 'Untitled Service'}</p>
+                                                        {item.description && <p className="text-[10px] text-gray-500 dark:text-gray-300 font-medium truncate max-w-[150px]">{item.description}</p>}
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-5">
-                                                <div className="text-[11px] font-black text-slate-700 uppercase tracking-widest">
+                                                <div className="text-[11px] font-black text-gray-900 dark:text-white uppercase tracking-widest">
                                                     {new Date(item.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
                                                 </div>
-                                                <div className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase">
+                                                <div className="text-[9px] font-bold text-gray-500 dark:text-gray-300 mt-0.5 uppercase">
                                                     {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </div>
                                             </td>
@@ -656,20 +656,20 @@ export default AdminServices
 // Reusable Sub-components for Cleanliness & Responsiveness
 const StatBox = ({ label, count, icon: Icon, color }) => {
     const colorStyles = {
-        emerald: "bg-emerald-50 text-emerald-600 border-emerald-100 shadow-emerald-100",
-        rose: "bg-rose-50 text-rose-600 border-rose-100 shadow-rose-100",
-        amber: "bg-amber-50 text-amber-600 border-amber-100 shadow-amber-100",
-        indigo: "bg-indigo-50 text-indigo-600 border-indigo-100 shadow-indigo-100"
+        emerald: "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800 shadow-emerald-100",
+        rose: "bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800 shadow-rose-100",
+        amber: "bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800 shadow-amber-100",
+        indigo: "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800 shadow-indigo-100"
     };
 
     return (
-        <div className={`bg-white p-4 md:p-6 rounded-[2rem] shadow-sm border border-slate-200 flex items-center gap-4 group hover:shadow-xl transition-all duration-500 hover:-translate-y-1`}>
+        <div className={`bg-white dark:bg-gray-800 p-4 md:p-6 rounded-[2rem] shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4 group hover:shadow-xl transition-all duration-500 hover:-translate-y-1`}>
             <div className={`p-4 rounded-2xl ${colorStyles[color]} border transition-all duration-500 group-hover:scale-110 group-hover:rotate-6`}>
                 <Icon size={24} />
             </div>
             <div>
-                <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-2">{label}</div>
-                <div className="text-xl md:text-3xl font-black text-slate-800 leading-none">{count}</div>
+                <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none mb-2">{label}</div>
+                <div className="text-xl md:text-3xl font-black text-gray-900 dark:text-white leading-none">{count}</div>
             </div>
         </div>
     );

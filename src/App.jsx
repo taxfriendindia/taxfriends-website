@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import ScrollToTop from './components/Shared/ScrollToTop'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 import { Loader2 } from 'lucide-react'
 import Login from './components/auth/Login'
 import Home from './pages/Home/Home'
@@ -63,50 +64,52 @@ const AdminRoute = ({ children }) => {
 
 function App() {
   return (
-    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <ScrollToTop />
-      <AuthProvider>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<Home />} />
-          <Route path="/services" element={<PublicServices />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/terms-of-service" element={<TermsOfService />} />
-          <Route path="/refund-policy" element={<RefundPolicy />} />
-          <Route path="/login" element={<Login />} />
+    <ThemeProvider>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <ScrollToTop />
+        <AuthProvider>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Home />} />
+            <Route path="/services" element={<PublicServices />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/terms-of-service" element={<TermsOfService />} />
+            <Route path="/refund-policy" element={<RefundPolicy />} />
+            <Route path="/login" element={<Login />} />
 
-          {/* Client Portal Routes */}
-          <Route path="/dashboard" element={<PrivateRoute><ClientLayout /></PrivateRoute>}>
-            <Route index element={<Navigate to="services" replace />} />
-            <Route path="services" element={<Services />} />
-            <Route path="documents" element={<Documents />} />
-            <Route path="history" element={<History />} />
-            <Route path="profile" element={<Profile />} />
-          </Route>
+            {/* Client Portal Routes */}
+            <Route path="/dashboard" element={<PrivateRoute><ClientLayout /></PrivateRoute>}>
+              <Route index element={<Navigate to="services" replace />} />
+              <Route path="services" element={<Services />} />
+              <Route path="documents" element={<Documents />} />
+              <Route path="history" element={<History />} />
+              <Route path="profile" element={<Profile />} />
+            </Route>
 
-          {/* Admin Portal Routes (Protected) */}
-          <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="clients" element={<AdminClients />} />
-            <Route path="documents" element={<AdminRequests />} />
-            <Route path="services" element={<AdminServices />} />
-            <Route path="records" element={<AdminRecords />} />
-            <Route path="announcements" element={<AdminAnnouncements />} />
-            <Route path="super-reset" element={<SuperReset />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="*" element={<div className="p-8 text-gray-500">Page Under Construction</div>} />
-          </Route>
+            {/* Admin Portal Routes (Protected) */}
+            <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="clients" element={<AdminClients />} />
+              <Route path="documents" element={<AdminRequests />} />
+              <Route path="services" element={<AdminServices />} />
+              <Route path="records" element={<AdminRecords />} />
+              <Route path="announcements" element={<AdminAnnouncements />} />
+              <Route path="super-reset" element={<SuperReset />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="*" element={<div className="p-8 text-gray-500">Page Under Construction</div>} />
+            </Route>
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
 
-        </Routes>
-      </AuthProvider>
-    </Router>
+          </Routes>
+        </AuthProvider>
+      </Router>
+    </ThemeProvider>
   )
 }
 

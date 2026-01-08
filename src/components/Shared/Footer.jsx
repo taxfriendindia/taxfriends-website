@@ -19,7 +19,7 @@ const Footer = () => {
                         <Link to="/" className="flex items-center space-x-3 mb-8 group">
                             <div className="relative">
                                 <div className="w-12 h-12 bg-gradient-to-br from-indigo-700 to-indigo-900 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-xl shadow-indigo-500/20 group-hover:scale-110 transition-transform duration-500">
-                                    TFI
+                                    TF
                                 </div>
                                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-gray-900"></div>
                             </div>

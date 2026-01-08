@@ -14,12 +14,12 @@ export const ThemeProvider = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(false)
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('apnataxfriend-theme')
+    const savedTheme = localStorage.getItem('taxfriend-theme')
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
 
     if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
       setIsDarkMode(true)
-      document.body.classList.add('dark')
+      document.documentElement.classList.add('dark')
     }
   }, [])
 
@@ -28,11 +28,11 @@ export const ThemeProvider = ({ children }) => {
     setIsDarkMode(newDarkMode)
 
     if (newDarkMode) {
-      document.body.classList.add('dark')
-      localStorage.setItem('apnataxfriend-theme', 'dark')
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('taxfriend-theme', 'dark')
     } else {
-      document.body.classList.remove('dark')
-      localStorage.setItem('apnataxfriend-theme', 'light')
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('taxfriend-theme', 'light')
     }
   }
 
