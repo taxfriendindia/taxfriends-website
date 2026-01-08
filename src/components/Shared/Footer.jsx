@@ -11,24 +11,27 @@ const Footer = () => {
 
 
     return (
-        <footer className="bg-gray-100 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 pt-16 pb-8 transition-colors duration-300">
+        <footer className="bg-gradient-to-b from-indigo-50/50 to-white dark:from-gray-900 dark:to-gray-950 border-t border-indigo-100/50 dark:border-gray-800 pt-20 pb-10 transition-colors duration-300">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 mb-16">
                     {/* Brand Column */}
                     <div>
-                        <Link to="/" className="flex items-center space-x-2 mb-6 group">
-                            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform duration-300">
-                                ATF
+                        <Link to="/" className="flex items-center space-x-3 mb-8 group">
+                            <div className="relative">
+                                <div className="w-12 h-12 bg-gradient-to-br from-indigo-700 to-indigo-900 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-xl shadow-indigo-500/20 group-hover:scale-110 transition-transform duration-500">
+                                    TFI
+                                </div>
+                                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-gray-900"></div>
                             </div>
-                            <span className="font-bold text-2xl text-gray-900 dark:text-white tracking-tight">Apna TaxFriend</span>
+                            <span className="font-black text-2xl text-gray-900 dark:text-white tracking-tight">TaxFriend India</span>
                         </Link>
-                        <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed text-sm">
-                            Your trusted partner for all tax and business compliance needs. Simplifying finance for businesses across India since 2013.
+                        <p className="text-gray-600 dark:text-gray-400 mb-8 leading-relaxed font-medium">
+                            India's premium tax and compliance partner. Empowering businesses with expert solutions since 2013.
                         </p>
-                        <div className="flex space-x-4">
+                        <div className="flex space-x-3">
                             {[Facebook, Twitter, Linkedin, Instagram].map((Icon, idx) => (
-                                <a key={idx} href="#" className="w-8 h-8 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-700 transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-0.5">
-                                    <Icon size={16} />
+                                <a key={idx} href="#" className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-700 dark:text-indigo-400 hover:bg-indigo-700 hover:text-white dark:hover:bg-indigo-600 transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-1">
+                                    <Icon size={18} />
                                 </a>
                             ))}
                         </div>
@@ -36,11 +39,11 @@ const Footer = () => {
 
                     {/* Quick Links */}
                     <div>
-                        <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-6 relative inline-block">
+                        <h4 className="text-xl font-black text-gray-900 dark:text-white mb-8 relative inline-block">
                             Quick Links
-                            <span className="absolute -bottom-2 left-0 w-12 h-1 bg-blue-600 rounded-full"></span>
+                            <span className="absolute -bottom-2 left-0 w-16 h-1 bg-gradient-to-r from-indigo-600 to-emerald-500 rounded-full"></span>
                         </h4>
-                        <ul className="space-y-3">
+                        <ul className="space-y-4">
                             {[
                                 { name: 'Home', path: '/' },
                                 { name: 'About Us', path: '/about' },
@@ -49,8 +52,8 @@ const Footer = () => {
                                 { name: 'Privacy Policy', path: '/privacy-policy' }
                             ].map((link) => (
                                 <li key={link.name}>
-                                    <Link to={link.path} className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 flex items-center group">
-                                        <ChevronRight size={14} className="mr-2 opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all duration-200" />
+                                    <Link to={link.path} className="text-gray-600 dark:text-gray-400 hover:text-indigo-700 dark:hover:text-indigo-400 transition-all duration-200 flex items-center group font-semibold">
+                                        <ChevronRight size={16} className="mr-2 opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all duration-200 text-emerald-500" />
                                         <span className="group-hover:translate-x-1 transition-transform">{link.name}</span>
                                     </Link>
                                 </li>
@@ -60,11 +63,11 @@ const Footer = () => {
 
                     {/* Services */}
                     <div>
-                        <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-6 relative inline-block">
+                        <h4 className="text-xl font-black text-gray-900 dark:text-white mb-8 relative inline-block">
                             Services
-                            <span className="absolute -bottom-2 left-0 w-12 h-1 bg-blue-600 rounded-full"></span>
+                            <span className="absolute -bottom-2 left-0 w-16 h-1 bg-gradient-to-r from-indigo-600 to-emerald-500 rounded-full"></span>
                         </h4>
-                        <ul className="space-y-3">
+                        <ul className="space-y-4">
                             {[
                                 { name: 'Income Tax Filing', path: '/services#itr' },
                                 { name: 'GST Registration', path: '/services#gst' },
@@ -76,9 +79,9 @@ const Footer = () => {
                                 <li key={service.name}>
                                     <Link
                                         to={service.path}
-                                        className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 flex items-center group"
+                                        className="text-gray-600 dark:text-gray-400 hover:text-indigo-700 dark:hover:text-indigo-400 transition-all duration-200 flex items-center group font-semibold"
                                     >
-                                        <ChevronRight size={14} className="mr-2 opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all duration-200" />
+                                        <ChevronRight size={16} className="mr-2 opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all duration-200 text-emerald-500" />
                                         <span className="group-hover:translate-x-1 transition-transform">{service.name}</span>
                                     </Link>
                                 </li>
@@ -88,17 +91,17 @@ const Footer = () => {
 
                     {/* Contact Us */}
                     <div>
-                        <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-6 relative inline-block">
+                        <h4 className="text-xl font-black text-gray-900 dark:text-white mb-8 relative inline-block">
                             Contact Us
-                            <span className="absolute -bottom-2 left-0 w-12 h-1 bg-blue-600 rounded-full"></span>
+                            <span className="absolute -bottom-2 left-0 w-16 h-1 bg-gradient-to-r from-indigo-600 to-emerald-500 rounded-full"></span>
                         </h4>
-                        <ul className="space-y-4">
+                        <ul className="space-y-5">
                             <li className="flex items-start group">
-                                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400 mr-3 mt-1 group-hover:scale-110 transition-transform">
-                                    <MapPin size={18} />
+                                <div className="p-2.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl text-indigo-700 dark:text-indigo-400 mr-3 mt-1 group-hover:scale-110 transition-transform shadow-sm">
+                                    <MapPin size={20} />
                                 </div>
                                 <div>
-                                    <span className="text-gray-600 dark:text-gray-400 text-sm block mb-1">
+                                    <span className="text-gray-600 dark:text-gray-400 text-sm block mb-2 font-medium leading-relaxed">
                                         Mohanth Sah Chowk Naka Number 1<br />
                                         SK Color Lab Gali, Sitamarhi<br />
                                         Bihar 843302
@@ -107,25 +110,25 @@ const Footer = () => {
                                         href={mapUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center mt-1"
+                                        className="text-xs font-black text-indigo-700 hover:text-indigo-800 hover:underline flex items-center mt-1 uppercase tracking-wider"
                                     >
-                                        Get Directions <ChevronRight size={12} className="ml-0.5" />
+                                        Get Directions <ChevronRight size={14} className="ml-1" />
                                     </a>
                                 </div>
                             </li>
                             <li className="flex items-center group">
-                                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-600 dark:text-green-400 mr-3 group-hover:scale-110 transition-transform">
-                                    <Phone size={18} />
+                                <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl text-emerald-700 dark:text-emerald-400 mr-3 group-hover:scale-110 transition-transform shadow-sm">
+                                    <Phone size={20} />
                                 </div>
-                                <a href="tel:8409847102" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 transition-colors font-medium">
+                                <a href="tel:8409847102" className="text-gray-600 dark:text-gray-400 hover:text-indigo-700 transition-colors font-bold">
                                     +91 8409847102
                                 </a>
                             </li>
                             <li className="flex items-center group">
-                                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400 mr-3 group-hover:scale-110 transition-transform">
-                                    <Mail size={18} />
+                                <div className="p-2.5 bg-purple-100 dark:bg-purple-900/30 rounded-xl text-purple-700 dark:text-purple-400 mr-3 group-hover:scale-110 transition-transform shadow-sm">
+                                    <Mail size={20} />
                                 </div>
-                                <a href="mailto:taxfriend.gst@gmail.com" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 transition-colors font-medium text-sm">
+                                <a href="mailto:taxfriend.gst@gmail.com" className="text-gray-600 dark:text-gray-400 hover:text-indigo-700 transition-colors font-bold text-sm">
                                     taxfriend.gst@gmail.com
                                 </a>
                             </li>
@@ -134,11 +137,11 @@ const Footer = () => {
                 </div>
 
                 {/* Copyright */}
-                <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400">
-                    <p>© {new Date().getFullYear()} Apna TaxFriend. All rights reserved.</p>
-                    <div className="flex space-x-6 mt-4 md:mt-0">
-                        <Link to="/privacy-policy" className="hover:text-blue-600 transition-colors">Privacy Policy</Link>
-                        <Link to="/terms" className="hover:text-blue-600 transition-colors">Terms of Service</Link>
+                <div className="border-t border-indigo-100/50 dark:border-gray-800 pt-10 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400">
+                    <p className="font-bold">© {new Date().getFullYear()} <span className="text-indigo-700 dark:text-indigo-400">TaxFriend India</span>. All rights reserved.</p>
+                    <div className="flex space-x-8 mt-4 md:mt-0">
+                        <Link to="/privacy-policy" className="hover:text-indigo-700 transition-colors font-semibold">Privacy Policy</Link>
+                        <Link to="/terms" className="hover:text-indigo-700 transition-colors font-semibold">Terms of Service</Link>
                     </div>
                 </div>
             </div>

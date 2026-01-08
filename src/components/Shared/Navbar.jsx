@@ -17,48 +17,50 @@ const Navbar = () => {
     }
 
     // Function to check if link is active
-    const isActive = (path) => location.pathname === path ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20" : "text-gray-600 dark:text-gray-300 hover:text-blue-600"
+    const isActive = (path) => location.pathname === path ? "text-indigo-700 bg-indigo-50/50 dark:bg-indigo-900/40" : "text-gray-600 dark:text-gray-300 hover:text-indigo-700 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/20"
 
     return (
-        <nav className="fixed top-0 w-full z-50 bg-white/60 dark:bg-gray-900/60 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 transition-all duration-300">
+        <nav className="fixed top-0 w-full z-50 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border-b border-indigo-100/50 dark:border-gray-800 transition-all duration-300">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-20">
-                    <Link to="/" className="flex items-center space-x-2 group">
-                        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform">
-                            ATF
+                    <Link to="/" className="flex items-center space-x-3 group">
+                        <div className="relative">
+                            <div className="w-11 h-11 bg-gradient-to-br from-indigo-700 to-indigo-900 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-xl shadow-indigo-500/20 group-hover:scale-110 transition-transform duration-500">
+                                TFI
+                            </div>
+                            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-gray-900"></div>
                         </div>
-                        <span className="font-bold text-2xl text-gray-900 dark:text-white tracking-tight">Apna TaxFriend</span>
+                        <span className="font-extrabold text-2xl text-gray-900 dark:text-white tracking-tight group-hover:text-indigo-700 transition-colors">TaxFriend India</span>
                     </Link>
 
-                    <div className="hidden md:flex items-center space-x-6 lg:space-x-8">
-                        <Link to="/" className={`px-4 py-2 rounded-lg font-medium transition-all ${isActive('/')}`}>Home</Link>
-                        <Link to="/services" className={`px-4 py-2 rounded-lg font-medium transition-all ${isActive('/services')}`}>Services</Link>
-                        <Link to="/about" className={`px-4 py-2 rounded-lg font-medium transition-all ${isActive('/about')}`}>About</Link>
-                        <Link to="/contact" className={`px-4 py-2 rounded-lg font-medium transition-all ${isActive('/contact')}`}>Contact</Link>
-
-                        <Link to="/privacy-policy" className={`px-4 py-2 rounded-lg font-medium transition-all ${isActive('/privacy-policy')}`}>Privacy Policy</Link>
+                    <div className="hidden md:flex items-center space-x-3 lg:space-x-5">
+                        <Link to="/" className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${isActive('/')}`}>Home</Link>
+                        <Link to="/services" className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${isActive('/services')}`}>Services</Link>
+                        <Link to="/about" className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${isActive('/about')}`}>About</Link>
+                        <Link to="/contact" className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${isActive('/contact')}`}>Contact</Link>
+                        <Link to="/privacy-policy" className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${isActive('/privacy-policy')}`}>Privacy Policy</Link>
                     </div>
 
                     <div className="hidden md:flex items-center space-x-4">
                         {user ? (
                             <div className="flex items-center space-x-4">
-                                <Link to="/dashboard" className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full text-gray-700 dark:text-gray-300 font-medium transition-colors border border-transparent hover:border-gray-300 dark:hover:border-gray-600">
+                                <Link to="/dashboard" className="flex items-center space-x-2 px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 rounded-full text-indigo-700 dark:text-indigo-300 font-bold transition-all border border-indigo-100 dark:border-indigo-800 shadow-sm">
                                     <User size={18} />
                                     <span>Dashboard</span>
                                 </Link>
-                                <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 font-medium transition-colors">Logout</button>
+                                <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 font-bold text-sm transition-colors px-2">Logout</button>
                             </div>
                         ) : (
                             <>
-                                <Link to="/login" className="text-gray-700 dark:text-gray-300 font-bold hover:text-blue-600 transition-colors">Login</Link>
-                                <Link to="/login" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-bold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 transform hover:-translate-y-0.5 transition-all duration-200 flex items-center">
+                                <Link to="/login" className="text-gray-700 dark:text-gray-300 font-bold hover:text-indigo-700 transition-colors">Login</Link>
+                                <Link to="/login" className="px-6 py-3 bg-indigo-700 hover:bg-indigo-800 text-white rounded-2xl font-black text-sm uppercase tracking-wider shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/50 transform hover:-translate-y-1 active:scale-95 transition-all duration-300 flex items-center">
                                     Get Started <ArrowRight size={18} className="ml-2" />
                                 </Link>
                             </>
                         )}
                     </div>
 
-                    <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-2 text-gray-600 hover:text-blue-600 transition-colors">
+                    <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-2 text-indigo-800 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg transition-colors">
                         {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                     </button>
                 </div>
@@ -66,23 +68,22 @@ const Navbar = () => {
 
             <AnimatePresence>
                 {isMobileMenuOpen && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="md:hidden overflow-hidden bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-                        <div className="px-4 py-6 space-y-4">
-                            <Link to="/" className="block text-lg font-medium text-gray-900 dark:text-white" onClick={() => setIsMobileMenuOpen(false)}>Home</Link>
-                            <Link to="/services" className="block text-lg font-medium text-gray-900 dark:text-white" onClick={() => setIsMobileMenuOpen(false)}>Services</Link>
-                            <Link to="/about" className="block text-lg font-medium text-gray-900 dark:text-white" onClick={() => setIsMobileMenuOpen(false)}>About</Link>
-                            <Link to="/contact" className="block text-lg font-medium text-gray-900 dark:text-white" onClick={() => setIsMobileMenuOpen(false)}>Contact</Link>
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="md:hidden overflow-hidden bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-indigo-100 dark:border-gray-800 shadow-2xl">
+                        <div className="px-5 py-8 space-y-4">
+                            <Link to="/" className="block text-xl font-bold text-gray-900 dark:text-white hover:text-indigo-700" onClick={() => setIsMobileMenuOpen(false)}>Home</Link>
+                            <Link to="/services" className="block text-xl font-bold text-gray-900 dark:text-white hover:text-indigo-700" onClick={() => setIsMobileMenuOpen(false)}>Services</Link>
+                            <Link to="/about" className="block text-xl font-bold text-gray-900 dark:text-white hover:text-indigo-700" onClick={() => setIsMobileMenuOpen(false)}>About</Link>
+                            <Link to="/contact" className="block text-xl font-bold text-gray-900 dark:text-white hover:text-indigo-700" onClick={() => setIsMobileMenuOpen(false)}>Contact</Link>
+                            <Link to="/privacy-policy" className="block text-lg font-medium text-gray-500 dark:text-gray-400 hover:text-indigo-700" onClick={() => setIsMobileMenuOpen(false)}>Privacy Policy</Link>
 
-                            <Link to="/privacy-policy" className="block text-lg font-medium text-gray-500 dark:text-gray-400" onClick={() => setIsMobileMenuOpen(false)}>Privacy Policy</Link>
-
-                            <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+                            <div className="pt-6 border-t border-indigo-50 dark:border-gray-800">
                                 {user ? (
-                                    <Link to="/dashboard" className="block w-full py-3 text-center bg-blue-50 text-blue-600 rounded-xl font-bold mb-3" onClick={() => setIsMobileMenuOpen(false)}>Go to Dashboard</Link>
+                                    <Link to="/dashboard" className="block w-full py-4 text-center bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg" onClick={() => setIsMobileMenuOpen(false)}>Go to Dashboard</Link>
                                 ) : (
-                                    <>
-                                        <Link to="/login" className="block w-full py-3 text-center bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl font-bold mb-3" onClick={() => setIsMobileMenuOpen(false)}>Login</Link>
-                                        <Link to="/login" className="block w-full py-3 text-center bg-blue-600 text-white rounded-xl font-bold" onClick={() => setIsMobileMenuOpen(false)}>Get Started</Link>
-                                    </>
+                                    <div className="flex flex-col space-y-3">
+                                        <Link to="/login" className="block w-full py-4 text-center bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white rounded-2xl font-bold" onClick={() => setIsMobileMenuOpen(false)}>Login</Link>
+                                        <Link to="/login" className="block w-full py-4 text-center bg-indigo-700 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-500/30" onClick={() => setIsMobileMenuOpen(false)}>Get Started</Link>
+                                    </div>
                                 )}
                             </div>
                         </div>

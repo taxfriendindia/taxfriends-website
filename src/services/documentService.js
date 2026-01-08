@@ -223,7 +223,7 @@ export const DocumentService = {
 
             if (count > 0) {
                 const content = await zip.generateAsync({ type: "blob" })
-                saveAs(content, `${zipName}_apnataxfriend.zip`)
+                saveAs(content, `${zipName}_taxfriendindia.zip`)
             } else {
                 alert("No accessible files found to zip. Check console for errors. (CORS or Invalid URL)")
             }

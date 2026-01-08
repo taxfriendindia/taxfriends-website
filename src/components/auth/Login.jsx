@@ -65,7 +65,7 @@ const Login = () => {
             <Shield className="w-8 h-8 text-white" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
-            Welcome to Apna TaxFriend
+            Welcome to TaxFriend India
           </h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Secure login to access your dashboard

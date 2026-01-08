@@ -7,15 +7,15 @@ import Footer from '../../components/Shared/Footer'
 const About = () => {
   // SEO & Schema Markup Implementation
   useEffect(() => {
-    document.title = "About Apna TaxFriend | Your Trusted Tax & Business Compliance Partner Since 2013"
+    document.title = "About TaxFriend India | Your Trusted Tax & Business Compliance Partner Since 2013"
 
     const metaDescription = document.querySelector('meta[name="description"]')
     if (metaDescription) {
-      metaDescription.content = "Apna TaxFriend: Your Trusted Tax & Business Compliance Partner Since 2013. 500+ Happy Clients, 95% Success Rate, Serving 50+ Cities Across India."
+      metaDescription.content = "TaxFriend India: Your Trusted Tax & Business Compliance Partner Since 2013. 500+ Happy Clients, 95% Success Rate, Serving 50+ Cities Across India."
     } else {
       const meta = document.createElement('meta')
       meta.name = "description"
-      meta.content = "Apna TaxFriend: Your Trusted Tax & Business Compliance Partner Since 2013. 500+ Happy Clients, 95% Success Rate, Serving 50+ Cities Across India."
+      meta.content = "TaxFriend India: Your Trusted Tax & Business Compliance Partner Since 2013. 500+ Happy Clients, 95% Success Rate, Serving 50+ Cities Across India."
       document.head.appendChild(meta)
     }
 
@@ -25,9 +25,9 @@ const About = () => {
     script.text = JSON.stringify({
       "@context": "https://schema.org",
       "@type": "ProfessionalService",
-      "name": "Apna TaxFriend",
+      "name": "TaxFriend India",
       "description": "Professional Tax & Business Compliance Services Across India",
-      "url": "https://apnataxfriend.com",
+      "url": "https://taxfriendindia.com",
       "telephone": "+91-8409847102",
       "email": "taxfriend.gst@gmail.com",
       "foundingDate": "2013",
@@ -82,7 +82,7 @@ const About = () => {
               animate={{ opacity: 1, y: 0 }}
               className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6"
             >
-              About Apna TaxFriend: Your Trusted Partner in <br />
+              About TaxFriend India: Your Trusted Partner in <br />
               <span className="text-blue-600">Tax & Business Compliance Since 2013</span>
             </motion.h1>
           </div>
@@ -93,7 +93,7 @@ const About = () => {
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-lg text-gray-600 dark:text-gray-300 leading-relaxed text-center">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">From Bihar to Bharat: A Journey of Trust & Excellence</h2>
             <p className="mb-6">
-              Welcome to <strong>Apna TaxFriend</strong>, your reliable partner for all tax and business compliance needs.
+              Welcome to <strong>TaxFriend India</strong>, your reliable partner for all tax and business compliance needs.
               Founded in 2013 with a vision to simplify tax compliance for Indian businesses, we've grown from a local service
               provider in Bihar to a pan-India trusted brand serving clients across 50+ cities. With over <strong>500+ happy clients</strong> and a
               <strong>95% success rate</strong>, we combine traditional expertise with modern technology to deliver exceptional results.
@@ -114,7 +114,7 @@ const About = () => {
               <div>
                 <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Our Story: Building Trust One Client at a Time</h2>
                 <p className="text-gray-600 dark:text-gray-300 mb-6 text-lg leading-relaxed">
-                  Apna TaxFriend was founded with a simple yet powerful mission: <em>"To make tax compliance simple and accessible for every Indian business."</em>
+                  TaxFriend India was founded with a simple yet powerful mission: <em>"To make tax compliance simple and accessible for every Indian business."</em>
                   What started as a small tax consultancy service in Bihar has evolved into a comprehensive business compliance solutions provider serving clients nationwide.
                 </p>
                 <p className="text-gray-600 dark:text-gray-300 text-lg leading-relaxed">
@@ -163,7 +163,7 @@ const About = () => {
         {/* Why Choose Us */}
         <section className="py-16 bg-gray-50 dark:bg-gray-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-12 text-center">Why Businesses Across India Choose Apna TaxFriend</h2>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-12 text-center">Why Businesses Across India Choose TaxFriend India</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[
                 { title: '10+ Years Expertise', desc: 'Deep knowledge and experience since 2013 in tax and business services across various industries.' },

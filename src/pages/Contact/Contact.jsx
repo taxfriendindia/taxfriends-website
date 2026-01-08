@@ -7,9 +7,9 @@ import Footer from '../../components/Shared/Footer'
 const Contact = () => {
   // SEO setup
   useEffect(() => {
-    document.title = "Contact Apna TaxFriend - Your Trusted Tax Partner"
+    document.title = "Contact TaxFriend India - Your Trusted Tax Partner"
     const meta = document.querySelector('meta[name="description"]')
-    if (meta) meta.content = "Get experienced tax and compliance support. Contact Apna TaxFriend for GST, ITR, and business registration. Serving clients across India."
+    if (meta) meta.content = "Get experienced tax and compliance support. Contact TaxFriend India for GST, ITR, and business registration. Serving clients across India."
   }, [])
 
   const [formData, setFormData] = useState({
@@ -71,7 +71,7 @@ const Contact = () => {
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5, duration: 1 }}
                 className="text-lg text-white/80 max-w-2xl mx-auto leading-relaxed"
               >
-                At Apna TaxFriend, we believe in personalized service and timely support. Whether you need GST registration, ITR filing, or business compliance guidance, our team of experienced CAs is ready to assist you.
+                At TaxFriend India, we believe in personalized service and timely support. Whether you need GST registration, ITR filing, or business compliance guidance, our team of experienced CAs is ready to assist you.
               </motion.p>
             </motion.div>
           </div>
