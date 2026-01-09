@@ -25,6 +25,7 @@ const AdminDataCleaner = () => {
             const { data: profiles } = await supabase.from('profiles').select('*')
             const { data: services } = await supabase.from('user_services').select('*')
             const { data: documents } = await supabase.from('user_documents').select('*')
+            const { data: catalog } = await supabase.from('service_catalog').select('*')
 
             const backup = {
                 metadata: {
@@ -34,7 +35,8 @@ const AdminDataCleaner = () => {
                 },
                 profiles: profiles || [],
                 services: services || [],
-                documents: documents || []
+                documents: documents || [],
+                catalog: catalog || []
             }
 
             const dateStr = new Date().toLocaleDateString('en-GB').replace(/\//g, '-') // DD-MM-YYYY
@@ -189,23 +191,35 @@ const AdminDataCleaner = () => {
         try {
             const { data } = backupFile
 
-            // Restore logic - Use chunked upserts for safety and to preserve IDs/relationships
+            const chunkedUpsert = async (table, items) => {
+                const CHUNK_SIZE = 50
+                for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+                    const chunk = items.slice(i, i + CHUNK_SIZE)
+                    const { error } = await supabase.from(table).upsert(chunk, { onConflict: 'id' })
+                    if (error) throw error
+                }
+            }
+
+            // Restore logic - Executed in order of dependency
+
+            // 1. Service Catalog (The "Menu")
+            if (data.catalog?.length > 0) {
+                await chunkedUpsert('service_catalog', data.catalog)
+            }
+
+            // 2. Profiles (The "Users")
             if (data.profiles?.length > 0) {
-                // Bulk upsert profiles
-                const { error: pErr } = await supabase.from('profiles').upsert(data.profiles, { onConflict: 'id' })
-                if (pErr) throw pErr
+                await chunkedUpsert('profiles', data.profiles)
             }
 
+            // 3. Services (The "Orders")
             if (data.services?.length > 0) {
-                // Bulk upsert services - preserving original IDs for relationship integrity
-                const { error: sErr } = await supabase.from('user_services').upsert(data.services, { onConflict: 'id' })
-                if (sErr) throw sErr
+                await chunkedUpsert('user_services', data.services)
             }
 
+            // 4. Documents (The "Files")
             if (data.documents?.length > 0) {
-                // Bulk upsert documents - preserving original IDs
-                const { error: dErr } = await supabase.from('user_documents').upsert(data.documents, { onConflict: 'id' })
-                if (dErr) throw dErr
+                await chunkedUpsert('user_documents', data.documents)
             }
 
             setStatusModal({

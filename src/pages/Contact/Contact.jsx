@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useInView, useMotionValue, useTransform, anima
 import { Phone, Mail, MapPin, Clock, Send, CheckCircle, ChevronDown, Zap, Target, Lock, Wallet, ArrowRight } from 'lucide-react'
 import Navbar from '../../components/Shared/Navbar'
 import Footer from '../../components/Shared/Footer'
+import { supabase } from '../../lib/supabase'
 
 const Contact = () => {
   // SEO setup
@@ -30,17 +31,53 @@ const Contact = () => {
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value })
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setIsSubmitting(true)
-    // Simulate API call
-    setTimeout(() => {
+
+    try {
+      // 1. Save to Database
+      const { error } = await supabase
+        .from('contact_messages')
+        .insert([
+          {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            service: formData.service,
+            message: formData.message
+          }
+        ])
+
+      if (error) throw error
+
+      // 2. Open WhatsApp with formatted message
+      const adminPhone = '918409847102' // Format: Country Code + Number
+      const whatsappMsg = `*New Inquiry from TaxFriend India Website*\n\n` +
+        `*Name:* ${formData.name}\n` +
+        `*Service:* ${formData.service || 'General Enquiry'}\n` +
+        `*Phone:* ${formData.phone}\n` +
+        `*Email:* ${formData.email}\n` +
+        `*Message:* ${formData.message}`
+
+      const waUrl = `https://wa.me/${adminPhone}?text=${encodeURIComponent(whatsappMsg)}`
+
+      // Open in a new tab
+      window.open(waUrl, '_blank')
+
+      // 3. Success state
       setIsSubmitting(false)
       setIsSuccess(true)
       setFormData({ name: '', email: '', phone: '', service: '', message: '' })
-      // Reset success message
+
+      // Reset success message after 5 seconds
       setTimeout(() => setIsSuccess(false), 5000)
-    }, 1500)
+
+    } catch (error) {
+      console.error('Submission error:', error)
+      alert("Something went wrong. Please try again or contact us directly.")
+      setIsSubmitting(false)
+    }
   }
 
   // FAQs Data
@@ -346,10 +383,6 @@ const Contact = () => {
             </div>
           </div>
         </section>
-
-
-
-
 
       </main>
       <Footer />

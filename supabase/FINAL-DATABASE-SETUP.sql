@@ -110,6 +110,32 @@ CREATE TABLE IF NOT EXISTS public.reviews (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Contact Form Messages
+CREATE TABLE IF NOT EXISTS public.contact_messages (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT,
+    service TEXT,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.contact_messages ENABLE ROW LEVEL SECURITY;
+
+-- Allow anyone to insert (Lead Generation)
+CREATE POLICY "Anyone can insert contact messages" ON public.contact_messages
+    FOR INSERT WITH CHECK (true);
+
+-- Only admins/superusers can view
+CREATE POLICY "Admins can view contact messages" ON public.contact_messages
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE id = auth.uid() AND (role = 'admin' OR role = 'superuser')
+        )
+    );
+
 -- ==========================================
 -- PART 3: ADD MISSING COLUMNS (MIGRATIONS)
 -- ==========================================

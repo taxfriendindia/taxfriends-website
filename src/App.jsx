@@ -1,31 +1,34 @@
+import React, { Suspense, lazy } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import ScrollToTop from './components/Shared/ScrollToTop'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { Loader2 } from 'lucide-react'
-import Login from './components/auth/Login'
-import Home from './pages/Home/Home'
-import About from './pages/About/About'
-import Contact from './pages/Contact/Contact'
-import PrivacyPolicy from './pages/Policies/PrivacyPolicy'
-import Terms from './pages/Policies/Terms'
-import RefundPolicy from './pages/Policies/RefundPolicy'
-import TermsOfService from './pages/Policies/TermsOfService'
-import ClientLayout from './pages/ClientPortal/ClientLayout'
-import Services from './pages/ClientPortal/Services'
-import Documents from './pages/ClientPortal/Documents'
-import History from './pages/ClientPortal/History'
-import Profile from './pages/ClientPortal/Profile'
-import AdminLayout from './pages/Admin/AdminLayout'
-import AdminDashboard from './pages/Admin/AdminDashboard'
-import AdminClients from './pages/Admin/AdminClients'
-import AdminRequests from './pages/Admin/AdminRequests'
-import AdminServices from './pages/Admin/AdminServices'
-import AdminRecords from './pages/Admin/AdminRecords'
-import AdminAnnouncements from './pages/Admin/AdminAnnouncements'
-import AdminDataCleaner from './pages/Admin/AdminDataCleaner'
 
-import PublicServices from './pages/Services/Services'
+// Lazy Loading Components for better performance
+const Login = lazy(() => import('./components/auth/Login'))
+const Home = lazy(() => import('./pages/Home/Home'))
+const About = lazy(() => import('./pages/About/About'))
+const Contact = lazy(() => import('./pages/Contact/Contact'))
+const PrivacyPolicy = lazy(() => import('./pages/Policies/PrivacyPolicy'))
+const Terms = lazy(() => import('./pages/Policies/Terms'))
+const RefundPolicy = lazy(() => import('./pages/Policies/RefundPolicy'))
+const TermsOfService = lazy(() => import('./pages/Policies/TermsOfService'))
+const ClientLayout = lazy(() => import('./pages/ClientPortal/ClientLayout'))
+const Services = lazy(() => import('./pages/ClientPortal/Services'))
+const Documents = lazy(() => import('./pages/ClientPortal/Documents'))
+const History = lazy(() => import('./pages/ClientPortal/History'))
+const Profile = lazy(() => import('./pages/ClientPortal/Profile'))
+const AdminLayout = lazy(() => import('./pages/Admin/AdminLayout'))
+const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard'))
+const AdminClients = lazy(() => import('./pages/Admin/AdminClients'))
+const AdminRequests = lazy(() => import('./pages/Admin/AdminRequests'))
+const AdminServices = lazy(() => import('./pages/Admin/AdminServices'))
+const AdminRecords = lazy(() => import('./pages/Admin/AdminRecords'))
+const AdminAnnouncements = lazy(() => import('./pages/Admin/AdminAnnouncements'))
+const AdminDataCleaner = lazy(() => import('./pages/Admin/AdminDataCleaner'))
+const AdminLeads = lazy(() => import('./pages/Admin/AdminLeads'))
+const PublicServices = lazy(() => import('./pages/Services/Services'))
 
 // Loading Spinner Component
 const LoadingScreen = () => (
@@ -67,45 +70,48 @@ function App() {
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <ScrollToTop />
         <AuthProvider>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Home />} />
-            <Route path="/services" element={<PublicServices />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/terms-of-service" element={<TermsOfService />} />
-            <Route path="/refund-policy" element={<RefundPolicy />} />
-            <Route path="/login" element={<Login />} />
+          <Suspense fallback={<LoadingScreen />}>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Home />} />
+              <Route path="/services" element={<PublicServices />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
+              <Route path="/refund-policy" element={<RefundPolicy />} />
+              <Route path="/login" element={<Login />} />
 
-            {/* Client Portal Routes */}
-            <Route path="/dashboard" element={<PrivateRoute><ClientLayout /></PrivateRoute>}>
-              <Route index element={<Navigate to="services" replace />} />
-              <Route path="services" element={<Services />} />
-              <Route path="documents" element={<Documents />} />
-              <Route path="history" element={<History />} />
-              <Route path="profile" element={<Profile />} />
-            </Route>
+              {/* Client Portal Routes */}
+              <Route path="/dashboard" element={<PrivateRoute><ClientLayout /></PrivateRoute>}>
+                <Route index element={<Navigate to="services" replace />} />
+                <Route path="services" element={<Services />} />
+                <Route path="documents" element={<Documents />} />
+                <Route path="history" element={<History />} />
+                <Route path="profile" element={<Profile />} />
+              </Route>
 
-            {/* Admin Portal Routes (Protected) */}
-            <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-              <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="clients" element={<AdminClients />} />
-              <Route path="documents" element={<AdminRequests />} />
-              <Route path="services" element={<AdminServices />} />
-              <Route path="records" element={<AdminRecords />} />
-              <Route path="announcements" element={<AdminAnnouncements />} />
-              <Route path="data-cleaner" element={<AdminDataCleaner />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="*" element={<div className="p-8 text-gray-500">Page Under Construction</div>} />
-            </Route>
+              {/* Admin Portal Routes (Protected) */}
+              <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="clients" element={<AdminClients />} />
+                <Route path="documents" element={<AdminRequests />} />
+                <Route path="services" element={<AdminServices />} />
+                <Route path="records" element={<AdminRecords />} />
+                <Route path="announcements" element={<AdminAnnouncements />} />
+                <Route path="data-cleaner" element={<AdminDataCleaner />} />
+                <Route path="leads" element={<AdminLeads />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="*" element={<div className="p-8 text-gray-500">Page Under Construction</div>} />
+              </Route>
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/" replace />} />
 
-          </Routes>
+            </Routes>
+          </Suspense>
         </AuthProvider>
       </Router>
     </ThemeProvider>
