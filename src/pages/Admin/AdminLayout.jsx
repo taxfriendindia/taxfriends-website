@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
-    LayoutDashboard, Users, FileText, LogOut, Menu, Shield, ChevronLeft, ChevronRight, Activity, PieChart, Megaphone, X, IndianRupee, Clock, Zap, User
+    LayoutDashboard, Users, FileText, LogOut, Menu, Shield, ChevronLeft, ChevronRight, Activity, PieChart, Megaphone, X, IndianRupee, Clock, Zap, User, Database
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -32,6 +32,7 @@ const AdminLayout = () => {
         { to: "/admin/services", icon: Activity, label: "Services" },
         { to: "/admin/records", icon: PieChart, label: "Records" },
         { to: "/admin/announcements", icon: Megaphone, label: "Broadcast" },
+        { to: "/admin/data-cleaner", icon: Database, label: "Data Cleaner" },
     ]
 
     const finalMenuItems = menuItems
