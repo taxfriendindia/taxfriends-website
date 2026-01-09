@@ -14,11 +14,13 @@ const AdminLayout = () => {
     const [isMobileMenuOpen, setMobileMenuOpen] = useState(false)
 
     const handleLogout = async () => {
+        console.log('Logging out...')
         try {
             await signOut()
+            console.log('Sign out complete, navigating to login...')
             navigate('/login')
         } catch (error) {
-            console.error('Logout error:', error)
+            console.error('Logout error handler:', error)
             navigate('/login')
         }
     }
@@ -73,6 +75,7 @@ const AdminLayout = () => {
                     <div className="p-4 border-t border-indigo-100/50 dark:border-gray-800 bg-gradient-to-b from-transparent to-indigo-50/30 dark:to-indigo-950/10 space-y-3 shrink-0">
                         <NavItem to="/admin/profile" icon={User} label="My Profile" isOpen={isSidebarOpen} />
                         <button
+                            type="button"
                             onClick={handleLogout}
                             className={`flex items-center w-full p-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-600 dark:hover:bg-rose-600 hover:text-white group border border-rose-200 dark:border-rose-800 shadow-lg shadow-rose-100 dark:shadow-none ${!isSidebarOpen && 'justify-center'}`}
                             title="Logout System"
@@ -108,7 +111,7 @@ const AdminLayout = () => {
                         <div className="text-[10px] font-bold text-emerald-300 uppercase tracking-tighter">Authorized</div>
                         <div className="text-xs font-bold truncate max-w-[100px]">{user.full_name?.split(' ')[0]}</div>
                     </div>
-                    <button onClick={handleLogout} className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg"><LogOut size={18} /></button>
+                    <button type="button" onClick={handleLogout} className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg"><LogOut size={18} /></button>
                 </div>
             </header>
 
@@ -173,6 +176,7 @@ const AdminLayout = () => {
                                     <User size={22} className="mr-4" /> My Profile
                                 </NavLink>
                                 <button
+                                    type="button"
                                     onClick={handleLogout}
                                     className="flex items-center p-4 w-full text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-600 dark:hover:bg-rose-600 hover:text-white rounded-2xl font-bold transition-all border border-rose-200 dark:border-rose-800"
                                 >
@@ -199,6 +203,7 @@ const AdminLayout = () => {
                             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{user.role}</span>
                         </div>
                         <button
+                            type="button"
                             onClick={handleLogout}
                             className="p-2.5 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl transition-all shadow-sm group"
                             title="Sign Out"

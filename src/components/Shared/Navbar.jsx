@@ -13,6 +13,7 @@ const Navbar = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
     const handleLogout = async () => {
+        console.log('Logging out from Navbar...')
         await signOut()
         navigate('/')
     }

@@ -226,11 +226,13 @@ const ClientLayout = () => {
     }, [showNotifications])
 
     const handleLogout = async () => {
+        console.log('Logging out client...')
         try {
             await signOut()
+            console.log('Sign out complete, navigating to login...')
             navigate('/login')
         } catch (error) {
-            console.error('Logout error:', error)
+            console.error('Logout error handler:', error)
             navigate('/login')
         }
     }
@@ -311,6 +313,7 @@ const ClientLayout = () => {
 
                     <div className="p-4 border-t border-indigo-100/50 dark:border-gray-800 bg-gradient-to-b from-transparent to-indigo-50/30 dark:to-indigo-950/10">
                         <button
+                            type="button"
                             onClick={handleLogout}
                             className="flex items-center space-x-3 px-4 py-3 w-full text-rose-600 dark:text-rose-400 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all font-bold border border-transparent hover:border-rose-200 dark:hover:border-rose-800 shadow-sm hover:shadow-md"
                         >
