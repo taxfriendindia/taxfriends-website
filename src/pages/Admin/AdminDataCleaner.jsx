@@ -276,18 +276,24 @@ const AdminDataCleaner = () => {
 
                     <button
                         onClick={handleCreateBackup}
-                        disabled={isProcessing}
+                        disabled={isProcessing || !isSuperUser}
                         className="w-full relative group/btn disabled:opacity-50"
                     >
-                        <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-blue-400 rounded-2xl blur opacity-25 group-hover/btn:opacity-50 transition"></div>
-                        <div className="relative bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition active:scale-[0.98]">
-                            {isProcessing ? "Processing..." : <><Download size={18} /> Backup Now</>}
+                        <div className={`absolute -inset-1 ${isSuperUser ? 'bg-gradient-to-r from-blue-600 to-blue-400' : 'bg-slate-300'} rounded-2xl blur opacity-25 group-hover/btn:opacity-50 transition`}></div>
+                        <div className={`relative ${isSuperUser ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-400 cursor-not-allowed'} text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition active:scale-[0.98]`}>
+                            {isProcessing ? "Processing..." : !isSuperUser ? "Restricted Access" : <><Download size={18} /> Backup Now</>}
                         </div>
                     </button>
                 </div>
 
                 {/* Restore Area */}
-                <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-xl shadow-slate-200/50 flex flex-col items-center text-center">
+                <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-xl shadow-slate-200/50 flex flex-col items-center text-center relative overflow-hidden">
+                    {!isSuperUser && (
+                        <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-6">
+                            <Shield className="text-slate-400 mb-2" size={32} />
+                            <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Superuser Only</span>
+                        </div>
+                    )}
                     <div className="w-20 h-20 bg-emerald-50 rounded-3xl flex items-center justify-center text-emerald-600 mb-6 shadow-inner">
                         <Upload size={36} />
                     </div>
@@ -297,16 +303,16 @@ const AdminDataCleaner = () => {
                     </p>
 
                     <div className="w-full relative">
-                        <input type="file" accept=".zip,.json" onChange={handleFileSelect} className="hidden" id="restore-input" />
+                        <input type="file" accept=".zip,.json" onChange={handleFileSelect} className="hidden" id="restore-input" disabled={!isSuperUser} />
                         <label
-                            htmlFor="restore-input"
-                            className={`w-full flex flex-col items-center justify-center py-6 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${backupFile ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-slate-300 bg-slate-50/50'}`}
+                            htmlFor={isSuperUser ? "restore-input" : ""}
+                            className={`w-full flex flex-col items-center justify-center py-6 border-2 border-dashed rounded-2xl transition-all ${!isSuperUser ? 'border-slate-100 bg-slate-50/30 cursor-not-allowed' : backupFile ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-slate-300 bg-slate-50/50 cursor-pointer'}`}
                         >
                             <div className={`p-2 rounded-lg mb-2 ${backupFile ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
                                 {backupFile ? <CheckCircle2 size={24} /> : <Archive size={24} />}
                             </div>
                             <span className="text-xs font-bold text-slate-600 truncate max-w-[200px]">
-                                {backupFile ? backupFile.name : "Select Backup File"}
+                                {backupFile ? backupFile.name : !isSuperUser ? "Import Restricted" : "Select Backup File"}
                             </span>
                         </label>
                     </div>
@@ -317,14 +323,22 @@ const AdminDataCleaner = () => {
                             disabled={isProcessing || !isSuperUser}
                             className={`w-full mt-4 text-white font-black py-4 rounded-2xl transition active:scale-[0.98] ${!isSuperUser ? 'bg-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                         >
-                            {!isSuperUser ? "Superuser Only" : "Run Import"}
+                            {!isSuperUser ? "Restricted" : "Run Import"}
                         </button>
                     )}
                 </div>
             </div>
 
             {/* Danger Section */}
-            <div className="bg-rose-50 border border-rose-100 rounded-[2rem] p-8 mt-4">
+            <div className={`bg-rose-50 border border-rose-100 rounded-[2rem] p-8 mt-4 relative overflow-hidden ${!isSuperUser && 'opacity-60'}`}>
+                {!isSuperUser && (
+                    <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                        <div className="flex items-center gap-2 bg-white px-6 py-3 rounded-2xl shadow-xl border border-rose-100">
+                            <Shield size={20} className="text-rose-600" />
+                            <span className="text-sm font-black text-rose-700 uppercase tracking-widest">Superuser Clearance Required</span>
+                        </div>
+                    </div>
+                )}
                 <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                     <div className="flex items-center gap-4">
                         <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-rose-500 shadow-sm border border-rose-100">
@@ -340,7 +354,7 @@ const AdminDataCleaner = () => {
                         disabled={isProcessing || !isSuperUser}
                         className={`px-8 py-4 text-white font-black rounded-2xl transition active:scale-95 whitespace-nowrap ${!isSuperUser ? 'bg-slate-400 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-700'}`}
                     >
-                        {!isSuperUser ? "Restricted" : "Clear All Data"}
+                        {isProcessing ? "Processing..." : !isSuperUser ? "Restricted" : "Clear All Data"}
                     </button>
                 </div>
             </div>
