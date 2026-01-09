@@ -344,7 +344,14 @@ const History = () => {
                                                             <div className="flex-1">
                                                                 <p className="font-black text-rose-900 uppercase tracking-wide text-xs">Service Request Rejected</p>
                                                                 <p className="text-xs mt-1 text-rose-700 font-medium">
-                                                                    {req.comments || "Your request could not be processed at this time. Please contact support for more details."}
+                                                                    {req.comments ? (
+                                                                        <span>
+                                                                            <span className="font-bold underline">Reason:</span> {req.comments}.
+                                                                            <span className="block mt-2 text-[10px] opacity-80 italic">For more information contact our team or email us at taxfriend.tax@gmail.com</span>
+                                                                        </span>
+                                                                    ) : (
+                                                                        "Your request could not be processed at this time. Please contact support for more details."
+                                                                    )}
                                                                 </p>
                                                             </div>
                                                         </div>
