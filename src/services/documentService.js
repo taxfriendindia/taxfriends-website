@@ -119,7 +119,7 @@ export const DocumentService = {
     },
 
     // Upload completed work for a service
-    async uploadCompletedServiceFile(userId, serviceRequestId, file, profileData) {
+    async uploadCompletedServiceFile(userId, serviceRequestId, file, profileData, comments = null) {
         try {
             const cleanName = (profileData.full_name || 'User').replace(/[^a-zA-Z0-9]/g, '_')
             const timestamp = Date.now()
@@ -138,10 +138,17 @@ export const DocumentService = {
 
             const publicUrl = signedData?.signedUrl
 
-            // Update the service request with the file URL
+            // Prepare update payload
+            const updatePayload = {
+                completed_file_url: publicUrl,
+                status: 'completed'
+            }
+            if (comments !== null) updatePayload.comments = comments
+
+            // Update the service request with the file URL and optional comments
             const { error: dbError } = await supabase
                 .from('user_services')
-                .update({ completed_file_url: publicUrl, status: 'completed' })
+                .update(updatePayload)
                 .eq('id', serviceRequestId)
 
             if (dbError) throw dbError

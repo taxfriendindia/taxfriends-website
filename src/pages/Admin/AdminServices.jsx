@@ -127,21 +127,24 @@ const AdminServices = () => {
         return acc
     }, { total: 0, approved: 0, rejected: 0, pending: 0 })
 
-    const handleStatusUpdate = async (id, newStatus) => {
+    const handleStatusUpdate = async (id, newStatus, comments = null) => {
         try {
             // We update the status
+            const updateData = {
+                status: newStatus,
+                handled_by: user.id
+            }
+            if (comments !== null) updateData.comments = comments
+
             const { error } = await supabase
                 .from('user_services')
-                .update({
-                    status: newStatus,
-                    handled_by: user.id
-                })
+                .update(updateData)
                 .eq('id', id)
 
             if (error) throw error
 
             setServices(services.map(s =>
-                s.id === id ? { ...s, status: newStatus, handled_by: user.id } : s
+                s.id === id ? { ...s, ...updateData } : s
             ))
         } catch (error) {
             console.error('Error updating status:', error)
@@ -491,7 +494,7 @@ const AdminServices = () => {
                                 onClick={async () => {
                                     const reason = document.getElementById('rejectionReason').value
                                     if (!reason) return
-                                    await handleStatusUpdate(rejectionModal.serviceId, 'rejected')
+                                    await handleStatusUpdate(rejectionModal.serviceId, 'rejected', reason)
                                     try {
                                         await UserService.createNotification(
                                             rejectionModal.userId,
@@ -541,6 +544,7 @@ const AdminServices = () => {
 
 const CompletionModal = ({ isOpen, onClose, service, onSuccess, adminUser }) => {
     const [file, setFile] = useState(null)
+    const [notes, setNotes] = useState('')
     const [uploading, setUploading] = useState(false)
 
     if (!isOpen || !service) return null
@@ -550,23 +554,30 @@ const CompletionModal = ({ isOpen, onClose, service, onSuccess, adminUser }) => 
             setUploading(true)
             let fileUrl = null
 
+            const updateData = {
+                status: 'completed',
+                handled_by: adminUser.id,
+                comments: notes || null
+            }
+
             if (withFile && file) {
                 fileUrl = await DocumentService.uploadCompletedServiceFile(
                     service.user_id,
                     service.id,
                     file,
-                    service.profile
+                    service.profile,
+                    notes // Pass notes to upload service if it supports it
                 )
             } else {
                 // Direct complete without file
                 const { error } = await supabase
                     .from('user_services')
-                    .update({ status: 'completed', handled_by: adminUser.id })
+                    .update(updateData)
                     .eq('id', service.id)
                 if (error) throw error
             }
 
-            onSuccess(service.id, fileUrl)
+            onSuccess(service.id, fileUrl, notes)
             onClose()
         } catch (e) {
             console.error(e)
@@ -574,6 +585,7 @@ const CompletionModal = ({ isOpen, onClose, service, onSuccess, adminUser }) => 
         } finally {
             setUploading(false)
             setFile(null)
+            setNotes('')
         }
     }
 
@@ -606,6 +618,16 @@ const CompletionModal = ({ isOpen, onClose, service, onSuccess, adminUser }) => 
                                     <p className="font-black text-emerald-900 text-sm">Finishing Request</p>
                                     <p className="text-emerald-700 text-xs font-medium">Marking this service as resolved.</p>
                                 </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Success Notes (Optional)</label>
+                                <textarea
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    placeholder="Add any final notes or instructions for the client..."
+                                    className="w-full h-24 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none transition-all resize-none"
+                                />
                             </div>
 
                             <div className="space-y-3">
