@@ -7,11 +7,16 @@ import { saveAs } from 'file-saver'
 import StatusModal from '../../components/StatusModal'
 import ConfirmationModal from '../../components/ConfirmationModal'
 
+import { useAuth } from '../../contexts/AuthContext'
+
 const AdminDataCleaner = () => {
+    const { user } = useAuth()
     const [isProcessing, setIsProcessing] = useState(false)
     const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'info', title: '', message: '' })
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, onConfirm: () => { } })
     const [backupFile, setBackupFile] = useState(null)
+
+    const isSuperUser = user?.role === 'superuser' || user?.email === 'taxfriend.tax@gmail.com'
 
     const handleCreateBackup = async () => {
         setIsProcessing(true)
@@ -76,6 +81,15 @@ const AdminDataCleaner = () => {
     }
 
     const handleClearData = async () => {
+        if (!isSuperUser) {
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'Access Denied',
+                message: 'Only the Superuser can perform a deep server purge.'
+            })
+            return
+        }
         setConfirmModal({
             isOpen: true,
             onConfirm: executeClearData
@@ -155,6 +169,15 @@ const AdminDataCleaner = () => {
 
     const handleRestore = async () => {
         if (!backupFile) return
+        if (!isSuperUser) {
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'Access Denied',
+                message: 'Only the Superuser can restore system data.'
+            })
+            return
+        }
         setConfirmModal({
             isOpen: true,
             onConfirm: executeRestore
@@ -166,18 +189,23 @@ const AdminDataCleaner = () => {
         try {
             const { data } = backupFile
 
-            // Restore logic - Use chunked inserts for safety
+            // Restore logic - Use chunked upserts for safety and to preserve IDs/relationships
             if (data.profiles?.length > 0) {
-                // We use upsert for profiles to avoid conflicts with existing auth users
-                await supabase.from('profiles').upsert(data.profiles)
+                // Bulk upsert profiles
+                const { error: pErr } = await supabase.from('profiles').upsert(data.profiles, { onConflict: 'id' })
+                if (pErr) throw pErr
             }
 
             if (data.services?.length > 0) {
-                await supabase.from('user_services').insert(data.services.map(s => ({ ...s, id: undefined })))
+                // Bulk upsert services - preserving original IDs for relationship integrity
+                const { error: sErr } = await supabase.from('user_services').upsert(data.services, { onConflict: 'id' })
+                if (sErr) throw sErr
             }
 
             if (data.documents?.length > 0) {
-                await supabase.from('user_documents').insert(data.documents.map(d => ({ ...d, id: undefined })))
+                // Bulk upsert documents - preserving original IDs
+                const { error: dErr } = await supabase.from('user_documents').upsert(data.documents, { onConflict: 'id' })
+                if (dErr) throw dErr
             }
 
             setStatusModal({
@@ -272,10 +300,10 @@ const AdminDataCleaner = () => {
                     {backupFile && (
                         <button
                             onClick={handleRestore}
-                            disabled={isProcessing}
-                            className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-2xl transition active:scale-[0.98]"
+                            disabled={isProcessing || !isSuperUser}
+                            className={`w-full mt-4 text-white font-black py-4 rounded-2xl transition active:scale-[0.98] ${!isSuperUser ? 'bg-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                         >
-                            Run Import
+                            {!isSuperUser ? "Superuser Only" : "Run Import"}
                         </button>
                     )}
                 </div>
@@ -295,10 +323,10 @@ const AdminDataCleaner = () => {
                     </div>
                     <button
                         onClick={handleClearData}
-                        disabled={isProcessing}
-                        className="px-8 py-4 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-2xl transition active:scale-95 whitespace-nowrap"
+                        disabled={isProcessing || !isSuperUser}
+                        className={`px-8 py-4 text-white font-black rounded-2xl transition active:scale-95 whitespace-nowrap ${!isSuperUser ? 'bg-slate-400 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-700'}`}
                     >
-                        Clear All Data
+                        {!isSuperUser ? "Restricted" : "Clear All Data"}
                     </button>
                 </div>
             </div>

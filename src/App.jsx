@@ -24,7 +24,6 @@ import AdminServices from './pages/Admin/AdminServices'
 import AdminRecords from './pages/Admin/AdminRecords'
 import AdminAnnouncements from './pages/Admin/AdminAnnouncements'
 import AdminDataCleaner from './pages/Admin/AdminDataCleaner'
-import SuperReset from './pages/Admin/SuperReset'
 
 import PublicServices from './pages/Services/Services'
 
@@ -99,7 +98,6 @@ function App() {
               <Route path="records" element={<AdminRecords />} />
               <Route path="announcements" element={<AdminAnnouncements />} />
               <Route path="data-cleaner" element={<AdminDataCleaner />} />
-              <Route path="super-reset" element={<SuperReset />} />
               <Route path="profile" element={<Profile />} />
               <Route path="*" element={<div className="p-8 text-gray-500">Page Under Construction</div>} />
             </Route>
