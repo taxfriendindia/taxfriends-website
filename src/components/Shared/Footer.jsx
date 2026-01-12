@@ -46,6 +46,7 @@ const Footer = () => {
                         <ul className="space-y-4">
                             {[
                                 { name: 'Home', path: '/' },
+                                { name: 'Know Your Expert', path: '/portfolio' },
                                 { name: 'About Us', path: '/about' },
                                 { name: 'Contact', path: '/contact' },
                                 { name: 'Login', path: '/login' },
@@ -137,9 +138,29 @@ const Footer = () => {
                 </div>
 
                 {/* Copyright */}
-                <div className="border-t border-indigo-100/50 dark:border-gray-800 pt-10 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400">
-                    <p className="font-bold">© {new Date().getFullYear()} <span className="text-indigo-700 dark:text-indigo-400">TaxFriend India</span>. All rights reserved.</p>
-                    <div className="flex space-x-8 mt-4 md:mt-0">
+                <div className="border-t border-indigo-100/50 dark:border-gray-800 pt-10 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400 gap-6">
+                    {/* Left corner */}
+                    <p className="font-bold text-center md:text-left order-2 md:order-1">
+                        © {new Date().getFullYear()} <span className="text-indigo-700 dark:text-indigo-400">TaxFriend India</span>. All rights reserved.
+                    </p>
+
+                    {/* Center Promotion */}
+                    <div className="order-1 md:order-2 flex justify-center">
+                        <p className="text-xs font-semibold px-6 py-2 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-full border border-indigo-100/50 dark:border-indigo-800/50 inline-block text-center">
+                            Website made and managed by <span className="text-emerald-600 dark:text-emerald-400">Aashish</span>.
+                            <a
+                                href="https://wa.me/919625351970?text=I%20am%20just%20curious%20about%20this%20website%20and%20wanna%20know%20how%20can%20I%20make%20mine."
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="ml-1 text-indigo-600 hover:text-indigo-700 underline transition-colors decoration-dashed underline-offset-4"
+                            >
+                                Contact for more info
+                            </a>
+                        </p>
+                    </div>
+
+                    {/* Right corner */}
+                    <div className="flex space-x-8 order-3 justify-center md:justify-end">
                         <Link to="/privacy-policy" className="hover:text-indigo-700 transition-colors font-semibold">Privacy Policy</Link>
                         <Link to="/terms" className="hover:text-indigo-700 transition-colors font-semibold">Terms of Service</Link>
                     </div>

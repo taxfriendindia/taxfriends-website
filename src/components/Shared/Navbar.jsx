@@ -38,6 +38,7 @@ const Navbar = () => {
                     <div className="hidden md:flex items-center space-x-3 lg:space-x-5">
                         <Link to="/" className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${isActive('/')}`}>Home</Link>
                         <Link to="/services" className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${isActive('/services')}`}>Services</Link>
+                        <Link to="/portfolio" className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${isActive('/portfolio')}`}>Know Your Expert</Link>
                         <Link to="/about" className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${isActive('/about')}`}>About</Link>
                         <Link to="/contact" className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${isActive('/contact')}`}>Contact</Link>
                         <Link to="/privacy-policy" className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${isActive('/privacy-policy')}`}>Privacy Policy</Link>
@@ -79,6 +80,7 @@ const Navbar = () => {
                             </div>
                             <Link to="/" className="block text-xl font-bold text-gray-900 dark:text-white hover:text-indigo-700" onClick={() => setIsMobileMenuOpen(false)}>Home</Link>
                             <Link to="/services" className="block text-xl font-bold text-gray-900 dark:text-white hover:text-indigo-700" onClick={() => setIsMobileMenuOpen(false)}>Services</Link>
+                            <Link to="/portfolio" className="block text-xl font-bold text-gray-900 dark:text-white hover:text-indigo-700" onClick={() => setIsMobileMenuOpen(false)}>Know Your Expert</Link>
                             <Link to="/about" className="block text-xl font-bold text-gray-900 dark:text-white hover:text-indigo-700" onClick={() => setIsMobileMenuOpen(false)}>About</Link>
                             <Link to="/contact" className="block text-xl font-bold text-gray-900 dark:text-white hover:text-indigo-700" onClick={() => setIsMobileMenuOpen(false)}>Contact</Link>
                             <Link to="/privacy-policy" className="block text-lg font-medium text-gray-500 dark:text-gray-400 hover:text-indigo-700" onClick={() => setIsMobileMenuOpen(false)}>Privacy Policy</Link>

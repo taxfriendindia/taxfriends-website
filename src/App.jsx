@@ -4,6 +4,7 @@ import ScrollToTop from './components/Shared/ScrollToTop'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { Loader2 } from 'lucide-react'
+import Portfolio from './pages/Portfolio/Portfolio'
 
 // Lazy Loading Components for better performance
 const Login = lazy(() => import('./components/auth/Login'))
@@ -75,6 +76,7 @@ function App() {
               {/* Public Routes */}
               <Route path="/" element={<Home />} />
               <Route path="/services" element={<PublicServices />} />
+              <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
