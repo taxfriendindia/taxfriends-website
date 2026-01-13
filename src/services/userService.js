@@ -24,15 +24,16 @@ export const UserService = {
     },
 
     async cleanupNotifications() {
+        // NOTE: This is now handled automatically by a database trigger in Supabase.
+        // This method remains as a secondary safety measure or for manual calls.
         try {
-            const yesterday = new Date();
-            yesterday.setHours(yesterday.getHours() - 72);
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
             const { error } = await supabase
                 .from('notifications')
                 .delete()
-                .in('type', ['info', 'success', 'error', 'system'])
-                .lt('created_at', yesterday.toISOString());
+                .lt('created_at', sevenDaysAgo.toISOString());
 
             if (error) throw error;
         } catch (e) {

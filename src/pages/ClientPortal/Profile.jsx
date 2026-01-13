@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { compressFile } from '../../utils/compression'
 
 const Profile = () => {
     const { user } = useAuth()
@@ -112,11 +113,18 @@ const Profile = () => {
             if (!event.target.files || event.target.files.length === 0) return
 
             const file = event.target.files[0]
-            const fileExt = file.name.split('.').pop()
+            if (file.size > 15 * 1024 * 1024) {
+                throw new Error('Avatar size exceeds 15MB limit.')
+            }
+
+            // INTERNAL COMPRESSION
+            const compressed = await compressFile(file)
+
+            const fileExt = compressed.name.split('.').pop()
             const fileName = `${user.id}-${Date.now()}.${fileExt}`
             const filePath = `${fileName}`
 
-            const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file)
+            const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, compressed)
             if (uploadError) throw uploadError
 
             const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath)
@@ -138,10 +146,19 @@ const Profile = () => {
         try {
             setUploadingType(type)
             setError(null)
-            const fileExt = file.name.split('.').pop()
+
+            // MAX SIZE 15MB
+            if (file.size > 15 * 1024 * 1024) {
+                throw new Error('File size exceeds 15MB limit.')
+            }
+
+            // INTERNAL COMPRESSION
+            const compressed = await compressFile(file)
+
+            const fileExt = compressed.name.split('.').pop()
             const filePath = `${user.id}/${type}-${Date.now()}.${fileExt}`
 
-            const { error: uploadError } = await supabase.storage.from('user-documents').upload(filePath, file)
+            const { error: uploadError } = await supabase.storage.from('user-documents').upload(filePath, compressed)
             if (uploadError) {
                 if (uploadError.message.includes('bucket not found')) {
                     throw new Error('Storage system not initialized. Please run the SQL setup script in Supabase first.')

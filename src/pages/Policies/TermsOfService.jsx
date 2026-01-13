@@ -23,7 +23,7 @@ const TermsOfService = () => {
               Terms of Service
             </h1>
             <p className="text-xl text-gray-500 dark:text-gray-400">
-              Guidelines for using Apna TaxFriend services
+              Guidelines for using TaxFriend India services
             </p>
           </div>
 
@@ -35,7 +35,7 @@ const TermsOfService = () => {
                 Service Terms and Conditions
               </h2>
               <p className="text-gray-600 dark:text-gray-300 mb-8">
-                Welcome to Apna TaxFriend. By using our services, you agree to these terms and conditions.
+                Welcome to TaxFriend India. By using our services, you agree to these terms and conditions.
                 Please read them carefully.
               </p>
 
@@ -107,7 +107,7 @@ const TermsOfService = () => {
                 <div className="pt-8 border-t border-gray-100 dark:border-gray-700">
                   <p className="text-xs text-gray-400 font-medium flex items-center gap-2">
                     <Clock size={12} />
-                    Last Updated: January 08, 2026 • Apna TaxFriend Legal Team
+                    Last Updated: January 13, 2026 • TaxFriend India Legal Team
                   </p>
                 </div>
               </div>

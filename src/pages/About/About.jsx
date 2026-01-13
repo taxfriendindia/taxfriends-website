@@ -75,24 +75,24 @@ const About = () => {
       <Navbar />
       <main className="pt-20">
         {/* Hero Section */}
-        <section className="relative py-20 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-blue-900/20">
+        <section className="relative py-12 md:py-20 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-blue-900/20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6"
+              className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4 md:mb-6 leading-tight px-4"
             >
-              About TaxFriend India: Your Trusted Partner in <br />
+              About TaxFriend India: Your Trusted Partner in <br className="hidden md:block" />
               <span className="text-blue-600">Tax & Business Compliance Since 2013</span>
             </motion.h1>
           </div>
         </section>
 
         {/* Introduction */}
-        <section className="py-16">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-lg text-gray-600 dark:text-gray-300 leading-relaxed text-center">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">From Bihar to Bharat: A Journey of Trust & Excellence</h2>
-            <p className="mb-6">
+        <section className="py-12 md:py-16">
+          <div className="max-w-4xl mx-auto px-6 sm:px-6 lg:px-8 text-base md:text-lg text-gray-600 dark:text-gray-300 leading-relaxed text-center">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-6 md:mb-8">From Bihar to Bharat: A Journey of Trust & Excellence</h2>
+            <p className="mb-4 md:mb-6">
               Welcome to <strong>TaxFriend India</strong>, your reliable partner for all tax and business compliance needs.
               Founded in 2013 with a vision to simplify tax compliance for Indian businesses, we've grown from a local service
               provider in Bihar to a pan-India trusted brand serving clients across 50+ cities. With over <strong>500+ happy clients</strong> and a
@@ -211,13 +211,13 @@ const About = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
               <div>
-                <h2 className="text-3xl font-bold mb-6">Our Presence Across India</h2>
+                <h2 className="text-2xl md:text-3xl font-bold mb-6">Our Presence Across India</h2>
                 <div className="space-y-6">
                   <div className="flex items-start gap-4">
-                    <div className="bg-white/20 p-3 rounded-lg"><MapPin className="w-6 h-6" /></div>
+                    <div className="bg-white/20 p-2 md:p-3 rounded-lg"><MapPin className="w-5 h-5 md:w-6 md:h-6" /></div>
                     <div>
                       <h4 className="font-bold text-lg">Head Office</h4>
-                      <p className="opacity-90">
+                      <p className="opacity-90 text-sm md:text-base">
                         Mohanth Sah Chowk Naka Number 1<br />
                         SK Color Lab Gali, Sitamarhi<br />
                         Bihar - 843302, India
@@ -226,7 +226,7 @@ const About = () => {
                   </div>
                   <div>
                     <h4 className="font-bold text-lg mb-2">Service Areas</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm opacity-90">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm opacity-90">
                       <p><strong>North:</strong> Delhi, UP, Bihar, Punjab, Haryana</p>
                       <p><strong>South:</strong> Karnataka, TN, Kerala, Telangana</p>
                       <p><strong>West:</strong> Maharashtra, Gujarat, Rajasthan</p>
@@ -236,13 +236,11 @@ const About = () => {
                 </div>
               </div>
               <div className="text-center md:text-right">
-                <div className="inline-grid grid-cols-2 gap-6">
-                  <div className="inline-grid grid-cols-2 gap-6">
-                    <AboutStatCounter number="500+" label="Happy Clients" />
-                    <AboutStatCounter number="95%" label="Success Rate" />
-                    <AboutStatCounter number="50+" label="Cities Served" />
-                    <AboutStatCounter number="10+" label="Years Experience" />
-                  </div>
+                <div className="grid grid-cols-2 gap-4 md:gap-6">
+                  <AboutStatCounter number="500+" label="Happy Clients" />
+                  <AboutStatCounter number="95%" label="Success Rate" />
+                  <AboutStatCounter number="50+" label="Cities Served" />
+                  <AboutStatCounter number="10+" label="Years Experience" />
                 </div>
               </div>
             </div>

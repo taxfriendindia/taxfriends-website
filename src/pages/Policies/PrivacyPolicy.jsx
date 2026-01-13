@@ -23,7 +23,7 @@ const PrivacyPolicy = () => {
               Privacy Policy
             </h1>
             <p className="text-xl text-gray-500 dark:text-gray-400">
-              How we protect and handle your data at Apna TaxFriend
+              How we protect and handle your data at TaxFriend India
             </p>
           </div>
 
@@ -55,7 +55,7 @@ const PrivacyPolicy = () => {
                     Data Collection and Usage
                   </h2>
                   <p>
-                    At Apna TaxFriend, we are committed to protecting your privacy and ensuring the security of your personal
+                    At TaxFriend India, we are committed to protecting your privacy and ensuring the security of your personal
                     and business information. This policy outlines how we collect, use, and protect your data.
                   </p>
                 </section>
@@ -142,7 +142,7 @@ const PrivacyPolicy = () => {
                 <div className="pt-8 border-t border-gray-100 dark:border-gray-700">
                   <p className="text-xs text-gray-400 font-medium flex items-center gap-2">
                     <Clock size={12} />
-                    Last Updated: January 08, 2026 • Apna TaxFriend Compliance Team
+                    Last Updated: January 13, 2026 • TaxFriend India Compliance Team
                   </p>
                 </div>
               </div>

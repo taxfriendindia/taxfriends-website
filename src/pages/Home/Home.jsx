@@ -138,14 +138,14 @@ const Home = () => {
               <span className="mx-8 font-bold text-sm tracking-wide text-amber-300">Need Immediate Compliance Help? Call Us! 📞</span>
             </div>
           </div>
-          <a href="tel:8409847102" className="hidden sm:flex items-center bg-white text-indigo-900 px-4 py-1.5 rounded-xl text-xs font-black mr-4 hover:bg-emerald-50 transition-all z-10 whitespace-nowrap shadow-xl">
+          <a href="tel:8409847102" className="hidden lg:flex items-center bg-white text-indigo-900 px-4 py-1.5 rounded-xl text-xs font-black mr-4 hover:bg-emerald-50 transition-all z-10 whitespace-nowrap shadow-xl">
             Support: 8409847102
           </a>
         </div>
       </div>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-24 lg:pt-56 lg:pb-40 overflow-hidden">
+      <section className="relative pt-24 pb-16 lg:pt-56 lg:pb-40 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <div className="absolute top-0 right-0 w-2/3 h-full bg-gradient-to-l from-indigo-50/50 to-transparent dark:from-indigo-950/20 dark:to-transparent" />
           <div className="absolute top-20 right-[10%] w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] filter animate-pulse" />
@@ -171,12 +171,12 @@ const Home = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.8 }}
-              className="text-6xl md:text-8xl font-black text-gray-900 dark:text-white mb-10 tracking-tighter leading-[0.9]"
+              className="text-4xl md:text-6xl lg:text-8xl font-black text-gray-900 dark:text-white mb-6 md:mb-10 tracking-tighter leading-[1.1] md:leading-[0.9]"
             >
               Tax Compliance <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-700 via-indigo-600 to-emerald-600 inline-block">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-700 via-indigo-600 to-emerald-600 inline-block pb-2">
                 {text}
-                <span className="inline-block w-1 h-16 md:h-24 bg-emerald-500 ml-2 animate-pulse align-middle"></span>
+                <span className="inline-block w-1 h-10 md:h-16 lg:h-24 bg-emerald-500 ml-2 animate-pulse align-middle"></span>
               </span>
             </motion.h1>
 
@@ -211,7 +211,7 @@ const Home = () => {
           </motion.div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-32">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mt-20 lg:mt-32">
             {stats.map((stat, index) => (
               <StatCounter key={index} stat={stat} index={index} />
             ))}
@@ -222,11 +222,11 @@ const Home = () => {
       {/* Services Section */}
       <section id="services" className="py-32 bg-indigo-50/30 dark:bg-indigo-950/20 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-4xl mx-auto mb-20">
-            <h2 className="text-4xl md:text-6xl font-black text-gray-900 dark:text-white mb-8 tracking-tight">
-              Premium Solutions for <span className="text-indigo-700">Modern Businesses</span>
+          <div className="text-center max-w-4xl mx-auto mb-12 md:mb-20">
+            <h2 className="text-3xl md:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white mb-6 md:mb-8 tracking-tight">
+              Premium Solutions for <br className="hidden md:block" /><span className="text-indigo-700">Modern Businesses</span>
             </h2>
-            <p className="text-xl text-gray-500 dark:text-gray-400 font-medium">
+            <p className="text-lg md:text-xl text-gray-500 dark:text-gray-400 font-medium px-4">
               We handle the complexities of Indian regulations so you can focus on building your grand vision.
             </p>
           </div>
@@ -280,14 +280,14 @@ const Home = () => {
               Why Leaders Trust <span className="text-emerald-600">TaxFriend India</span>
             </h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
             {features.map((feature, index) => (
-              <div key={index} className="text-center group">
-                <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/30 rounded-3xl flex items-center justify-center text-indigo-700 dark:text-indigo-400 mx-auto mb-8 transform group-hover:scale-110 group-hover:bg-indigo-100 transition-all duration-500 shadow-lg shadow-indigo-100/50">
-                  <feature.icon size={36} className="group-hover:rotate-12 transition-transform" />
+              <div key={index} className="text-center group p-4 md:p-0">
+                <div className="w-16 h-16 md:w-20 md:h-20 bg-indigo-50 dark:bg-indigo-900/30 rounded-3xl flex items-center justify-center text-indigo-700 dark:text-indigo-400 mx-auto mb-6 md:mb-8 transform group-hover:scale-110 group-hover:bg-indigo-100 transition-all duration-500 shadow-lg shadow-indigo-100/50">
+                  <feature.icon size={28} className="md:size-[36] group-hover:rotate-12 transition-transform" />
                 </div>
-                <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-4">{feature.title}</h3>
-                <p className="text-lg text-gray-500 dark:text-gray-400 leading-relaxed font-medium px-4">{feature.description}</p>
+                <h3 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white mb-3 md:mb-4">{feature.title}</h3>
+                <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 leading-relaxed font-medium px-2 md:px-4">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -327,16 +327,16 @@ const StatCounter = ({ stat, index }) => {
       initial={{ opacity: 0, y: 30 }}
       animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
       transition={{ duration: 0.8, delay: index * 0.1 }}
-      className="p-10 bg-white dark:bg-gray-800 rounded-[2rem] shadow-2xl shadow-indigo-100/50 border border-indigo-50/50 dark:border-gray-700 text-center hover:-translate-y-2 transition-all duration-500"
+      className="p-6 md:p-10 bg-white dark:bg-gray-800 rounded-[2rem] shadow-2xl shadow-indigo-100/50 border border-indigo-50/50 dark:border-gray-700 text-center hover:-translate-y-2 transition-all duration-500"
     >
-      <div className="bg-indigo-50 dark:bg-indigo-900/30 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 text-indigo-700 dark:text-indigo-300 shadow-inner">
-        <stat.icon size={32} />
+      <div className="bg-indigo-50 dark:bg-indigo-900/30 w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 md:mb-6 text-indigo-700 dark:text-indigo-300 shadow-inner">
+        <stat.icon size={24} md:size={32} />
       </div>
-      <h3 className="text-4xl font-black text-gray-900 dark:text-white mb-2 flex justify-center items-center tracking-tighter">
+      <h3 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mb-1 md:mb-2 flex justify-center items-center tracking-tighter">
         <motion.span>{rounded}</motion.span>
         <span className="text-emerald-500">{suffix}</span>
       </h3>
-      <p className="text-sm font-black uppercase tracking-widest text-indigo-900/40 dark:text-indigo-200/40">{stat.label}</p>
+      <p className="text-[10px] md:text-sm font-black uppercase tracking-widest text-indigo-900/40 dark:text-indigo-200/40">{stat.label}</p>
     </motion.div>
   )
 }

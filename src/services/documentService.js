@@ -239,5 +239,34 @@ export const DocumentService = {
             console.error("Zip Error:", e)
             alert(`Failed to create Zip: ${e.message}. Ensure 'jszip' is loaded.`)
         }
+    },
+
+    async deleteCompletedWork(serviceRequestId, fileUrl) {
+        try {
+            // 1. Delete from Storage if it's a Supabase URL
+            if (fileUrl && fileUrl.includes('user-documents')) {
+                const decoded = decodeURIComponent(fileUrl)
+                const parts = decoded.split('/user-documents/')
+                if (parts.length > 1) {
+                    let storagePath = parts[1].split('?')[0]
+                    const { error: storageError } = await supabase.storage
+                        .from('user-documents')
+                        .remove([storagePath])
+                    if (storageError) console.warn("Storage delete warning:", storageError)
+                }
+            }
+
+            // 2. Set completed_file_url to null in user_services
+            const { error: dbError } = await supabase
+                .from('user_services')
+                .update({ completed_file_url: null })
+                .eq('id', serviceRequestId)
+
+            if (dbError) throw dbError
+            return true
+        } catch (e) {
+            console.error('Error deleting completed work:', e)
+            throw e
+        }
     }
 }

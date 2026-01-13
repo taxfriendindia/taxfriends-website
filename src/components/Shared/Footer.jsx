@@ -160,9 +160,11 @@ const Footer = () => {
                     </div>
 
                     {/* Right corner */}
-                    <div className="flex space-x-8 order-3 justify-center md:justify-end">
-                        <Link to="/privacy-policy" className="hover:text-indigo-700 transition-colors font-semibold">Privacy Policy</Link>
-                        <Link to="/terms" className="hover:text-indigo-700 transition-colors font-semibold">Terms of Service</Link>
+                    <div className="flex flex-wrap justify-center md:justify-end gap-x-8 gap-y-2 order-3">
+                        <Link to="/privacy-policy" className="hover:text-indigo-700 transition-colors font-semibold">Privacy</Link>
+                        <Link to="/terms-of-service" className="hover:text-indigo-700 transition-colors font-semibold">Terms</Link>
+                        <Link to="/refund-policy" className="hover:text-indigo-700 transition-colors font-semibold">Refunds</Link>
+                        <Link to="/shipping-policy" className="hover:text-indigo-700 transition-colors font-semibold">Shipping</Link>
                     </div>
                 </div>
             </div>

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, User, Briefcase, MessageSquare, Save, Mail, MapPin, Calendar, Clock, Bell, Send, Wallet, Trash2, IndianRupee, Zap, AlertCircle } from 'lucide-react'
+import { X, User, Briefcase, MessageSquare, Save, Mail, MapPin, Calendar, Clock, Bell, Send, Wallet, Trash2, IndianRupee, Zap, AlertCircle, Folder } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import StatusModal from '../../components/StatusModal'
 import ConfirmationModal from '../../components/ConfirmationModal'
+import ClientArchivesTab from './ClientArchivesTab'
 
 const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) => {
     const [activeTab, setActiveTab] = useState('profile') // profile, services, message
@@ -183,7 +184,7 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col relative"
+                    className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] overflow-hidden flex flex-col relative"
                 >
                     {/* Role Confirmation Modal Overlay */}
                     {roleModal.isOpen && (
@@ -260,10 +261,11 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex border-b border-slate-100">
+                    <div className="flex border-b border-slate-100 overflow-x-auto scrollbar-hide">
                         <TabButton active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} icon={User} label="Profile Info" />
-                        <TabButton active={activeTab === 'services'} onClick={() => setActiveTab('services')} icon={Briefcase} label={`Services (${services.length})`} />
-                        <TabButton active={activeTab === 'message'} onClick={() => setActiveTab('message')} icon={Bell} label="Send Notification" />
+                        <TabButton active={activeTab === 'archives'} onClick={() => setActiveTab('archives')} icon={Folder} label="My Records" />
+                        <TabButton active={activeTab === 'services'} onClick={() => setActiveTab('services')} icon={Briefcase} label={`Requests (${services.length})`} />
+                        <TabButton active={activeTab === 'message'} onClick={() => setActiveTab('message')} icon={Bell} label="Notification" />
                     </div>
 
                     {/* Content */}
@@ -358,6 +360,10 @@ const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) 
 
                                 </div>
                             </div>
+                        )}
+
+                        {activeTab === 'archives' && (
+                            <ClientArchivesTab clientId={client.id} />
                         )}
 
                         {activeTab === 'services' && (

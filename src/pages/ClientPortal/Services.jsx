@@ -157,8 +157,8 @@ const Services = () => {
                             <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform duration-300">
                                 {renderIcon(service.icon)}
                             </div>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{service.title}</h3>
-                            <p className="text-gray-500 text-sm mb-6 flex-grow">{service.description}</p>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">{service.title}</h3>
+                            <p className="text-gray-500 text-sm mb-6 flex-grow leading-relaxed">{service.description}</p>
 
                             <button
                                 onClick={() => handleRequestService(service)}

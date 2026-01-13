@@ -50,7 +50,7 @@ const TypewriterText = ({ words }) => {
     return (
         <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-emerald-600">
             {` ${words[index].substring(0, subIndex)}`}
-            <span className={`${blink ? 'opacity-100' : 'opacity-0'} inline-block w-1 h-12 md:h-16 bg-emerald-500 ml-1 align-middle`}></span>
+            <span className={`${blink ? 'opacity-100' : 'opacity-0'} inline-block w-1 h-8 md:h-12 lg:h-16 bg-emerald-500 ml-1 align-middle`}></span>
         </span>
     )
 }
@@ -155,11 +155,11 @@ const PortfolioExpert = () => {
                                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold text-sm mb-6">
                                     <Zap size={16} className="animate-pulse" /> Available for Expert Consultation
                                 </div>
-                                <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tight leading-[1.1] min-h-[160px] md:min-h-[180px]">
+                                <h1 className="text-3xl md:text-5xl lg:text-7xl font-black mb-6 tracking-tight leading-[1.2] lg:leading-[1.1] min-h-[120px] md:min-h-[160px] lg:min-h-[180px]">
                                     Expertise That <br />
                                     <TypewriterText words={typewriterWords} />
                                 </h1>
-                                <p className="text-xl text-gray-600 dark:text-gray-400 mb-10 max-w-xl leading-relaxed">
+                                <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 mb-8 md:mb-10 max-w-xl leading-relaxed">
                                     I am <span className="font-extrabold text-gray-900 dark:text-white">Bablu Kumar</span>, a dedicated Tax Advisor transforming financial complexity into strategic clarity for businesses across India.
                                 </p>
 
@@ -247,14 +247,14 @@ const PortfolioExpert = () => {
                 {/* Dynamic Stats Section */}
                 <section className="py-20 bg-gray-50 dark:bg-gray-900/50">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
                             {stats.map((stat, i) => (
-                                <div key={i} className="text-center p-8 bg-white dark:bg-gray-900 rounded-[2rem] shadow-sm hover:shadow-xl transition-all border border-gray-100 dark:border-gray-800 group">
-                                    <div className="inline-flex p-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-2xl mb-4 group-hover:scale-110 transition-transform">
-                                        <stat.icon size={32} />
+                                <div key={i} className="text-center p-6 md:p-8 bg-white dark:bg-gray-900 rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm hover:shadow-xl transition-all border border-gray-100 dark:border-gray-800 group">
+                                    <div className="inline-flex p-3 md:p-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl md:rounded-2xl mb-3 md:mb-4 group-hover:scale-110 transition-transform">
+                                        <stat.icon size={24} md:size={32} />
                                     </div>
-                                    <h3 className="text-4xl font-black mb-2">{stat.value}</h3>
-                                    <p className="text-gray-500 font-bold uppercase text-xs tracking-widest">{stat.label}</p>
+                                    <h3 className="text-2xl md:text-4xl font-black mb-1 md:mb-2">{stat.value}</h3>
+                                    <p className="text-gray-500 font-bold uppercase text-[10px] md:text-xs tracking-widest">{stat.label}</p>
                                 </div>
                             ))}
                         </div>
@@ -280,7 +280,7 @@ const PortfolioExpert = () => {
                             <motion.div
                                 key={i}
                                 whileHover={{ y: -8 }}
-                                className="group relative bg-white dark:bg-gray-900 rounded-[3rem] p-10 md:p-14 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-500 overflow-hidden flex flex-col gap-10"
+                                className="group relative bg-white dark:bg-gray-900 rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-14 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-500 overflow-hidden flex flex-col gap-8 md:gap-10"
                             >
                                 {/* Background Accent */}
                                 <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-full blur-[100px] -mr-32 -mt-32 group-hover:scale-150 transition-transform duration-700"></div>
@@ -365,10 +365,10 @@ const PortfolioExpert = () => {
                                         {item.description}
                                     </p>
 
-                                    <div className="p-8 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-gray-950 rounded-[2rem] border border-emerald-100/50 dark:border-emerald-900/30 relative overflow-hidden group/impact">
+                                    <div className="p-6 md:p-8 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-gray-950 rounded-[2rem] border border-emerald-100/50 dark:border-emerald-900/30 relative overflow-hidden group/impact">
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-16 -mt-16 group-hover/impact:scale-150 transition-transform duration-500"></div>
-                                        <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-3 relative z-10">Measurable Impact</p>
-                                        <p className="text-2xl font-black text-gray-900 dark:text-white relative z-10">{item.impact}</p>
+                                        <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-2 relative z-10">Measurable Impact</p>
+                                        <p className="text-xl md:text-2xl font-black text-gray-900 dark:text-white relative z-10">{item.impact}</p>
                                     </div>
                                 </div>
                             </motion.div>
@@ -480,19 +480,19 @@ const PortfolioExpert = () => {
                                         desc: "Gained comprehensive theoretical knowledge and professional foundation in Indian tax statutes and corporate accounting."
                                     }
                                 ].map((item, i) => (
-                                    <div key={i} className={`flex flex-col md:flex-row items-center gap-8 ${i % 2 === 0 ? '' : 'md:flex-row-reverse'}`}>
+                                    <div key={i} className={`flex flex-col md:flex-row items-center gap-6 md:gap-8 ${i % 2 === 0 ? '' : 'md:flex-row-reverse'}`}>
                                         <div className="w-full md:w-1/2 flex justify-center md:justify-end px-4">
                                             <motion.div
                                                 initial={{ opacity: 0, y: 50 }}
                                                 whileInView={{ opacity: 1, y: 0 }}
                                                 viewport={{ once: true, margin: "-100px" }}
                                                 transition={{ duration: 0.8, delay: 0.2 }}
-                                                className={`p-8 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xl shadow-indigo-500/5 w-full max-w-md ${i % 2 === 0 ? 'md:text-right' : 'md:text-left'}`}
+                                                className={`p-6 md:p-8 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xl shadow-indigo-500/5 w-full max-w-md ${i % 2 === 0 ? 'md:text-right' : 'md:text-left'}`}
                                             >
-                                                <span className="text-indigo-600 dark:text-indigo-400 font-black text-sm uppercase tracking-widest">{item.year}</span>
-                                                <h4 className="text-xl font-black mt-2 mb-3">{item.title}</h4>
-                                                <p className="text-xs font-bold text-gray-400 mb-4">{item.place}</p>
-                                                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed font-medium">{item.desc}</p>
+                                                <span className="text-indigo-600 dark:text-indigo-400 font-black text-xs md:text-sm uppercase tracking-widest">{item.year}</span>
+                                                <h4 className="text-lg md:text-xl font-black mt-2 mb-2 md:mb-3">{item.title}</h4>
+                                                <p className="text-[10px] md:text-xs font-bold text-gray-400 mb-3 md:mb-4">{item.place}</p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed font-medium">{item.desc}</p>
                                             </motion.div>
                                         </div>
 

@@ -101,24 +101,24 @@ const AdminDataCleaner = () => {
     const executeClearData = async () => {
         setIsProcessing(true)
         try {
-            // 1. Clear Storage
-            await clearBucket('user-documents')
-            await clearBucket('avatars')
-
-            // 2. Clear Transactional Tables
+            // 1. Clear Transactional Tables (Notifications and Service Requests)
+            // We use a dummy condition to bypass Supabase's protection against full-table deletes
             await supabase.from('notifications').delete().neq('id', '00000000-0000-0000-0000-000000000000')
             await supabase.from('user_services').delete().neq('id', '00000000-0000-0000-0000-000000000000')
             await supabase.from('user_documents').delete().neq('id', '00000000-0000-0000-0000-000000000000')
 
-            // Note: We don't delete profiles because that would delete user accounts
-            // We just reset their status
+            // 2. Clear Storage associated with transaction workflow
+            // Note: We PROTECT 'service-archives' (manual uploads) and 'avatars' (profile details)
+            await clearBucket('user-documents')
+
+            // 3. Reset Profile KYC Status but KEEP all personal/business details
             await supabase.from('profiles').update({ kyc_status: 'not_started' }).neq('role', 'superuser')
 
             setStatusModal({
                 isOpen: true,
                 type: 'success',
-                title: 'Server Cleaned',
-                message: `All transactional data and storage files have been cleared.`
+                title: 'Operation Successful',
+                message: `Transactional history and temporary documents cleared. User profiles and Archive Vault remain protected.`
             })
         } catch (error) {
             console.error('Clear failed:', error)
@@ -126,7 +126,7 @@ const AdminDataCleaner = () => {
                 isOpen: true,
                 type: 'error',
                 title: 'Operation Failed',
-                message: 'Internal server error during cleaning.'
+                message: 'Internal server error during cleaning. Some data might not have been cleared.'
             })
         } finally {
             setIsProcessing(false)
@@ -242,6 +242,7 @@ const AdminDataCleaner = () => {
         }
     }
 
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -329,33 +330,35 @@ const AdminDataCleaner = () => {
                 </div>
             </div>
 
-            {/* Danger Section */}
-            <div className={`bg-rose-50 border border-rose-100 rounded-[2rem] p-8 mt-4 relative overflow-hidden ${!isSuperUser && 'opacity-60'}`}>
-                {!isSuperUser && (
-                    <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] z-10 flex items-center justify-center">
-                        <div className="flex items-center gap-2 bg-white px-6 py-3 rounded-2xl shadow-xl border border-rose-100">
-                            <Shield size={20} className="text-rose-600" />
-                            <span className="text-sm font-black text-rose-700 uppercase tracking-widest">Superuser Clearance Required</span>
+            {/* Cleanup Tools */}
+            <div className="flex justify-center mt-4">
+                <div className={`bg-rose-50 border border-rose-100 rounded-[2rem] p-8 relative overflow-hidden w-full max-w-2xl ${!isSuperUser && 'opacity-60'}`}>
+                    {!isSuperUser && (
+                        <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                            <div className="flex items-center gap-2 bg-white px-6 py-3 rounded-2xl shadow-xl border border-rose-100">
+                                <Shield size={20} className="text-rose-600" />
+                                <span className="text-sm font-black text-rose-700 uppercase tracking-widest">Superuser Clearance Required</span>
+                            </div>
                         </div>
+                    )}
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-rose-500 shadow-sm border border-rose-100">
+                                <Trash2 size={28} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-rose-900">Deep Server Purge</h3>
+                                <p className="text-sm text-rose-700/80 font-medium">Clear storage and transactional data.</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleClearData}
+                            disabled={isProcessing || !isSuperUser}
+                            className={`px-8 py-4 text-white font-black rounded-2xl transition active:scale-95 whitespace-nowrap ${!isSuperUser ? 'bg-slate-400 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-700'}`}
+                        >
+                            {isProcessing ? "Processing..." : "Clear Data"}
+                        </button>
                     </div>
-                )}
-                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-rose-500 shadow-sm border border-rose-100">
-                            <Trash2 size={28} />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-rose-900">Deep Server Purge</h3>
-                            <p className="text-sm text-rose-700/80 font-medium">Permanently clear storage and transactional data to free up space.</p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={handleClearData}
-                        disabled={isProcessing || !isSuperUser}
-                        className={`px-8 py-4 text-white font-black rounded-2xl transition active:scale-95 whitespace-nowrap ${!isSuperUser ? 'bg-slate-400 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-700'}`}
-                    >
-                        {isProcessing ? "Processing..." : !isSuperUser ? "Restricted" : "Clear All Data"}
-                    </button>
                 </div>
             </div>
 
@@ -373,7 +376,7 @@ const AdminDataCleaner = () => {
                 onConfirm={confirmModal.onConfirm}
                 danger={true}
                 title="Strict Confirmation"
-                message="This action is irreversible and will delete all service logs, uploaded documents, and broadcast history."
+                message="This action is irreversible and will delete transactional history."
             />
         </motion.div>
     )

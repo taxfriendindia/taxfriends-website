@@ -12,14 +12,15 @@ const Home = lazy(() => import('./pages/Home/Home'))
 const About = lazy(() => import('./pages/About/About'))
 const Contact = lazy(() => import('./pages/Contact/Contact'))
 const PrivacyPolicy = lazy(() => import('./pages/Policies/PrivacyPolicy'))
-const Terms = lazy(() => import('./pages/Policies/Terms'))
 const RefundPolicy = lazy(() => import('./pages/Policies/RefundPolicy'))
 const TermsOfService = lazy(() => import('./pages/Policies/TermsOfService'))
+const ShippingPolicy = lazy(() => import('./pages/Policies/ShippingPolicy'))
 const ClientLayout = lazy(() => import('./pages/ClientPortal/ClientLayout'))
 const Services = lazy(() => import('./pages/ClientPortal/Services'))
 const Documents = lazy(() => import('./pages/ClientPortal/Documents'))
 const History = lazy(() => import('./pages/ClientPortal/History'))
 const Profile = lazy(() => import('./pages/ClientPortal/Profile'))
+const Records = lazy(() => import('./pages/ClientPortal/Records'))
 const AdminLayout = lazy(() => import('./pages/Admin/AdminLayout'))
 const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard'))
 const AdminClients = lazy(() => import('./pages/Admin/AdminClients'))
@@ -80,9 +81,10 @@ function App() {
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-              <Route path="/terms" element={<Terms />} />
+              <Route path="/terms" element={<TermsOfService />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/refund-policy" element={<RefundPolicy />} />
+              <Route path="/shipping-policy" element={<ShippingPolicy />} />
               <Route path="/login" element={<Login />} />
 
               {/* Client Portal Routes */}
@@ -91,6 +93,7 @@ function App() {
                 <Route path="services" element={<Services />} />
                 <Route path="documents" element={<Documents />} />
                 <Route path="history" element={<History />} />
+                <Route path="records" element={<Records />} />
                 <Route path="profile" element={<Profile />} />
               </Route>
 

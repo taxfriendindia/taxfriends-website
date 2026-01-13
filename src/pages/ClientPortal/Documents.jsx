@@ -5,6 +5,7 @@ import { DocumentService } from '../../services/documentService'
 import { RequestService } from '../../services/requestService'
 import { UserService } from '../../services/userService'
 import { useAuth } from '../../contexts/AuthContext'
+import { compressFile } from '../../utils/compression'
 
 const Documents = () => {
     const { user } = useAuth()
@@ -68,8 +69,8 @@ const Documents = () => {
     }
 
     const handleFileSelection = (files) => {
-        // Restriction: Only 200KB Allowed
-        const MAX_SIZE = 200 * 1024 // 200KB
+        // Restriction: Expanded to 15MB with internal compression
+        const MAX_SIZE = 15 * 1024 * 1024 // 15MB
         const validFiles = []
         const skippedFiles = []
 
@@ -84,7 +85,7 @@ const Documents = () => {
         if (skippedFiles.length > 0) {
             setMessage({
                 type: 'error',
-                text: `Files must be < 200KB. Skipped: ${skippedFiles.join(', ')}`
+                text: `Files must be < 15MB. Skipped: ${skippedFiles.join(', ')}`
             })
         }
 
@@ -112,7 +113,9 @@ const Documents = () => {
             // Sequential upload to avoid overwhelming network/UI
             let successCount = 0
             for (const file of selectedFiles) {
-                await DocumentService.uploadFile(user.id, file, userProfile || {})
+                // INTERNAL COMPRESSION before storage
+                const compressed = await compressFile(file)
+                await DocumentService.uploadFile(user.id, compressed, userProfile || {})
                 successCount++
             }
 
@@ -150,13 +153,10 @@ const Documents = () => {
     }
 
     const handleDelete = async (id) => {
-        // User cannot delete (as per 'safe from accidental deletion' request)
-        // Or if they uploaded wrongly? Maybe allow DELETE provided status is 'pending'?
-        // The SQL policy blocks user deletes. So we should show error or hide button.
-        // But for UX, let's try, and if it fails, tell them only Admin can delete.
         if (!confirm('Request to remove this document?')) return
         try {
-            await DocumentService.deleteDocument(id)
+            const docToDelete = documents.find(d => d.id === id)
+            await DocumentService.deleteDocument(id, docToDelete?.file_url)
             setDocuments(prev => prev.filter(d => d.id !== id))
         } catch (error) {
             console.error(error)
@@ -202,7 +202,7 @@ const Documents = () => {
                                 Drag & Drop Documents Here
                             </p>
                             <p className="text-xs text-gray-500 mt-1">
-                                Max 200KB per file.
+                                Max 15MB per file. (Smart compressed internally)
                             </p>
                         </div>
                         <button

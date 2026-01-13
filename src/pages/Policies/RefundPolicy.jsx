@@ -35,7 +35,7 @@ const RefundPolicy = () => {
                 Refund Policy
               </h2>
               <p className="text-gray-600 dark:text-gray-300 mb-8">
-                At Apna TaxFriend, we strive to provide the best service experience. If you are not satisfied
+                At TaxFriend India, we strive to provide the best service experience. If you are not satisfied
                 with our services, here's our refund policy:
               </p>
 

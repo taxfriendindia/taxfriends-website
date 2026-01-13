@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Activity, ExternalLink, Filter, CheckCircle, XCircle, Clock, PlayCircle, ArrowDownUp, Search, Trash2, Users, Shield } from 'lucide-react'
+import { Activity, ExternalLink, Filter, CheckCircle, XCircle, Clock, PlayCircle, ArrowDownUp, Search, Trash2, Users, Shield, FileText, Edit3, Eye } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { UserService } from '../../services/userService'
 import { useLocation } from 'react-router-dom'
@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import StatusModal from '../../components/StatusModal'
 import { DocumentService } from '../../services/documentService'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, X, CheckCircle2 } from 'lucide-react'
+import { Upload, X, CheckCircle2, RotateCcw } from 'lucide-react'
 
 const AdminServices = () => {
     const { user } = useAuth()
@@ -170,7 +170,7 @@ const AdminServices = () => {
     }
 
     const deleteServiceRequest = async (id) => {
-        if (!window.confirm('Delete this service request?')) return
+        if (!window.confirm('Delete this entire service record? This cannot be undone.')) return
         try {
             const { error } = await supabase.from('user_services').delete().eq('id', id)
             if (error) throw error
@@ -178,6 +178,23 @@ const AdminServices = () => {
         } catch (error) {
             console.error('Error deleting:', error)
             alert('Failed to delete')
+        }
+    }
+
+    const handleDeleteWork = async (serviceId, fileUrl) => {
+        if (!window.confirm('Delete only the uploaded work file? The service will remain in history.')) return
+        try {
+            await DocumentService.deleteCompletedWork(serviceId, fileUrl)
+            setServices(services.map(s => s.id === serviceId ? { ...s, completed_file_url: null } : s))
+            setStatusModal({
+                isOpen: true,
+                type: 'success',
+                title: 'Work Deleted',
+                message: 'The completion file has been removed.'
+            })
+        } catch (error) {
+            console.error('Error deleting work:', error)
+            alert('Failed to delete work file')
         }
     }
 
@@ -382,6 +399,7 @@ const AdminServices = () => {
                                                     item={item}
                                                     onUpdate={handleStatusUpdate}
                                                     onDelete={deleteServiceRequest}
+                                                    onDeleteWork={handleDeleteWork}
                                                     onReject={(serviceId, userId, title) => setRejectionModal({
                                                         isOpen: true,
                                                         serviceId,
@@ -434,6 +452,7 @@ const AdminServices = () => {
                                                 item={item}
                                                 onUpdate={handleStatusUpdate}
                                                 onDelete={deleteServiceRequest}
+                                                onDeleteWork={handleDeleteWork}
                                                 onReject={(serviceId, userId, title) => setRejectionModal({
                                                     isOpen: true,
                                                     serviceId,
@@ -547,17 +566,25 @@ const CompletionModal = ({ isOpen, onClose, service, onSuccess, adminUser }) => 
     const [notes, setNotes] = useState('')
     const [uploading, setUploading] = useState(false)
 
+    useEffect(() => {
+        if (service) {
+            setNotes(service.comments || '')
+            setFile(null)
+        }
+    }, [service])
+
     if (!isOpen || !service) return null
 
     const handleComplete = async (withFile) => {
         try {
             setUploading(true)
-            let fileUrl = null
+            let fileUrl = service.completed_file_url || null // Keep existing URL if not uploading new
 
             const updateData = {
                 status: 'completed',
                 handled_by: adminUser.id,
-                comments: notes || null
+                comments: notes || null,
+                completed_file_url: fileUrl
             }
 
             if (withFile && file) {
@@ -566,10 +593,10 @@ const CompletionModal = ({ isOpen, onClose, service, onSuccess, adminUser }) => 
                     service.id,
                     file,
                     service.profile,
-                    notes // Pass notes to upload service if it supports it
+                    notes
                 )
             } else {
-                // Direct complete without file
+                // Just update notes/status
                 const { error } = await supabase
                     .from('user_services')
                     .update(updateData)
@@ -697,9 +724,10 @@ const StatBox = ({ label, count, icon: Icon, color }) => {
     );
 }
 
-const ServiceActions = ({ item, onUpdate, onDelete, onReject, onComplete }) => {
+const ServiceActions = ({ item, onUpdate, onDelete, onDeleteWork, onReject, onComplete }) => {
     const isActionable = !['completed', 'rejected', 'cancelled'].includes(item.status);
     const isProcessing = item.status === 'processing';
+    const isCompleted = item.status === 'completed';
 
     return (
         <div className="flex items-center justify-end gap-2">
@@ -731,6 +759,50 @@ const ServiceActions = ({ item, onUpdate, onDelete, onReject, onComplete }) => {
                         <XCircle size={14} />
                         Reject
                     </button>
+                </div>
+            )}
+
+            {isCompleted && (
+                <div className="flex items-center gap-2 bg-slate-100/50 p-1 rounded-2xl">
+                    {item.completed_file_url ? (
+                        <>
+                            <a
+                                href={item.completed_file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-3 py-2 bg-white text-indigo-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-indigo-50 transition-all shadow-sm border border-indigo-100"
+                                title="View Work Copy"
+                            >
+                                <Eye size={12} />
+                                View
+                            </a>
+                            <button
+                                onClick={() => onComplete(item)}
+                                className="flex items-center gap-2 px-3 py-2 bg-white text-amber-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-50 transition-all shadow-sm border border-amber-100"
+                                title="Update Work Copy"
+                            >
+                                <Edit3 size={12} />
+                                Update
+                            </button>
+                            <button
+                                onClick={() => onDeleteWork(item.id, item.completed_file_url)}
+                                className="flex items-center gap-2 px-3 py-2 bg-white text-rose-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-50 transition-all shadow-sm border border-rose-100"
+                                title="Delete Work Copy Only"
+                            >
+                                <X size={12} />
+                                Delete Work
+                            </button>
+                        </>
+                    ) : (
+                        <button
+                            onClick={() => onComplete(item)}
+                            className="flex items-center gap-2 px-4 py-2 bg-white text-emerald-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-50 transition-all shadow-sm border border-emerald-100"
+                            title="Upload Work Copy"
+                        >
+                            <Upload size={14} />
+                            Upload Work
+                        </button>
+                    )}
                 </div>
             )}
 

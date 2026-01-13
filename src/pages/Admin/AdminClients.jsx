@@ -265,7 +265,11 @@ const AdminClients = () => {
                                 </tr>
                             ) : (
                                 filteredClients.map((client) => (
-                                    <tr key={client.id} className="hover:bg-emerald-50/30 transition-colors group">
+                                    <tr
+                                        key={client.id}
+                                        onClick={() => openDetails(client)}
+                                        className="hover:bg-emerald-50/30 transition-colors group cursor-pointer"
+                                    >
                                         <td className="px-8 py-6">
                                             <div className="flex items-center space-x-4">
                                                 <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm shrink-0">
@@ -301,11 +305,11 @@ const AdminClients = () => {
                                         </td>
                                         <td className="px-8 py-6 text-right">
                                             <div className="flex items-center justify-end space-x-2">
-                                                <button onClick={() => openDetails(client)} className="p-2.5 text-emerald-600 bg-white border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 rounded-xl transition-all shadow-sm" title="Manage Profile">
+                                                <button onClick={(e) => { e.stopPropagation(); openDetails(client); }} className="p-2.5 text-emerald-600 bg-white border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 rounded-xl transition-all shadow-sm" title="Manage Profile">
                                                     <Eye size={18} />
                                                 </button>
                                                 {user?.role === 'superuser' && client.role !== 'superuser' && client.email !== 'taxfriend.tax@gmail.com' && (
-                                                    <button onClick={() => openDeleteModal(client)} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all" title="Terminate Account">
+                                                    <button onClick={(e) => { e.stopPropagation(); openDeleteModal(client); }} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all" title="Terminate Account">
                                                         <Trash2 size={18} />
                                                     </button>
                                                 )}

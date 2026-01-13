@@ -205,6 +205,26 @@ const Services = () => {
         eligibility: 'Minimum 3-7 members depending on the entity type',
         benefits: ['Tax Exemptions', 'Government Grants', 'Credibility', 'CSR Funding']
       }
+    },
+    {
+      id: 'pf',
+      icon: '💼',
+      title: 'PF Withdrawal & Services',
+      description: 'Hassle-free Provident Fund withdrawal assistance and ESIC/PF compliance for employees and employers.',
+      features: [
+        'Full & Final PF Withdrawal',
+        'Partial PF Advance (Medical/House/Marriage)',
+        'UAN Activation & KYC Update',
+        'PF Transfer (Previous to Current)',
+        'ESIC/PF Monthly Compliance',
+        'Labor Law Advisory'
+      ],
+      indianInfo: {
+        timeline: '7-10 working days for processing',
+        documents: ['UAN Number', 'Aadhaar Linked Mobile', 'Bank Passbook/Cheque', 'PAN Card'],
+        eligibility: 'Employees with active UAN after leaving job or for specific advances',
+        benefits: ['Fast Processing', 'Error-free Application', 'Expert Guidance', 'Maximum Settlement']
+      }
     }
   ]
 
@@ -251,17 +271,17 @@ const Services = () => {
       <Navbar />
       <main className="pt-20">
         {/* Page Header */}
-        <section className="bg-white dark:bg-gray-800 py-16">
+        <section className="bg-white dark:bg-gray-800 py-12 md:py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
             >
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+              <h1 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4 md:mb-6">
                 Our Complete Service Portfolio
               </h1>
-              <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+              <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto px-2">
                 From Basic Tax Filing to Complex Business Registrations - Everything You Need for Complete Business Compliance in India
               </p>
             </motion.div>
@@ -279,7 +299,7 @@ const Services = () => {
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1, duration: 0.6 }}
-                  className="bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-200 dark:border-gray-700 p-6 group scroll-mt-24"
+                  className="bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-200 dark:border-gray-700 p-5 md:p-6 group scroll-mt-24"
                 >
                   <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">
                     {service.icon}
@@ -399,12 +419,12 @@ const Services = () => {
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
-              className="text-center mb-16"
+              className="text-center mb-12 md:mb-16"
             >
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                Why Indian Businesses Trust Apna TaxFriend?
+              <h2 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4 px-4">
+                Why Indian Businesses Trust TaxFriend India?
               </h2>
-              <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+              <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto px-4">
                 We understand the unique challenges faced by Indian businesses and provide tailored solutions
               </p>
             </motion.div>
@@ -441,13 +461,13 @@ const Services = () => {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
             >
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+              <h2 className="text-2xl md:text-4xl font-bold text-white mb-6 px-4">
                 Ready to Start Your Business Journey in India?
               </h2>
-              <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+              <p className="text-lg md:text-xl text-blue-100 mb-8 max-w-2xl mx-auto px-4">
                 Our experts understand Indian regulations and will guide you through every step
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center px-6">
                 <Link
                   to="/contact"
                   className="bg-white text-blue-600 hover:bg-gray-100 font-semibold py-3 px-8 rounded-lg transition-all duration-300 transform hover:scale-105"

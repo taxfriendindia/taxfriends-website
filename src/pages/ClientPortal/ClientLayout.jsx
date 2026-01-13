@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Bell, LogOut, Layout, FileText, Clock, User, ChevronRight, Briefcase, CheckCircle, AlertCircle, Shield, Trash2 } from 'lucide-react'
+import { Menu, X, Bell, LogOut, Layout, FileText, Clock, User, ChevronRight, Briefcase, CheckCircle, AlertCircle, Shield, Trash2, Loader2, Library } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 
@@ -16,13 +16,13 @@ const ClientLayout = () => {
     const [imgError, setImgError] = useState(false)
     const [toast, setToast] = useState(null)
     const [profileIncomplete, setProfileIncomplete] = useState(false)
-    const [dismissTimer, setDismissTimer] = useState(5)
 
     // Navigation Items
     const navItems = [
         { path: '/dashboard/services', label: 'Services', icon: Briefcase },
-        { path: '/dashboard/history', label: 'Track Status', icon: Clock }, // Renamed for clarity
+        { path: '/dashboard/history', label: 'Track Status', icon: Clock },
         { path: '/dashboard/documents', label: 'Documents', icon: FileText },
+        { path: '/dashboard/records', label: 'My Records', icon: Library },
         { path: '/dashboard/profile', label: 'Profile', icon: User },
     ]
 
@@ -30,16 +30,32 @@ const ClientLayout = () => {
         if (user) {
             fetchNotifications()
 
-            // Check for profile completeness (Allow either mobile field key)
-            const hasMobile = user.mobile_number || user.mobile;
-            const isIncomplete = !user.full_name || !hasMobile
-            const isAtProfilePage = location.pathname.includes('/profile')
+            // 8 Mandatory Field Check
+            // We broaden this to check either 'residential_city' or 'city' for flexibility
+            const mandatoryFields = [
+                'full_name',
+                'mobile_number',
+                'mothers_name',
+                'dob',
+                'residential_address'
+            ];
 
-            if (isIncomplete && !isAtProfilePage) {
-                setProfileIncomplete(true)
-            } else {
-                setProfileIncomplete(false)
+            let isIncomplete = mandatoryFields.some(field => {
+                const value = user[field];
+                return !value || String(value).trim() === '';
+            });
+
+            // Specific check for city/state/pincode allowing either prefix
+            const hasCity = (user.residential_city || user.city)
+            const hasState = (user.residential_state || user.state)
+            const hasPincode = (user.residential_pincode || user.pincode)
+
+            if (!hasCity || !hasState || !hasPincode) {
+                isIncomplete = true
             }
+
+            // Force onboarding if incomplete
+            setProfileIncomplete(isIncomplete)
 
             // 1. Personal Channel (Specific to User)
             const personalChannel = supabase
@@ -79,18 +95,6 @@ const ClientLayout = () => {
         }
     }, [user])
 
-    // Auto-dismiss countdown for profile warning
-    useEffect(() => {
-        let interval;
-        if (profileIncomplete && dismissTimer > 0) {
-            interval = setInterval(() => {
-                setDismissTimer((prev) => prev - 1)
-            }, 1000)
-        } else if (profileIncomplete && dismissTimer === 0) {
-            setProfileIncomplete(false) // Auto dismiss
-        }
-        return () => clearInterval(interval)
-    }, [profileIncomplete, dismissTimer])
 
     // Close sidebar on route change (Mobile UX)
     useEffect(() => {
@@ -427,8 +431,6 @@ const ClientLayout = () => {
                             </AnimatePresence>
                         </div>
 
-                        {/* User Profile Snippet (Desktop) */}
-                        {/* User Profile Snippet (Desktop) */}
                         <Link
                             to="/dashboard/profile"
                             className="hidden sm:flex items-center space-x-3 pl-4 border-l border-indigo-100/50 dark:border-gray-800 cursor-pointer hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 py-1 px-3 rounded-xl transition-all group"
@@ -441,7 +443,6 @@ const ClientLayout = () => {
                             </div>
                             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-emerald-500 p-0.5 group-hover:from-indigo-700 group-hover:to-emerald-600 transition-all shadow-md">
                                 <div className="w-full h-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden">
-                                    {/* Use avatar_url from metadata if available, else initial */}
                                     {user?.user_metadata?.avatar_url && !imgError ? (
                                         <img
                                             src={user.user_metadata.avatar_url}
@@ -460,14 +461,32 @@ const ClientLayout = () => {
                     </div>
                 </header>
 
-                {/* Page Content */}
                 <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full bg-gradient-to-b from-indigo-50/20 to-transparent dark:from-transparent">
-                    <Outlet />
+                    {!profileIncomplete ? (
+                        <Outlet />
+                    ) : (
+                        <div className="h-[60vh] flex flex-col items-center justify-center space-y-4">
+                            <Loader2 className="w-12 h-12 text-indigo-600 animate-spin opacity-20" />
+                            <p className="text-gray-400 font-black text-xs uppercase tracking-widest animate-pulse">Waiting for profile completion...</p>
+                        </div>
+                    )}
                 </main>
-
             </div>
 
-            {/* Realtime Toast Notification */}
+            <AnimatePresence>
+                {profileIncomplete && (
+                    <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+                        <OnboardingWizard
+                            user={user}
+                            onComplete={() => {
+                                setProfileIncomplete(false)
+                                window.location.reload()
+                            }}
+                        />
+                    </div>
+                )}
+            </AnimatePresence>
+
             <AnimatePresence>
                 {toast && (
                     <motion.div
@@ -492,5 +511,230 @@ const ClientLayout = () => {
         </div>
     )
 }
+
+const OnboardingWizard = ({ user, onComplete }) => {
+    const [step, setStep] = useState(1)
+    const [submitting, setSubmitting] = useState(false)
+    const [error, setError] = useState(null)
+    const [formData, setFormData] = useState({
+        full_name: '',
+        mobile_number: '',
+        mothers_name: '',
+        dob: '',
+        residential_address: '',
+        residential_city: '',
+        residential_state: '',
+        residential_pincode: ''
+    })
+
+    useEffect(() => {
+        // Pre-fill what we have from user session/metadata
+        if (user) {
+            setFormData(prev => ({
+                ...prev,
+                full_name: user.full_name || user.user_metadata?.full_name || '',
+                mobile_number: user.mobile_number || user.mobile || ''
+            }))
+        }
+    }, [user])
+
+    const totalSteps = 4
+    const progress = (step / totalSteps) * 100
+
+    const nextStep = () => {
+        if (validateStep()) setStep(prev => Math.min(prev + 1, totalSteps))
+    }
+    const prevStep = () => setStep(prev => Math.max(prev - 1, 1))
+
+    const validateStep = () => {
+        setError(null)
+        if (step === 1) {
+            if (!formData.full_name || formData.full_name.length < 3) return !!setError("Enter your full legal name")
+            if (!formData.mobile_number || formData.mobile_number.length < 10) return !!setError("Enter a valid mobile number")
+        }
+        if (step === 2) {
+            if (!formData.mothers_name) return !!setError("Mother's name is required")
+            if (!formData.dob) return !!setError("Date of Birth is required")
+        }
+        if (step === 3) {
+            if (!formData.residential_address || formData.residential_address.length < 10) return !!setError("Please provide a complete address")
+        }
+        if (step === 4) {
+            if (!formData.residential_city) return !!setError("City is required")
+            if (!formData.residential_state) return !!setError("State is required")
+            if (!formData.residential_pincode || formData.residential_pincode.length < 6) return !!setError("Enter a valid 6-digit Pincode")
+        }
+        return true
+    }
+
+    const handleSubmit = async () => {
+        if (!validateStep()) return
+        setSubmitting(true)
+        try {
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({
+                    ...formData,
+                    city: formData.residential_city, // Sync for compatibility
+                    state: formData.residential_state,
+                    pincode: formData.residential_pincode,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', user.id)
+
+            if (updateError) throw updateError
+            onComplete()
+        } catch (err) {
+            setError(err.message)
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
+    return (
+        <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white dark:bg-gray-800 w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border border-indigo-100 dark:border-gray-700"
+        >
+            <div className="h-2 bg-gray-100 dark:bg-gray-700 w-full">
+                <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progress}%` }}
+                    className="h-full bg-indigo-600"
+                />
+            </div>
+
+            <div className="p-8 md:p-12">
+                <div className="mb-8">
+                    <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Complete Your Profile</h2>
+                    <p className="text-gray-500 text-sm font-medium">Step {step} of {totalSteps}: {step === 1 ? 'Identity' : step === 2 ? 'Family' : step === 3 ? 'Residence' : 'Location'}</p>
+                </div>
+
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={step}
+                        initial={{ x: 20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        exit={{ x: -20, opacity: 0 }}
+                        className="space-y-6"
+                    >
+                        {step === 1 && (
+                            <>
+                                <OnboardingInput
+                                    label="Full Legal Name"
+                                    placeholder="As per PAN/Aadhar"
+                                    value={formData.full_name}
+                                    onChange={(v) => setFormData({ ...formData, full_name: v })}
+                                />
+                                <OnboardingInput
+                                    label="Mobile Number"
+                                    placeholder="+91 XXXXX XXXXX"
+                                    value={formData.mobile_number}
+                                    onChange={(v) => setFormData({ ...formData, mobile_number: v })}
+                                />
+                            </>
+                        )}
+                        {step === 2 && (
+                            <>
+                                <OnboardingInput
+                                    label="Mother's Name"
+                                    placeholder="Full legal name"
+                                    value={formData.mothers_name}
+                                    onChange={(v) => setFormData({ ...formData, mothers_name: v })}
+                                />
+                                <OnboardingInput
+                                    label="Date of Birth"
+                                    type="date"
+                                    value={formData.dob}
+                                    onChange={(v) => setFormData({ ...formData, dob: v })}
+                                />
+                            </>
+                        )}
+                        {step === 3 && (
+                            <div className="space-y-2">
+                                <label className="text-xs font-black uppercase tracking-widest text-gray-400">Residential Address</label>
+                                <textarea
+                                    className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 text-sm font-bold resize-none min-h-[120px] focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    placeholder="House No, Street, Landmark..."
+                                    value={formData.residential_address}
+                                    onChange={(e) => setFormData({ ...formData, residential_address: e.target.value })}
+                                />
+                            </div>
+                        )}
+                        {step === 4 && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <OnboardingInput
+                                    label="City"
+                                    placeholder="e.g. Karnal"
+                                    value={formData.residential_city}
+                                    onChange={(v) => setFormData({ ...formData, residential_city: v })}
+                                />
+                                <OnboardingInput
+                                    label="State"
+                                    placeholder="e.g. Haryana"
+                                    value={formData.residential_state}
+                                    onChange={(v) => setFormData({ ...formData, residential_state: v })}
+                                />
+                                <div className="md:col-span-2">
+                                    <OnboardingInput
+                                        label="Pincode"
+                                        placeholder="6-digit PIN"
+                                        value={formData.residential_pincode}
+                                        onChange={(v) => setFormData({ ...formData, residential_pincode: v })}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </motion.div>
+                </AnimatePresence>
+
+                {error && (
+                    <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 text-xs font-bold text-red-500">
+                        {error}
+                    </motion.p>
+                )}
+
+                <div className="mt-12 flex items-center justify-between gap-4">
+                    <button
+                        onClick={prevStep}
+                        disabled={step === 1 || submitting}
+                        className="px-6 py-3 text-sm font-bold text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-0 transition-all flex items-center gap-2"
+                    >
+                        Back
+                    </button>
+                    {step < totalSteps ? (
+                        <button
+                            onClick={nextStep}
+                            className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-500/20 hover:bg-indigo-700 transition-all"
+                        >
+                            Continue
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleSubmit}
+                            disabled={submitting}
+                            className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-black text-sm uppercase tracking-widest shadow-xl shadow-emerald-500/20 hover:bg-emerald-700 transition-all flex items-center gap-2"
+                        >
+                            {submitting ? <Loader2 className="animate-spin" size={18} /> : 'Complete Setup'}
+                        </button>
+                    )}
+                </div>
+            </div>
+        </motion.div>
+    )
+}
+
+const OnboardingInput = ({ label, type = 'text', ...props }) => (
+    <div className="space-y-2">
+        <label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">{label}</label>
+        <input
+            type={type}
+            {...props}
+            onChange={(e) => props.onChange(e.target.value)}
+            className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 text-sm font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+        />
+    </div>
+)
 
 export default ClientLayout

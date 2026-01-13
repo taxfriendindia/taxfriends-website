@@ -94,19 +94,19 @@ const Contact = () => {
       <main className="pt-20">
 
         {/* 1. Hero Section */}
-        <section className="relative py-20 bg-gradient-to-br from-blue-600 to-indigo-700 text-white overflow-hidden">
+        <section className="relative py-12 md:py-20 bg-gradient-to-br from-blue-600 to-indigo-700 text-white overflow-hidden">
           <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10"></div>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-              <h1 className="text-4xl md:text-6xl font-bold mb-6 tracking-tight">
+              <h1 className="text-3xl md:text-6xl font-bold mb-4 md:mb-6 tracking-tight px-2">
                 Let's Start Your <span className="text-blue-200">Compliance Journey</span> Together
               </h1>
-              <p className="text-xl md:text-2xl text-blue-100 mb-8 max-w-3xl mx-auto font-light">
+              <p className="text-lg md:text-2xl text-blue-100 mb-6 md:mb-8 max-w-3xl mx-auto font-light px-4">
                 Expert Tax Solutions Just a Message Away
               </p>
               <motion.p
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5, duration: 1 }}
-                className="text-lg text-white/80 max-w-2xl mx-auto leading-relaxed"
+                className="text-base md:text-lg text-white/80 max-w-2xl mx-auto leading-relaxed px-4"
               >
                 At TaxFriend India, we believe in personalized service and timely support. Whether you need GST registration, ITR filing, or business compliance guidance, our team of experienced CAs is ready to assist you.
               </motion.p>
@@ -125,15 +125,15 @@ const Contact = () => {
               className="grid grid-cols-1 md:grid-cols-3 gap-8"
             >
               {/* Phone Card */}
-              <motion.div variants={itemVariants} className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-xl border-t-4 border-blue-500 hover:-translate-y-2 transition-transform duration-300">
-                <div className="w-16 h-16 bg-blue-100/50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-6 text-blue-600 animate-pulse">
-                  <Phone size={32} />
+              <motion.div variants={itemVariants} className="bg-white dark:bg-gray-800 rounded-2xl p-6 md:p-8 shadow-xl border-t-4 border-blue-500 hover:-translate-y-2 transition-transform duration-300">
+                <div className="w-12 h-12 md:w-16 md:h-16 bg-blue-100/50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4 md:mb-6 text-blue-600 animate-pulse">
+                  <Phone size={28} />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Call Our Experts</h3>
+                <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-2">Call Our Experts</h3>
                 <div className="space-y-2 text-gray-600 dark:text-gray-300 mb-6 font-medium">
-                  <p className="text-3xl font-bold text-blue-600">8409847102</p>
-                  <p>Mon-Sat, 9 AM - 7 PM</p>
-                  <p className="text-sm text-red-500 font-semibold flex items-center gap-1"><Zap size={14} /> Emergency Support Available</p>
+                  <p className="text-2xl md:text-3xl font-bold text-blue-600">8409847102</p>
+                  <p className="text-sm md:text-base">Mon-Sat, 9 AM - 7 PM</p>
+                  <p className="text-xs md:text-sm text-red-500 font-semibold flex items-center gap-1"><Zap size={14} /> Emergency Support Available</p>
                 </div>
                 <a href="tel:8409847102" className="block w-full text-center py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors shadow-lg shadow-blue-500/30">
                   📱 Tap to Call
@@ -222,13 +222,13 @@ const Contact = () => {
               </div>
 
               {/* Central HQ Node (Top) */}
-              <div className="relative z-20 mb-20 md:mb-24 transform hover:scale-110 transition-transform duration-300">
+              <div className="relative z-20 mb-12 md:mb-24 transform hover:scale-110 transition-transform duration-300">
                 <div className="relative group cursor-pointer flex flex-col items-center">
-                  <div className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center shadow-2xl shadow-red-600/40 border-4 border-white z-10">
-                    <span className="text-4xl">🏢</span>
+                  <div className="w-20 h-20 md:w-24 md:h-24 bg-red-600 rounded-full flex items-center justify-center shadow-2xl shadow-red-600/40 border-4 border-white z-10">
+                    <span className="text-3xl md:text-4xl">🏢</span>
                   </div>
-                  <span className="animate-ping absolute top-0 w-24 h-24 rounded-full bg-red-500 opacity-40"></span>
-                  <div className="mt-4 bg-white px-6 py-2 rounded-full shadow-lg border border-red-100 text-red-600 font-extrabold text-lg text-center whitespace-nowrap z-20">
+                  <span className="animate-ping absolute top-0 w-20 h-20 md:w-24 md:h-24 rounded-full bg-red-500 opacity-40"></span>
+                  <div className="mt-4 bg-white px-4 md:px-6 py-2 rounded-full shadow-lg border border-red-100 text-red-600 font-extrabold text-base md:text-lg text-center whitespace-nowrap z-20">
                     📍 Bihar Head Quarter
                   </div>
                 </div>
