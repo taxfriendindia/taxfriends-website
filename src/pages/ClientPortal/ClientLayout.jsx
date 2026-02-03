@@ -36,8 +36,7 @@ const ClientLayout = () => {
                 'full_name',
                 'mobile_number',
                 'mothers_name',
-                'dob',
-                'residential_address'
+                'dob'
             ];
 
             let isIncomplete = mandatoryFields.some(field => {
@@ -46,13 +45,14 @@ const ClientLayout = () => {
             });
 
             // Specific check for city/state/pincode allowing either prefix
-            const hasCity = (user.residential_city || user.city)
-            const hasState = (user.residential_state || user.state)
-            const hasPincode = (user.residential_pincode || user.pincode)
+            // Relaxed check: Address is no longer mandatory for entry
+            // const hasCity = (user.residential_city || user.city)
+            // const hasState = (user.residential_state || user.state)
+            // const hasPincode = (user.residential_pincode || user.pincode)
 
-            if (!hasCity || !hasState || !hasPincode) {
-                isIncomplete = true
-            }
+            // if (!hasCity || !hasState || !hasPincode) {
+            //     isIncomplete = true
+            // }
 
             // Force onboarding if incomplete
             setProfileIncomplete(isIncomplete)
@@ -478,6 +478,7 @@ const ClientLayout = () => {
                     <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
                         <OnboardingWizard
                             user={user}
+                            onLogout={handleLogout}
                             onComplete={() => {
                                 setProfileIncomplete(false)
                                 window.location.reload()
@@ -512,7 +513,7 @@ const ClientLayout = () => {
     )
 }
 
-const OnboardingWizard = ({ user, onComplete }) => {
+const OnboardingWizard = ({ user, onComplete, onLogout }) => {
     const [step, setStep] = useState(1)
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState(null)
@@ -557,12 +558,14 @@ const OnboardingWizard = ({ user, onComplete }) => {
             if (!formData.dob) return !!setError("Date of Birth is required")
         }
         if (step === 3) {
-            if (!formData.residential_address || formData.residential_address.length < 10) return !!setError("Please provide a complete address")
+            // Address is optional now
+            // if (!formData.residential_address || formData.residential_address.length < 10) return !!setError("Please provide a complete address")
         }
         if (step === 4) {
-            if (!formData.residential_city) return !!setError("City is required")
-            if (!formData.residential_state) return !!setError("State is required")
-            if (!formData.residential_pincode || formData.residential_pincode.length < 6) return !!setError("Enter a valid 6-digit Pincode")
+            // City/State/Pin are optional now
+            // if (!formData.residential_city) return !!setError("City is required")
+            // if (!formData.residential_state) return !!setError("State is required")
+            // if (!formData.residential_pincode || formData.residential_pincode.length < 6) return !!setError("Enter a valid 6-digit Pincode")
         }
         return true
     }
@@ -573,14 +576,11 @@ const OnboardingWizard = ({ user, onComplete }) => {
         try {
             const { error: updateError } = await supabase
                 .from('profiles')
-                .update({
+                .upsert({
+                    id: user.id,
                     ...formData,
-                    city: formData.residential_city, // Sync for compatibility
-                    state: formData.residential_state,
-                    pincode: formData.residential_pincode,
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', user.id)
 
             if (updateError) throw updateError
             onComplete()
@@ -655,7 +655,7 @@ const OnboardingWizard = ({ user, onComplete }) => {
                             <div className="space-y-2">
                                 <label className="text-xs font-black uppercase tracking-widest text-gray-400">Residential Address</label>
                                 <textarea
-                                    className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 text-sm font-bold resize-none min-h-[120px] focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 text-sm font-bold resize-none min-h-[120px] focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-gray-900 dark:text-white"
                                     placeholder="House No, Street, Landmark..."
                                     value={formData.residential_address}
                                     onChange={(e) => setFormData({ ...formData, residential_address: e.target.value })}
@@ -697,11 +697,11 @@ const OnboardingWizard = ({ user, onComplete }) => {
 
                 <div className="mt-12 flex items-center justify-between gap-4">
                     <button
-                        onClick={prevStep}
-                        disabled={step === 1 || submitting}
-                        className="px-6 py-3 text-sm font-bold text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-0 transition-all flex items-center gap-2"
+                        onClick={step === 1 ? onLogout : prevStep}
+                        disabled={submitting}
+                        className="px-6 py-3 text-sm font-bold text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all flex items-center gap-2"
                     >
-                        Back
+                        {step === 1 ? 'Sign Out' : 'Back'}
                     </button>
                     {step < totalSteps ? (
                         <button

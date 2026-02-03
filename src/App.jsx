@@ -31,6 +31,7 @@ const AdminAnnouncements = lazy(() => import('./pages/Admin/AdminAnnouncements')
 const AdminDataCleaner = lazy(() => import('./pages/Admin/AdminDataCleaner'))
 const AdminLeads = lazy(() => import('./pages/Admin/AdminLeads'))
 const PublicServices = lazy(() => import('./pages/Services/Services'))
+const InvestmentAdvisory = lazy(() => import('./pages/Advisory/InvestmentAdvisory'))
 
 // Loading Spinner Component
 const LoadingScreen = () => (
@@ -66,59 +67,68 @@ const AdminRoute = ({ children }) => {
 
 
 
+import ForceUpdate from './components/ForceUpdate'
+import { initNativeFeatures } from './utils/native-bridge'
+
+// Initialize native features on app load
+initNativeFeatures();
+
 function App() {
   return (
     <ThemeProvider>
-      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <ScrollToTop />
-        <AuthProvider>
-          <Suspense fallback={<LoadingScreen />}>
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<Home />} />
-              <Route path="/services" element={<PublicServices />} />
-              <Route path="/portfolio" element={<Portfolio />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-              <Route path="/terms" element={<TermsOfService />} />
-              <Route path="/terms-of-service" element={<TermsOfService />} />
-              <Route path="/refund-policy" element={<RefundPolicy />} />
-              <Route path="/shipping-policy" element={<ShippingPolicy />} />
-              <Route path="/login" element={<Login />} />
+      <ForceUpdate>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <ScrollToTop />
+          <AuthProvider>
+            <Suspense fallback={<LoadingScreen />}>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<Home />} />
+                <Route path="/services" element={<PublicServices />} />
+                <Route path="/portfolio" element={<Portfolio />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/advisory" element={<InvestmentAdvisory />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsOfService />} />
+                <Route path="/terms-of-service" element={<TermsOfService />} />
+                <Route path="/refund-policy" element={<RefundPolicy />} />
+                <Route path="/shipping-policy" element={<ShippingPolicy />} />
+                <Route path="/login" element={<Login />} />
 
-              {/* Client Portal Routes */}
-              <Route path="/dashboard" element={<PrivateRoute><ClientLayout /></PrivateRoute>}>
-                <Route index element={<Navigate to="services" replace />} />
-                <Route path="services" element={<Services />} />
-                <Route path="documents" element={<Documents />} />
-                <Route path="history" element={<History />} />
-                <Route path="records" element={<Records />} />
-                <Route path="profile" element={<Profile />} />
-              </Route>
+                {/* Client Portal Routes */}
+                <Route path="/dashboard" element={<PrivateRoute><ClientLayout /></PrivateRoute>}>
+                  <Route index element={<Navigate to="services" replace />} />
+                  <Route path="services" element={<Services />} />
+                  <Route path="documents" element={<Documents />} />
+                  <Route path="history" element={<History />} />
+                  <Route path="records" element={<Records />} />
+                  <Route path="profile" element={<Profile />} />
+                </Route>
 
-              {/* Admin Portal Routes (Protected) */}
-              <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-                <Route index element={<Navigate to="dashboard" replace />} />
-                <Route path="dashboard" element={<AdminDashboard />} />
-                <Route path="clients" element={<AdminClients />} />
-                <Route path="documents" element={<AdminRequests />} />
-                <Route path="services" element={<AdminServices />} />
-                <Route path="records" element={<AdminRecords />} />
-                <Route path="announcements" element={<AdminAnnouncements />} />
-                <Route path="data-cleaner" element={<AdminDataCleaner />} />
-                <Route path="leads" element={<AdminLeads />} />
-                <Route path="profile" element={<Profile />} />
-                <Route path="*" element={<div className="p-8 text-gray-500">Page Under Construction</div>} />
-              </Route>
+                {/* Admin Portal Routes (Protected) */}
+                <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+                  <Route index element={<Navigate to="dashboard" replace />} />
+                  <Route path="dashboard" element={<AdminDashboard />} />
+                  <Route path="clients" element={<AdminClients />} />
+                  <Route path="documents" element={<AdminRequests />} />
+                  <Route path="services" element={<AdminServices />} />
+                  <Route path="records" element={<AdminRecords />} />
+                  <Route path="announcements" element={<AdminAnnouncements />} />
+                  <Route path="data-cleaner" element={<AdminDataCleaner />} />
+                  <Route path="leads" element={<AdminLeads />} />
+                  <Route path="profile" element={<Profile />} />
+                  <Route path="*" element={<div className="p-8 text-gray-500">Page Under Construction</div>} />
+                </Route>
 
-              {/* Fallback */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+                {/* Fallback */}
+                <Route path="*" element={<Navigate to="/" replace />} />
 
-            </Routes>
-          </Suspense>
-        </AuthProvider>
-      </Router>
+              </Routes>
+            </Suspense>
+          </AuthProvider>
+        </Router>
+      </ForceUpdate>
     </ThemeProvider>
   )
 }

@@ -25,6 +25,8 @@ const AdminRecords = () => {
     const [timeRange, setTimeRange] = useState('7d') // '24h', '7d', '1m', '1y'
     const [marketingFilter, setMarketingFilter] = useState('all') // 'all', 'new_users', 'pending_req', 'rejected_req'
     const [graphMetric, setGraphMetric] = useState('overview') // 'overview', 'clients', 'services'
+    const [currentPage, setCurrentPage] = useState(1)
+    const pageSize = 10
 
     useEffect(() => {
         fetchAllData()
@@ -42,12 +44,12 @@ const AdminRecords = () => {
             const { data: profs } = await supabase
                 .from('profiles')
                 .select('*')
-                .order('created_at', { ascending: true })
+                .order('created_at', { ascending: false })
 
             const { data: servsRes } = await supabase
                 .from('user_services')
                 .select('*')
-                .order('created_at', { ascending: true })
+                .order('created_at', { ascending: false })
 
             setProfiles(profs || [])
             setRequests(servsRes || [])
@@ -169,6 +171,16 @@ const AdminRecords = () => {
 
         return data
     }, [profiles, requests, marketingFilter])
+
+    const totalPages = Math.ceil(marketingData.length / pageSize)
+    const paginatedData = useMemo(() => {
+        const start = (currentPage - 1) * pageSize
+        return marketingData.slice(start, start + pageSize)
+    }, [marketingData, currentPage])
+
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [marketingFilter])
 
     const downloadCSV = () => {
         const headers = ["Full Name", "Email", "Mobile", "Organization", "Joined Date"]
@@ -379,7 +391,7 @@ const AdminRecords = () => {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto flex-1">
+                <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 border-b border-slate-100">
                             <tr>
@@ -389,7 +401,7 @@ const AdminRecords = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
-                            {marketingData.slice(0, 15).map(u => (
+                            {paginatedData.map(u => (
                                 <tr key={u.id} className="hover:bg-emerald-50/30 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div className="font-bold text-slate-700 text-sm group-hover:text-emerald-600 transition-colors">{u.full_name || 'Anonymous User'}</div>
@@ -401,19 +413,44 @@ const AdminRecords = () => {
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         <div className="text-xs font-black text-slate-500 bg-slate-100 inline-block px-2 py-1 rounded-md">
-                                            {new Date(u.created_at).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                                            {format(new Date(u.created_at), 'dd MMM, yyyy')}
                                         </div>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
-                    {marketingData.length === 0 && (
+                    {paginatedData.length === 0 && (
                         <div className="p-8 text-center text-slate-400 text-sm">
                             No records found matching filters.
                         </div>
                     )}
                 </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            Page {currentPage} of {totalPages}
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                                className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm"
+                            >
+                                Previous
+                            </button>
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                                className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-lg shadow-emerald-600/20"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )

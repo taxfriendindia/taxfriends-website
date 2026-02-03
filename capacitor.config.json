@@ -1,0 +1,6 @@
+{
+  "appId": "com.taxfriendindia.app",
+  "appName": "TaxFriend India",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

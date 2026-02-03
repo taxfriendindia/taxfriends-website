@@ -316,9 +316,14 @@ const History = () => {
                                                                     <Download size={18} />
                                                                     <span>Download Work Copy</span>
                                                                 </a>
-                                                                <button className="px-6 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl hover:bg-slate-50 transition-all font-black text-[10px] uppercase tracking-widest">
+                                                                <a
+                                                                    href={`https://wa.me/918409847102?text=${encodeURIComponent(`Hi TaxFriend India, I have a query regarding my service:\n\nService: ${req.service?.title}\nID: #${req.id.slice(0, 8).toUpperCase()}\n\nPlease assist me.`)}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="px-6 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl hover:bg-slate-50 transition-all font-black text-[10px] uppercase tracking-widest flex items-center justify-center"
+                                                                >
                                                                     Report Issue
-                                                                </button>
+                                                                </a>
                                                             </div>
                                                         ) : (
                                                             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-6">
@@ -327,7 +332,7 @@ const History = () => {
                                                                     <p className="text-xs text-slate-500 font-medium mt-1">Please reach out to our support channel to collect your final service documents.</p>
                                                                 </div>
                                                                 <div className="flex gap-2 w-full md:w-auto">
-                                                                    <a href="https://wa.me/919420720491" target="_blank" className="flex-1 md:flex-none px-4 py-3 bg-emerald-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-700 transition-all text-center">
+                                                                    <a href="https://wa.me/918409847102" target="_blank" className="flex-1 md:flex-none px-4 py-3 bg-emerald-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-700 transition-all text-center">
                                                                         WhatsApp
                                                                     </a>
                                                                 </div>
@@ -347,7 +352,7 @@ const History = () => {
                                                                     {req.comments ? (
                                                                         <span>
                                                                             <span className="font-bold underline">Reason:</span> {req.comments}.
-                                                                            <span className="block mt-2 text-[10px] opacity-80 italic">For more information contact our team or email us at taxfriend.tax@gmail.com</span>
+                                                                            <span className="block mt-2 text-[10px] opacity-80 italic">For more information contact our team or email us at taxfriend.gst@gmail.com</span>
                                                                         </span>
                                                                     ) : (
                                                                         "Your request could not be processed at this time. Please contact support for more details."
@@ -356,7 +361,7 @@ const History = () => {
                                                             </div>
                                                         </div>
                                                         <div className="flex gap-2">
-                                                            <a href="https://wa.me/919420720491" target="_blank" className="flex-1 px-4 py-3 bg-slate-900 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-800 transition-all text-center">
+                                                            <a href="https://wa.me/918409847102" target="_blank" className="flex-1 px-4 py-3 bg-slate-900 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-800 transition-all text-center">
                                                                 Contact Support
                                                             </a>
                                                             <button

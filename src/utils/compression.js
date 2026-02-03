@@ -1,32 +1,35 @@
-import imageCompression from 'browser-image-compression';
+import imageCompression from 'browser-image-compression'
 
+/**
+ * Handles file compression before upload
+ */
 export const compressFile = async (file) => {
-    // If not an image, we can't compress it easily client-side with this library
-    if (!file.type.startsWith('image/')) {
-        return file;
+    // 1. Check if it's an image
+    if (file.type && file.type.startsWith('image/')) {
+        try {
+            console.log(`Original size: ${file.size / 1024 / 1024} MB`)
+
+            const options = {
+                maxSizeMB: 1.0,          // Max size 1MB
+                maxWidthOrHeight: 1920,  // Resize large images
+                useWebWorker: true,      // Run in background
+                initialQuality: 0.8      // Good quality retention
+            }
+
+            const compressedFile = await imageCompression(file, options)
+
+            console.log(`Compressed size: ${compressedFile.size / 1024 / 1024} MB`)
+
+            // Should be smaller, else return original
+            if (compressedFile.size < file.size) {
+                return compressedFile
+            }
+        } catch (error) {
+            console.error('Compression failed:', error)
+            // Fallback to original
+        }
     }
 
-    const options = {
-        maxSizeMB: 2, // Target 2MB max
-        maxWidthOrHeight: 2048,
-        useWebWorker: true,
-        initialQuality: 0.8
-    };
-
-    try {
-        console.log(`Original size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
-        const compressedBlob = await imageCompression(file, options);
-
-        // Convert Blob back to File to maintain metadata
-        const compressedFile = new File([compressedBlob], file.name, {
-            type: file.type,
-            lastModified: Date.now(),
-        });
-
-        console.log(`Compressed size: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
-        return compressedFile;
-    } catch (error) {
-        console.error('Compression Error:', error);
-        return file; // Return original on failure
-    }
-};
+    // Return original if not image or compression failed/useless
+    return file
+}

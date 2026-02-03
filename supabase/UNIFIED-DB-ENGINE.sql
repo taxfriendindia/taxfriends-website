@@ -272,7 +272,7 @@ ALTER TABLE public.contact_messages ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Global Master Access" ON public.profiles;
 CREATE POLICY "Global Master Access" ON public.profiles FOR ALL USING (
     auth.jwt() ->> 'email' = 'taxfriend.tax@gmail.com' 
-    OR (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'superuser'
+    OR public.is_superuser()
 );
 
 -- 2. Profiles Policies
@@ -328,7 +328,8 @@ INSERT INTO storage.buckets (id, name, public) VALUES
 ON CONFLICT (id) DO UPDATE SET public = EXCLUDED.public;
 
 -- Storage Policies: Documents & Archives (Privacy First)
-DROP POLICY IF EXISTS "Docs Storage Access" ON storage.objects;
+-- Storage Policies: Documents & Archives (Privacy First)
+DROP POLICY IF EXISTS "Docs Storage: Owner View/Upload" ON storage.objects;
 CREATE POLICY "Docs Storage: Owner View/Upload" ON storage.objects 
 FOR ALL USING (
     bucket_id IN ('user-documents', 'service-archives') 
@@ -336,10 +337,12 @@ FOR ALL USING (
 );
 
 -- Storage Policies: Avatars (Secure Public Access)
-DROP POLICY IF EXISTS "Avatar Storage Access" ON storage.objects;
+-- Storage Policies: Avatars (Secure Public Access)
+DROP POLICY IF EXISTS "Avatar: Public Read" ON storage.objects;
 CREATE POLICY "Avatar: Public Read" ON storage.objects 
 FOR SELECT USING (bucket_id = 'avatars');
 
+DROP POLICY IF EXISTS "Avatar: Restricted Manage" ON storage.objects;
 CREATE POLICY "Avatar: Restricted Manage" ON storage.objects 
 FOR ALL USING (
     bucket_id = 'avatars' 
@@ -398,4 +401,143 @@ ON CONFLICT DO NOTHING;
 -- FINAL STEP: Superuser Escalation
 UPDATE public.profiles SET role = 'superuser' WHERE email = 'taxfriend.tax@gmail.com';
 
+-- ==========================================
+-- PART 8: FOLDER MANAGEMENT SYSTEM
+-- ==========================================
+-- Windows-style file/folder management
+-- Replaces hardcoded domain structure with user-created folders
+
+-- 1. User Folders Table
+CREATE TABLE IF NOT EXISTS public.user_folders (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    name TEXT NOT NULL,
+    parent_folder_id UUID REFERENCES public.user_folders(id) ON DELETE CASCADE, -- NULL = root level
+    color TEXT DEFAULT '#4F46E5',
+    icon TEXT DEFAULT 'Folder',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT unique_folder_name_per_parent UNIQUE(user_id, parent_folder_id, name)
+);
+
+-- 2. User Files Table (Enhanced file metadata)
+CREATE TABLE IF NOT EXISTS public.user_files (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    folder_id UUID REFERENCES public.user_folders(id) ON DELETE SET NULL, -- NULL = root level
+    file_name TEXT NOT NULL,
+    file_url TEXT NOT NULL,
+    file_size BIGINT,
+    file_type TEXT,
+    tags TEXT[],
+    description TEXT,
+    -- Legacy metadata for backward compatibility
+    domain TEXT,
+    service_names TEXT[],
+    sub_type TEXT,
+    year_type TEXT CHECK (year_type IN ('AY', 'FY', NULL)),
+    year TEXT,
+    uploaded_by UUID REFERENCES public.profiles(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 3. Indexes for Performance
+CREATE INDEX IF NOT EXISTS idx_user_folders_user_id ON public.user_folders(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_folders_parent ON public.user_folders(parent_folder_id);
+CREATE INDEX IF NOT EXISTS idx_user_files_user_id ON public.user_files(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_files_folder_id ON public.user_files(folder_id);
+CREATE INDEX IF NOT EXISTS idx_user_files_tags ON public.user_files USING GIN(tags);
+
+-- 4. RLS Policies for user_folders
+ALTER TABLE public.user_folders ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Folders: Own Access" ON public.user_folders;
+CREATE POLICY "Folders: Own Access" ON public.user_folders 
+FOR ALL USING (auth.uid() = user_id OR public.is_admin());
+
+-- 5. RLS Policies for user_files
+ALTER TABLE public.user_files ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Files: Own Access" ON public.user_files;
+CREATE POLICY "Files: Own Access" ON public.user_files 
+FOR ALL USING (auth.uid() = user_id OR public.is_admin());
+
+-- 6. Helper Function: Get Folder Path (Breadcrumb)
+CREATE OR REPLACE FUNCTION public.get_folder_path(folder_uuid UUID)
+RETURNS TEXT AS $$
+DECLARE
+    path TEXT := '';
+BEGIN
+    IF folder_uuid IS NULL THEN
+        RETURN 'My Documents';
+    END IF;
+    
+    WITH RECURSIVE folder_tree AS (
+        SELECT id, name, parent_folder_id, 1 as level
+        FROM public.user_folders
+        WHERE id = folder_uuid
+        UNION ALL
+        SELECT f.id, f.name, f.parent_folder_id, ft.level + 1
+        FROM public.user_folders f
+        INNER JOIN folder_tree ft ON f.id = ft.parent_folder_id
+    )
+    SELECT string_agg(name, ' / ' ORDER BY level DESC)
+    INTO path
+    FROM folder_tree;
+    
+    RETURN COALESCE('My Documents / ' || path, 'My Documents');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- 7. Helper Function: Count Files in Folder
+CREATE OR REPLACE FUNCTION public.count_folder_files(folder_uuid UUID, include_subfolders BOOLEAN DEFAULT FALSE)
+RETURNS INTEGER AS $$
+DECLARE
+    file_count INTEGER;
+BEGIN
+    IF NOT include_subfolders THEN
+        SELECT COUNT(*) INTO file_count FROM public.user_files WHERE folder_id = folder_uuid;
+    ELSE
+        WITH RECURSIVE folder_tree AS (
+            SELECT id FROM public.user_folders WHERE id = folder_uuid
+            UNION ALL
+            SELECT f.id FROM public.user_folders f
+            INNER JOIN folder_tree ft ON f.parent_folder_id = ft.id
+        )
+        SELECT COUNT(*) INTO file_count
+        FROM public.user_files WHERE folder_id IN (SELECT id FROM folder_tree);
+    END IF;
+    RETURN COALESCE(file_count, 0);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- 8. Auto-Update Timestamp Triggers
+CREATE OR REPLACE FUNCTION public.update_folder_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS tr_update_folder_timestamp ON public.user_folders;
+CREATE TRIGGER tr_update_folder_timestamp
+BEFORE UPDATE ON public.user_folders
+FOR EACH ROW EXECUTE FUNCTION public.update_folder_timestamp();
+
+CREATE OR REPLACE FUNCTION public.update_file_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS tr_update_file_timestamp ON public.user_files;
+CREATE TRIGGER tr_update_file_timestamp
+BEFORE UPDATE ON public.user_files
+FOR EACH ROW EXECUTE FUNCTION public.update_file_timestamp();
+
+-- ==========================================
 SELECT '🚀 TaxFriend India: Unified Database Engine Online!' as status;

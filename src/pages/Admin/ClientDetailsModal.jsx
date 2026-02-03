@@ -4,7 +4,7 @@ import { X, User, Briefcase, MessageSquare, Save, Mail, MapPin, Calendar, Clock,
 import { supabase } from '../../lib/supabase'
 import StatusModal from '../../components/StatusModal'
 import ConfirmationModal from '../../components/ConfirmationModal'
-import ClientArchivesTab from './ClientArchivesTab'
+import ClientArchivesTab from './ClientArchivesTabSimple'
 
 const ClientDetailsModal = ({ client, isOpen, onClose, onUpdate, currentUser }) => {
     const [activeTab, setActiveTab] = useState('profile') // profile, services, message

@@ -148,7 +148,7 @@ const Contact = () => {
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Email Us</h3>
                 <div className="space-y-2 text-gray-600 dark:text-gray-300 mb-6">
                   <p className="font-semibold">Start: <span className="font-normal">taxfriend.gst@gmail.com</span></p>
-                  <p className="font-semibold">Support: <span className="font-normal">taxfriend.tax@gmail.com</span></p>
+                  <p className="font-semibold">Support: <span className="font-normal">taxfriend.gst@gmail.com</span></p>
                   <p className="text-sm text-green-600 font-medium">Responds within 4 hours</p>
                 </div>
                 <a href="mailto:taxfriend.gst@gmail.com" className="block w-full text-center py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition-colors shadow-lg shadow-purple-500/30">

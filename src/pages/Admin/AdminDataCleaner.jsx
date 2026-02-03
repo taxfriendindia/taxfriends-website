@@ -16,7 +16,7 @@ const AdminDataCleaner = () => {
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, onConfirm: () => { } })
     const [backupFile, setBackupFile] = useState(null)
 
-    const isSuperUser = user?.role === 'superuser' || user?.email === 'taxfriend.tax@gmail.com'
+    const isSuperUser = user?.role === 'superuser' || user?.email === 'taxfriend.gst@gmail.com'
 
     const handleCreateBackup = async () => {
         setIsProcessing(true)

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
     Folder, Plus, Trash2, Download, Eye, X,
     Upload, Calendar, Tag, Layers, CheckCircle2,
-    FileText, Search, ChevronRight, ChevronLeft, Library
+    FileText, Search, ChevronRight, ChevronLeft, Library, Pencil
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
@@ -13,8 +13,9 @@ const ClientArchivesTab = ({ clientId }) => {
     const [uploading, setUploading] = useState(false)
     const [showUploadModal, setShowUploadModal] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
-    const [currentFolder, setCurrentFolder] = useState(null) // null = root, 'GST Return' = inside GST
+    const [currentFolder, setCurrentFolder] = useState(null)
     const [selectedDoc, setSelectedDoc] = useState(null)
+    const [editingArchive, setEditingArchive] = useState(null) // for Update feature
 
     // Form State for Upload
     const [form, setForm] = useState({
@@ -118,6 +119,22 @@ const ClientArchivesTab = ({ clientId }) => {
 
         setUploading(true)
         try {
+            // Check for duplicate files in the target folder
+            const existingFiles = archives.filter(a =>
+                a.domain === form.domain &&
+                a.sub_type === form.subType &&
+                a.year === form.year
+            )
+            const existingFileNames = existingFiles.map(f => f.file_name)
+
+            for (const file of form.files) {
+                if (existingFileNames.includes(file.name)) {
+                    alert(`Conflict: A file named "${file.name}" already exists in this folder (${form.domain}${form.subType ? ' / ' + form.subType : ''} ${form.year}). Please rename the file before uploading.`)
+                    setUploading(false)
+                    return
+                }
+            }
+
             const adminId = (await supabase.auth.getUser()).data.user.id
             const uploadPromises = Array.from(form.files).map(async (file) => {
                 const fileExt = file.name.split('.').pop()
@@ -210,6 +227,43 @@ const ClientArchivesTab = ({ clientId }) => {
         }
     }
 
+    const handleDeleteFolder = async (folder) => {
+        if (!window.confirm(`Are you sure you want to delete this folder and its ${folder.files.length} documents?`)) return
+
+        try {
+            setLoading(true)
+            for (const file of folder.files) {
+                // 1. Delete from Storage
+                if (file.file_url && file.file_url.includes('service-archives')) {
+                    const decoded = decodeURIComponent(file.file_url)
+                    const parts = decoded.split('/service-archives/')
+                    if (parts.length > 1) {
+                        let storagePath = parts[1].split('?')[0]
+                        await supabase.storage.from('service-archives').remove([storagePath])
+                    }
+                }
+            }
+
+            // 2. Delete all records from DB
+            const fileIds = folder.files.map(f => f.id)
+            const { error: dbError } = await supabase
+                .from('service_archives')
+                .delete()
+                .in('id', fileIds)
+
+            if (dbError) throw dbError
+
+            // Update local state
+            setArchives(prev => prev.filter(a => !fileIds.includes(a.id)))
+            alert('Folder deleted successfully')
+        } catch (err) {
+            console.error(err)
+            alert('Folder delete failed: ' + err.message)
+        } finally {
+            setLoading(false)
+        }
+    }
+
     const toggleService = (s) => {
         setForm(prev => ({
             ...prev,
@@ -290,11 +344,33 @@ const ClientArchivesTab = ({ clientId }) => {
                                     if (item.type === 'domain') setCurrentFolder(val)
                                     else setSelectedDoc(item)
                                 }}
+                                onDelete={item.type === 'sub_type' ? () => handleDeleteFolder(item) : null}
+                                onEdit={item.type === 'sub_type' ? () => setEditingArchive(item) : null}
                             />
                         ))}
                     </AnimatePresence>
                 </div>
             )}
+
+            {/* Update Modal Overlay */}
+            <AnimatePresence>
+                {editingArchive && (
+                    <EditArchiveModal
+                        archive={editingArchive}
+                        onClose={() => setEditingArchive(null)}
+                        onUpdate={(updatedData) => {
+                            setArchives(prev => prev.map(a =>
+                                editingArchive.files.some(f => f.id === a.id)
+                                    ? { ...a, ...updatedData }
+                                    : a
+                            ))
+                            setEditingArchive(null)
+                        }}
+                        subTypes={subTypes}
+                        domains={domains}
+                    />
+                )}
+            </AnimatePresence>
 
             {/* In-App Viewer Modal */}
             <AnimatePresence>
@@ -327,16 +403,25 @@ const ClientArchivesTab = ({ clientId }) => {
                             <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                                 {/* Domain Selection */}
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">1. Select Domain</label>
-                                    <select
-                                        value={form.domain}
-                                        onChange={(e) => setForm({ ...form, domain: e.target.value, services: [], subType: '' })}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
-                                    >
-                                        {domains.map(d => (
-                                            <option key={d} value={d}>{d}</option>
-                                        ))}
-                                    </select>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">1. Domain / Folder Name</label>
+                                    <div className="flex gap-3">
+                                        <select
+                                            value={domains.includes(form.domain) ? form.domain : 'Others'}
+                                            onChange={(e) => setForm({ ...form, domain: e.target.value, services: [], subType: '' })}
+                                            className="flex-[2] bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
+                                        >
+                                            {domains.map(d => (
+                                                <option key={d} value={d}>{d}</option>
+                                            ))}
+                                        </select>
+                                        <input
+                                            type="text"
+                                            placeholder="Type Raw Name..."
+                                            value={form.domain}
+                                            onChange={(e) => setForm({ ...form, domain: e.target.value })}
+                                            className="flex-[3] bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* Year Selection */}
@@ -369,22 +454,31 @@ const ClientArchivesTab = ({ clientId }) => {
 
                                 {/* Specific Type (Dropdown) */}
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">4. Sub-Category</label>
-                                    <select
-                                        value={form.subType}
-                                        onChange={(e) => setForm({ ...form, subType: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
-                                    >
-                                        <option value="">Select Category...</option>
-                                        {subTypes[form.domain]?.map(t => <option key={t} value={t}>{t}</option>)}
-                                    </select>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">4. Sub-Category / Specific Type</label>
+                                    <div className="flex gap-3">
+                                        <select
+                                            value={subTypes[form.domain]?.includes(form.subType) ? form.subType : ''}
+                                            onChange={(e) => setForm({ ...form, subType: e.target.value })}
+                                            className="flex-[2] bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
+                                        >
+                                            <option value="">Categories...</option>
+                                            {subTypes[form.domain]?.map(t => <option key={t} value={t}>{t}</option>)}
+                                        </select>
+                                        <input
+                                            type="text"
+                                            placeholder="Or Raw Category..."
+                                            value={form.subType}
+                                            onChange={(e) => setForm({ ...form, subType: e.target.value })}
+                                            className="flex-[3] bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* Multi-Service Selection */}
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">5. Combined Services (Optional)</label>
                                     <div className="flex flex-wrap gap-2">
-                                        {['ITR', 'COI', '3B', 'GSTR-1', 'Audit'].map(s => (
+                                        {['ITR', 'COI', '3B', 'GSTR-1', 'Audit', 'BS', 'PL'].map(s => (
                                             <button
                                                 key={s}
                                                 onClick={() => toggleService(s)}
@@ -456,7 +550,7 @@ const ClientArchivesTab = ({ clientId }) => {
     )
 }
 
-const RecordRow = ({ item, onOpen }) => {
+const RecordRow = ({ item, onOpen, onDelete, onEdit }) => {
     const isDomain = item.type === 'domain'
 
     const getPathPattern = () => {
@@ -474,16 +568,21 @@ const RecordRow = ({ item, onOpen }) => {
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, x: -10 }}
-            onClick={() => onOpen(isDomain ? item.name : item)}
             className="group relative bg-white p-4 pl-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 hover:border-indigo-100 transition-all flex items-center gap-6 cursor-pointer"
         >
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-transparent group-hover:bg-indigo-600 rounded-r-full transition-all" />
 
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${isDomain ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white' : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white'}`}>
+            <div
+                onClick={() => onOpen(isDomain ? item.name : item)}
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${isDomain ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white' : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white'}`}
+            >
                 {isDomain ? <Folder size={22} /> : <FileText size={22} />}
             </div>
 
-            <div className="flex-1 min-w-0">
+            <div
+                onClick={() => onOpen(isDomain ? item.name : item)}
+                className="flex-1 min-w-0"
+            >
                 <h3 className="text-[12px] font-black text-slate-800 tracking-wide uppercase truncate">
                     {getPathPattern()}
                 </h3>
@@ -508,13 +607,171 @@ const RecordRow = ({ item, onOpen }) => {
                     <ChevronRight size={18} className="text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
                 ) : (
                     <div className="flex items-center gap-2">
-                        <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                            title="Edit Details"
+                        >
+                            <Pencil size={16} />
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            title="Delete Folder"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                        <button
+                            onClick={() => onOpen(item)}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all"
+                        >
                             <Eye size={12} /> View
                         </button>
                     </div>
                 )}
             </div>
         </motion.div>
+    )
+}
+
+const EditArchiveModal = ({ archive, onClose, onUpdate, subTypes, domains }) => {
+    const [updating, setUpdating] = useState(false)
+    const [form, setForm] = useState({
+        domain: archive.domain || 'GST Return',
+        subType: archive.sub_type || '',
+        yearType: archive.year_type || 'FY',
+        year: archive.year || ''
+    })
+
+    const handleUpdate = async () => {
+        setUpdating(true)
+        try {
+            const fileIds = archive.files.map(f => f.id)
+            const { error } = await supabase
+                .from('service_archives')
+                .update({
+                    domain: form.domain,
+                    sub_type: form.subType,
+                    year_type: form.yearType,
+                    year: form.year
+                })
+                .in('id', fileIds)
+
+            if (error) throw error
+            onUpdate(form)
+            alert('Archive updated successfully')
+        } catch (err) {
+            console.error(err)
+            alert('Update failed: ' + err.message)
+        } finally {
+            setUpdating(false)
+        }
+    }
+
+    return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-[2rem] w-full max-w-xl overflow-hidden shadow-2xl"
+            >
+                <div className="p-6 border-b flex justify-between items-center bg-slate-50">
+                    <h3 className="font-black text-slate-800 uppercase tracking-widest text-sm">Update Archive Details</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full text-slate-400">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <div className="p-8 space-y-6">
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Domain / Folder Name</label>
+                        <div className="flex gap-3">
+                            <select
+                                value={domains.includes(form.domain) ? form.domain : 'Others'}
+                                onChange={(e) => setForm({ ...form, domain: e.target.value, subType: '' })}
+                                className="flex-[2] bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
+                            >
+                                {domains.map(d => (
+                                    <option key={d} value={d}>{d}</option>
+                                ))}
+                            </select>
+                            <input
+                                type="text"
+                                placeholder="Type Raw Name..."
+                                value={form.domain}
+                                onChange={(e) => setForm({ ...form, domain: e.target.value })}
+                                className="flex-[3] bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Year Type</label>
+                            <div className="flex bg-slate-100 p-1 rounded-xl">
+                                {['AY', 'FY'].map(t => (
+                                    <button
+                                        key={t}
+                                        onClick={() => setForm({ ...form, yearType: t })}
+                                        className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${form.yearType === t ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}
+                                    >
+                                        {t}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Year</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. 2023-24"
+                                value={form.year}
+                                onChange={(e) => setForm({ ...form, year: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sub-Category / Specific Type</label>
+                        <div className="flex gap-3">
+                            <select
+                                value={subTypes[form.domain]?.includes(form.subType) ? form.subType : ''}
+                                onChange={(e) => setForm({ ...form, subType: e.target.value })}
+                                className="flex-[2] bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
+                            >
+                                <option value="">Categories...</option>
+                                {subTypes[form.domain]?.map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                            <input
+                                type="text"
+                                placeholder="Or Raw Category..."
+                                value={form.subType}
+                                onChange={(e) => setForm({ ...form, subType: e.target.value })}
+                                className="flex-[3] bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-6 bg-slate-50 border-t flex gap-3">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleUpdate}
+                        disabled={updating}
+                        className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-[0.98]"
+                    >
+                        {updating ? 'Updating...' : 'Update Details'}
+                    </button>
+                </div>
+            </motion.div>
+        </div>
     )
 }
 
