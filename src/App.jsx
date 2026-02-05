@@ -67,11 +67,10 @@ const AdminRoute = ({ children }) => {
 
 
 
-import ForceUpdate from './components/ForceUpdate'
-import { initNativeFeatures } from './utils/native-bridge'
 
-// Initialize native features on app load
-initNativeFeatures();
+
+import ForceUpdate from './components/ForceUpdate'
+
 
 function App() {
   return (
