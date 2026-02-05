@@ -92,14 +92,14 @@ const Services = () => {
                 setIsModalOpen(false)
                 setSelectedService(null)
 
-                if (hasDocs) {
-                    // User knows the drill / has docs. Just go to history.
-                    navigate('/dashboard/history')
-                } else {
-                    // New user or no docs. Nudge them to upload.
-                    navigate('/dashboard/history', { state: { newRequest: true } })
-                }
-            }, 1000)
+                // Redirect to Documents page for upload
+                navigate('/dashboard/documents', {
+                    state: {
+                        serviceName: selectedService.title,
+                        newRequest: true
+                    }
+                })
+            }, 3000)
 
         } catch (error) {
             setMessage({ type: 'error', text: error.message || 'Failed to submit request.' })
