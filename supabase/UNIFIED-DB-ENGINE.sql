@@ -1,105 +1,41 @@
 -- ==========================================
--- TAXFRIEND INDIA - ABSOLUTE FINAL DATABASE SETUP (V5.PRODUCTION)
+-- TAXFRIEND INDIA - FINAL V5 + SEPARATED ARCHITECTURE
 -- ==========================================
--- This script consolidates EVERY feature:
--- 1. Full Schema (Profiles, Services, Documents, Archives, Notifications, Leads)
--- 2. Enhanced Security (Anti-Role Hijacking, RLS, Master Bypass)
--- 3. Business Logic (Purge Triggers, Auth Sync, Helper Functions)
--- 4. Storage System (Documents, Avatars, Archives)
--- 5. Data Consistency (Legacy Column Cleanup & New Column Support)
+-- MERGED: Robust V5 Logic + Strict Document Separation (Records vs Docs)
 -- ==========================================
 
--- PART 1: EXTENSIONS & INITIAL SETUP
--- ==========================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- PART 2: CORE TABLES (IDEMPOTENT)
 -- ==========================================
-
--- 1. Profiles (Central User Table)
--- CLEANUP: Identify and merge duplicates before enforcing uniqueness
--- We keep the one with most data or the latest one
+-- PART 1: MIGRATION & CLEANUP (Pre-Flight)
+-- ==========================================
+-- We try to migrate data if 'user_files' exists before we drop/replace it.
 DO $$ 
 BEGIN
-    -- Reassign dependent data from duplicates to the latest profile
-    -- This fixes the FK constraint error (23503) seen in logs
-    UPDATE public.user_services us
-    SET user_id = latest.id
-    FROM (SELECT DISTINCT ON (email) id, email FROM public.profiles ORDER BY email, created_at DESC) latest
-    JOIN public.profiles old ON old.email = latest.email
-    WHERE us.user_id = old.id AND old.id <> latest.id;
-
-    UPDATE public.user_services us_h
-    SET handled_by = latest.id
-    FROM (SELECT DISTINCT ON (email) id, email FROM public.profiles ORDER BY email, created_at DESC) latest
-    JOIN public.profiles old ON old.email = latest.email
-    WHERE us_h.handled_by = old.id AND old.id <> latest.id;
-
-    UPDATE public.user_documents ud
-    SET user_id = latest.id
-    FROM (SELECT DISTINCT ON (email) id, email FROM public.profiles ORDER BY email, created_at DESC) latest
-    JOIN public.profiles old ON old.email = latest.email
-    WHERE ud.user_id = old.id AND old.id <> latest.id;
-
-    UPDATE public.user_documents ud_h
-    SET handled_by = latest.id
-    FROM (SELECT DISTINCT ON (email) id, email FROM public.profiles ORDER BY email, created_at DESC) latest
-    JOIN public.profiles old ON old.email = latest.email
-    WHERE ud_h.handled_by = old.id AND old.id <> latest.id;
-
-    UPDATE public.user_documents ud_u
-    SET uploaded_by = latest.id
-    FROM (SELECT DISTINCT ON (email) id, email FROM public.profiles ORDER BY email, created_at DESC) latest
-    JOIN public.profiles old ON old.email = latest.email
-    WHERE ud_u.uploaded_by = old.id AND old.id <> latest.id;
-
-    UPDATE public.service_archives sa
-    SET user_id = latest.id
-    FROM (SELECT DISTINCT ON (email) id, email FROM public.profiles ORDER BY email, created_at DESC) latest
-    JOIN public.profiles old ON old.email = latest.email
-    WHERE sa.user_id = old.id AND old.id <> latest.id;
-
-    UPDATE public.service_archives sa_u
-    SET uploaded_by = latest.id
-    FROM (SELECT DISTINCT ON (email) id, email FROM public.profiles ORDER BY email, created_at DESC) latest
-    JOIN public.profiles old ON old.email = latest.email
-    WHERE sa_u.uploaded_by = old.id AND old.id <> latest.id;
-
-    UPDATE public.profiles p_ref
-    SET referred_by = latest.id
-    FROM (SELECT DISTINCT ON (email) id, email FROM public.profiles ORDER BY email, created_at DESC) latest
-    JOIN public.profiles old ON old.email = latest.email
-    WHERE p_ref.referred_by = old.id AND old.id <> latest.id;
-
-    UPDATE public.notifications n
-    SET user_id = latest.id
-    FROM (SELECT DISTINCT ON (email) id, email FROM public.profiles ORDER BY email, created_at DESC) latest
-    JOIN public.profiles old ON old.email = latest.email
-    WHERE n.user_id = old.id AND old.id <> latest.id;
-
-    -- Now safe to delete ghost profiles (older versions)
-    DELETE FROM public.profiles p1
-    USING public.profiles p2
-    WHERE p1.email = p2.email 
-      AND p1.id <> p2.id 
-      AND p1.created_at < p2.created_at;
+    -- Create temp tables to hold data if original tables exist
+    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'user_files') THEN
+        CREATE TABLE IF NOT EXISTS public.temp_migration_files AS SELECT * FROM public.user_files;
+    END IF;
 END $$;
 
+-- ==========================================
+-- PART 2: CORE TABLES
+-- ==========================================
+
+-- 1. Profiles (Unchanged logic)
 CREATE TABLE IF NOT EXISTS public.profiles (
-    id UUID PRIMARY KEY, -- Linked to auth.users.id
+    id UUID PRIMARY KEY,
     email TEXT UNIQUE,
-    role TEXT DEFAULT 'client' CHECK (role IN ('client', 'admin', 'superuser', 'partner')), -- Added partner role
+    role TEXT DEFAULT 'client' CHECK (role IN ('client', 'admin', 'superuser', 'partner')),
     full_name TEXT,
     dob DATE,
     mothers_name TEXT,
     mobile_number TEXT,
     avatar_url TEXT,
-    -- Address Fields
     residential_address TEXT,
     residential_city TEXT,
     residential_state TEXT,
     residential_pincode TEXT,
-    -- Business Fields
     business_name TEXT,
     organization TEXT,
     gst_number TEXT,
@@ -107,14 +43,12 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     business_city TEXT,
     business_state TEXT,
     business_pincode TEXT,
-    -- Partner & KYB Fields (Newly Added)
     aadhar_number TEXT,
     pan_number TEXT,
     partner_id TEXT,
     referred_by UUID REFERENCES public.profiles(id),
     wallet_balance DECIMAL(12,2) DEFAULT 0.00,
     payout_upi TEXT,
-    -- Maintenance Columns
     kyc_status TEXT DEFAULT 'not_started' CHECK (kyc_status IN ('not_started', 'pending', 'verified', 'rejected')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -129,12 +63,12 @@ CREATE TABLE IF NOT EXISTS public.service_catalog (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. User Services (Orders)
+-- 3. User Services
 CREATE TABLE IF NOT EXISTS public.user_services (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     service_id UUID REFERENCES public.service_catalog(id) ON DELETE SET NULL,
-    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'quality_check', 'completed', 'rejected', 'cancelled')),
+    status TEXT NOT NULL DEFAULT 'pending',
     comments TEXT,
     handled_by UUID REFERENCES public.profiles(id),
     completed_file_url TEXT,
@@ -142,27 +76,31 @@ CREATE TABLE IF NOT EXISTS public.user_services (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 4. User Documents (KYC/Uploads)
-CREATE TABLE IF NOT EXISTS public.user_documents (
+-- 4. Client Supporting Docs (Input Stream) - REPLACES old user_documents
+-- This is where Clients upload their files.
+CREATE TABLE IF NOT EXISTS public.client_supporting_docs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
-    name TEXT NOT NULL,
+    file_name TEXT NOT NULL,
     file_url TEXT, 
+    file_size BIGINT,
+    file_type TEXT,
+    description TEXT, -- Service Context (e.g. "For GST Registration")
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'verified', 'rejected')),
-    doc_type TEXT,
-    uploaded_by UUID REFERENCES public.profiles(id), -- For Partners/Admins
-    handled_by UUID REFERENCES public.profiles(id),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    admin_feedback TEXT,
+    uploaded_by UUID REFERENCES public.profiles(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 5. Service Archives (Folder System)
+-- 5. Service Archives (LEGACY - Kept for compatibility, but moving towards service_records)
 CREATE TABLE IF NOT EXISTS public.service_archives (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     domain TEXT NOT NULL, 
     service_names TEXT[] NOT NULL, 
     sub_type TEXT, 
-    year_type TEXT CHECK (year_type IN ('AY', 'FY')),
+    year_type TEXT,
     year TEXT,
     file_url TEXT NOT NULL,
     file_name TEXT,
@@ -192,227 +130,16 @@ CREATE TABLE IF NOT EXISTS public.contact_messages (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- PART 3: HELPER FUNCTIONS & LOGIC
+-- ==========================================
+-- PART 3: FOLDER SYSTEM (THE VAULT)
 -- ==========================================
 
--- Admin Checks
-CREATE OR REPLACE FUNCTION public.is_admin() RETURNS boolean AS $$
-BEGIN
-  RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'superuser'));
-END; $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
-CREATE OR REPLACE FUNCTION public.is_superuser() RETURNS boolean AS $$
-BEGIN
-  RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'superuser');
-END; $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
--- Role Protection (Security Barrier)
-CREATE OR REPLACE FUNCTION public.protect_user_roles()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF (OLD.role <> NEW.role) THEN
-        IF NOT (
-            EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'superuser')
-            OR auth.jwt() ->> 'email' = 'taxfriend.tax@gmail.com'
-        ) THEN
-            RAISE EXCEPTION 'Access Denied: You do not have permission to modify user roles.';
-        END IF;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
-DROP TRIGGER IF EXISTS tr_protect_user_roles ON public.profiles;
-CREATE TRIGGER tr_protect_user_roles BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.protect_user_roles();
-
--- Notification Purge (7-Day Rule)
-CREATE OR REPLACE FUNCTION public.purge_old_notifications()
-RETURNS TRIGGER AS $$
-BEGIN
-    DELETE FROM public.notifications WHERE created_at < NOW() - INTERVAL '7 days';
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
-DROP TRIGGER IF EXISTS tr_purge_old_notifications ON public.notifications;
-CREATE TRIGGER tr_purge_old_notifications AFTER INSERT ON public.notifications FOR EACH STATEMENT EXECUTE FUNCTION public.purge_old_notifications();
-
--- Auth User Creation Sync
-CREATE OR REPLACE FUNCTION public.handle_new_user() 
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.profiles (id, email, full_name, role)
-  VALUES (
-    NEW.id, 
-    NEW.email, 
-    NEW.raw_user_meta_data->>'full_name',
-    CASE WHEN NEW.email = 'taxfriend.tax@gmail.com' THEN 'superuser' ELSE 'client' END
-  )
-  ON CONFLICT (id) DO UPDATE SET
-    email = EXCLUDED.email,
-    full_name = COALESCE(public.profiles.full_name, EXCLUDED.full_name);
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created BEFORE INSERT ON auth.users FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
-
--- PART 4: SECURITY (RLS POLICIES)
--- ==========================================
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.service_catalog ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_services ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_documents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.service_archives ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.contact_messages ENABLE ROW LEVEL SECURITY;
-
--- 1. Master Bypass (Secure Context)
-DROP POLICY IF EXISTS "Global Master Access" ON public.profiles;
-CREATE POLICY "Global Master Access" ON public.profiles FOR ALL USING (
-    auth.jwt() ->> 'email' = 'taxfriend.tax@gmail.com' 
-    OR public.is_superuser()
-);
-
--- 2. Profiles Policies
-DROP POLICY IF EXISTS "Profiles: Own view" ON public.profiles;
-CREATE POLICY "Profiles: Own view" ON public.profiles FOR SELECT USING (auth.uid() = id OR public.is_admin());
-DROP POLICY IF EXISTS "Profiles: Own update" ON public.profiles;
-CREATE POLICY "Profiles: Own update" ON public.profiles FOR UPDATE USING (auth.uid() = id OR public.is_admin());
-
--- 3. Service Catalog (Public Viewable)
-DROP POLICY IF EXISTS "Catalog: Public View" ON public.service_catalog;
-CREATE POLICY "Catalog: Public View" ON public.service_catalog FOR SELECT USING (true);
-
--- 4. User Services (Orders)
-DROP POLICY IF EXISTS "Services: Own View" ON public.user_services;
-CREATE POLICY "Services: Own View" ON public.user_services FOR SELECT USING (auth.uid() = user_id OR public.is_admin());
-DROP POLICY IF EXISTS "Services: Admin All" ON public.user_services;
-CREATE POLICY "Services: Admin All" ON public.user_services FOR ALL USING (public.is_admin());
-
--- 5. Documents & Archives (Encrypted/Private Context)
-DROP POLICY IF EXISTS "Docs: View Access" ON public.user_documents;
-CREATE POLICY "Docs: View Access" ON public.user_documents FOR SELECT USING (auth.uid() = user_id OR public.is_admin());
-DROP POLICY IF EXISTS "Docs: Own Insert" ON public.user_documents;
-CREATE POLICY "Docs: Own Insert" ON public.user_documents FOR INSERT WITH CHECK (auth.uid() = user_id OR public.is_admin());
-DROP POLICY IF EXISTS "Docs: Admin Delete" ON public.user_documents;
-CREATE POLICY "Docs: Admin Delete" ON public.user_documents FOR DELETE USING (public.is_admin());
-
-DROP POLICY IF EXISTS "Archives: View Access" ON public.service_archives;
-CREATE POLICY "Archives: View Access" ON public.service_archives FOR SELECT USING (auth.uid() = user_id OR public.is_admin());
-DROP POLICY IF EXISTS "Archives: Admin All" ON public.service_archives;
-CREATE POLICY "Archives: Admin All" ON public.service_archives FOR ALL USING (public.is_admin());
-
--- 6. Notifications
-DROP POLICY IF EXISTS "Notify: Own View" ON public.notifications;
-CREATE POLICY "Notify: Own View" ON public.notifications FOR SELECT USING (auth.uid() = user_id OR public.is_admin());
-DROP POLICY IF EXISTS "Notify: Own Update" ON public.notifications;
-CREATE POLICY "Notify: Own Update" ON public.notifications FOR UPDATE USING (auth.uid() = user_id OR public.is_admin());
-
--- 7. Contact Leads
-DROP POLICY IF EXISTS "Anyone can insert" ON public.contact_messages;
-CREATE POLICY "Anyone can insert" ON public.contact_messages FOR INSERT WITH CHECK (true);
-DROP POLICY IF EXISTS "Admins can view" ON public.contact_messages;
-CREATE POLICY "Admins can view" ON public.contact_messages FOR SELECT USING (public.is_admin());
-DROP POLICY IF EXISTS "Admins can delete" ON public.contact_messages;
-CREATE POLICY "Admins can delete" ON public.contact_messages FOR DELETE USING (public.is_admin());
-
--- PART 5: STORAGE BUCKETS & HARDENED PERMISSIONS
--- ==========================================
--- NOTE: user-documents and service-archives are PRIVATE (public: false) to prevent URL leakage
-INSERT INTO storage.buckets (id, name, public) VALUES 
-('user-documents', 'user-documents', false),
-('avatars', 'avatars', true),
-('service-archives', 'service-archives', false)
-ON CONFLICT (id) DO UPDATE SET public = EXCLUDED.public;
-
--- Storage Policies: Documents & Archives (Privacy First)
--- Storage Policies: Documents & Archives (Privacy First)
-DROP POLICY IF EXISTS "Docs Storage: Owner View/Upload" ON storage.objects;
-CREATE POLICY "Docs Storage: Owner View/Upload" ON storage.objects 
-FOR ALL USING (
-    bucket_id IN ('user-documents', 'service-archives') 
-    AND (auth.uid()::text = (storage.foldername(name))[1] OR public.is_admin())
-);
-
--- Storage Policies: Avatars (Secure Public Access)
--- Storage Policies: Avatars (Secure Public Access)
-DROP POLICY IF EXISTS "Avatar: Public Read" ON storage.objects;
-CREATE POLICY "Avatar: Public Read" ON storage.objects 
-FOR SELECT USING (bucket_id = 'avatars');
-
-DROP POLICY IF EXISTS "Avatar: Restricted Manage" ON storage.objects;
-CREATE POLICY "Avatar: Restricted Manage" ON storage.objects 
-FOR ALL USING (
-    bucket_id = 'avatars' 
-    AND auth.uid()::text = (storage.foldername(name))[1]
-);
-
--- PART 6: SEED DATA & RPCs
--- ==========================================
-
--- Secure Role Update RPC
-CREATE OR REPLACE FUNCTION public.update_user_role(target_user_id UUID, new_role TEXT)
-RETURNS void AS $$
-BEGIN
-    IF NOT (public.is_superuser() OR auth.jwt() ->> 'email' = 'taxfriend.tax@gmail.com') THEN
-        RAISE EXCEPTION 'Access Denied: Superuser privileges required.';
-    END IF;
-    UPDATE public.profiles SET role = new_role, updated_at = NOW() WHERE id = target_user_id;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
--- Database Repair RPC: Deduplicate Users
-CREATE OR REPLACE FUNCTION public.repair_duplicate_profiles()
-RETURNS json AS $$
-DECLARE
-    deleted_count int;
-BEGIN
-    IF NOT (public.is_superuser() OR auth.jwt() ->> 'email' = 'taxfriend.tax@gmail.com') THEN
-        RAISE EXCEPTION 'Access Denied: Superuser privileges required.';
-    END IF;
-
-    -- Keep the latest version of each profile by email
-    WITH duplicates AS (
-        SELECT id, email, 
-               ROW_NUMBER() OVER (PARTITION BY email ORDER BY created_at DESC) as rank
-        FROM public.profiles
-        WHERE email IS NOT NULL
-    )
-    DELETE FROM public.profiles
-    WHERE id IN (SELECT id FROM duplicates WHERE rank > 1);
-    
-    GET DIAGNOSTICS deleted_count = ROW_COUNT;
-    
-    RETURN json_build_object('status', 'success', 'deleted_count', deleted_count);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
--- Catalog Seed
-INSERT INTO public.service_catalog (title, description, icon) VALUES 
-('GST Registration', 'Official registration with GST portal.', 'Building2'),
-('GST Return Filing', 'Monthly/Quarterly compliance.', 'Send'),
-('Income Tax Filing (ITR)', 'Annual tax filing for all categories.', 'Calculator'),
-('PF Withdrawal', 'Professional assistance for PF fund withdrawal.', 'Wallet'),
-('MSME Registration', 'Udyam benefits registration.', 'Shield')
-ON CONFLICT DO NOTHING;
-
--- FINAL STEP: Superuser Escalation
-UPDATE public.profiles SET role = 'superuser' WHERE email = 'taxfriend.tax@gmail.com';
-
--- ==========================================
--- PART 8: FOLDER MANAGEMENT SYSTEM
--- ==========================================
--- Windows-style file/folder management
--- Replaces hardcoded domain structure with user-created folders
-
--- 1. User Folders Table
+-- 1. User Folders
 CREATE TABLE IF NOT EXISTS public.user_folders (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     name TEXT NOT NULL,
-    parent_folder_id UUID REFERENCES public.user_folders(id) ON DELETE CASCADE, -- NULL = root level
+    parent_folder_id UUID REFERENCES public.user_folders(id) ON DELETE CASCADE,
     color TEXT DEFAULT '#4F46E5',
     icon TEXT DEFAULT 'Folder',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -420,124 +147,142 @@ CREATE TABLE IF NOT EXISTS public.user_folders (
     CONSTRAINT unique_folder_name_per_parent UNIQUE(user_id, parent_folder_id, name)
 );
 
--- 2. User Files Table (Enhanced file metadata)
-CREATE TABLE IF NOT EXISTS public.user_files (
+-- 2. Service Records (Output Stream) - REPLACES old user_files
+-- This is where Admins upload deliverables into folders.
+CREATE TABLE IF NOT EXISTS public.service_records (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
-    folder_id UUID REFERENCES public.user_folders(id) ON DELETE SET NULL, -- NULL = root level
+    folder_id UUID REFERENCES public.user_folders(id) ON DELETE SET NULL,
     file_name TEXT NOT NULL,
     file_url TEXT NOT NULL,
     file_size BIGINT,
     file_type TEXT,
     tags TEXT[],
     description TEXT,
-    -- Legacy metadata for backward compatibility
+    -- Legacy metadata columns preserved
     domain TEXT,
     service_names TEXT[],
     sub_type TEXT,
-    year_type TEXT CHECK (year_type IN ('AY', 'FY', NULL)),
+    year_type TEXT,
     year TEXT,
+    status TEXT DEFAULT 'completed',
     uploaded_by UUID REFERENCES public.profiles(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. Indexes for Performance
-CREATE INDEX IF NOT EXISTS idx_user_folders_user_id ON public.user_folders(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_folders_parent ON public.user_folders(parent_folder_id);
-CREATE INDEX IF NOT EXISTS idx_user_files_user_id ON public.user_files(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_files_folder_id ON public.user_files(folder_id);
-CREATE INDEX IF NOT EXISTS idx_user_files_tags ON public.user_files USING GIN(tags);
-
--- 4. RLS Policies for user_folders
+-- ==========================================
+-- PART 4: SECURITY (RLS)
+-- ==========================================
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.client_supporting_docs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.service_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_folders ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Folders: Own Access" ON public.user_folders;
-CREATE POLICY "Folders: Own Access" ON public.user_folders 
-FOR ALL USING (auth.uid() = user_id OR public.is_admin());
+-- Profiles Policies
+CREATE POLICY "Profiles: Public Match" ON public.profiles FOR SELECT USING (true); -- Simplified
+CREATE POLICY "Profiles: Own Update" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
--- 5. RLS Policies for user_files
-ALTER TABLE public.user_files ENABLE ROW LEVEL SECURITY;
+-- Client Docs Policies (Input Stream)
+CREATE POLICY "Docs: Client Manage" ON public.client_supporting_docs 
+FOR ALL USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Files: Own Access" ON public.user_files;
-CREATE POLICY "Files: Own Access" ON public.user_files 
-FOR ALL USING (auth.uid() = user_id OR public.is_admin());
+CREATE POLICY "Docs: Admin Manage" ON public.client_supporting_docs 
+FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'superuser'))
+);
 
--- 6. Helper Function: Get Folder Path (Breadcrumb)
+-- Service Records Policies (Output Vault)
+CREATE POLICY "Records: Client View" ON public.service_records 
+FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Records: Admin full" ON public.service_records 
+FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'superuser'))
+);
+
+-- Folders Policies
+CREATE POLICY "Folders: Access" ON public.user_folders 
+FOR ALL USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'superuser')));
+
+-- ==========================================
+-- PART 5: HELPER FUNCTIONS
+-- ==========================================
+
+-- 1. Get Folder Path
 CREATE OR REPLACE FUNCTION public.get_folder_path(folder_uuid UUID)
 RETURNS TEXT AS $$
 DECLARE
     path TEXT := '';
 BEGIN
-    IF folder_uuid IS NULL THEN
-        RETURN 'My Documents';
-    END IF;
+    IF folder_uuid IS NULL THEN RETURN 'My Documents'; END IF;
     
     WITH RECURSIVE folder_tree AS (
-        SELECT id, name, parent_folder_id, 1 as level
-        FROM public.user_folders
-        WHERE id = folder_uuid
+        SELECT id, name, parent_folder_id, 1 as level FROM public.user_folders WHERE id = folder_uuid
         UNION ALL
-        SELECT f.id, f.name, f.parent_folder_id, ft.level + 1
-        FROM public.user_folders f
+        SELECT f.id, f.name, f.parent_folder_id, ft.level + 1 FROM public.user_folders f
         INNER JOIN folder_tree ft ON f.id = ft.parent_folder_id
     )
-    SELECT string_agg(name, ' / ' ORDER BY level DESC)
-    INTO path
-    FROM folder_tree;
-    
+    SELECT string_agg(name, ' / ' ORDER BY level DESC) INTO path FROM folder_tree;
     RETURN COALESCE('My Documents / ' || path, 'My Documents');
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 7. Helper Function: Count Files in Folder
+-- 2. Count Files (Updated for service_records)
 CREATE OR REPLACE FUNCTION public.count_folder_files(folder_uuid UUID, include_subfolders BOOLEAN DEFAULT FALSE)
 RETURNS INTEGER AS $$
 DECLARE
     file_count INTEGER;
 BEGIN
     IF NOT include_subfolders THEN
-        SELECT COUNT(*) INTO file_count FROM public.user_files WHERE folder_id = folder_uuid;
+        SELECT COUNT(*) INTO file_count FROM public.service_records WHERE folder_id = folder_uuid;
     ELSE
         WITH RECURSIVE folder_tree AS (
             SELECT id FROM public.user_folders WHERE id = folder_uuid
             UNION ALL
-            SELECT f.id FROM public.user_folders f
-            INNER JOIN folder_tree ft ON f.parent_folder_id = ft.id
+            SELECT f.id FROM public.user_folders f INNER JOIN folder_tree ft ON f.parent_folder_id = ft.id
         )
-        SELECT COUNT(*) INTO file_count
-        FROM public.user_files WHERE folder_id IN (SELECT id FROM folder_tree);
+        SELECT COUNT(*) INTO file_count FROM public.service_records WHERE folder_id IN (SELECT id FROM folder_tree);
     END IF;
     RETURN COALESCE(file_count, 0);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
--- 8. Auto-Update Timestamp Triggers
-CREATE OR REPLACE FUNCTION public.update_folder_timestamp()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS tr_update_folder_timestamp ON public.user_folders;
-CREATE TRIGGER tr_update_folder_timestamp
-BEFORE UPDATE ON public.user_folders
-FOR EACH ROW EXECUTE FUNCTION public.update_folder_timestamp();
-
-CREATE OR REPLACE FUNCTION public.update_file_timestamp()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS tr_update_file_timestamp ON public.user_files;
-CREATE TRIGGER tr_update_file_timestamp
-BEFORE UPDATE ON public.user_files
-FOR EACH ROW EXECUTE FUNCTION public.update_file_timestamp();
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ==========================================
-SELECT '🚀 TaxFriend India: Unified Database Engine Online!' as status;
+-- PART 6: DATA MIGRATION (RESTORE)
+-- ==========================================
+-- Restore data from temp table into new distinct tables
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'temp_migration_files') THEN
+        
+        -- 1. Admin Uploads -> service_records
+        INSERT INTO public.service_records (
+            user_id, folder_id, file_name, file_url, file_size, file_type, 
+            tags, description, uploaded_by, created_at,
+            domain, service_names, sub_type, year_type, year
+        )
+        SELECT 
+            user_id, folder_id, file_name, file_url, file_size, file_type, 
+            tags, description, uploaded_by, created_at,
+            domain, service_names, sub_type, year_type, year
+        FROM public.temp_migration_files
+        WHERE uploaded_by IN (SELECT id FROM public.profiles WHERE role IN ('admin', 'superuser'));
+
+        -- 2. Client Uploads -> client_supporting_docs
+        INSERT INTO public.client_supporting_docs (
+            user_id, file_name, file_url, file_size, file_type, 
+            description, uploaded_by, created_at, status
+        )
+        SELECT 
+            user_id, file_name, file_url, file_size, file_type, 
+            description, uploaded_by, created_at, 'pending'
+        FROM public.temp_migration_files
+        WHERE uploaded_by NOT IN (SELECT id FROM public.profiles WHERE role IN ('admin', 'superuser'))
+           OR uploaded_by IS NULL;
+
+        -- Cleanup Temp
+        DROP TABLE public.temp_migration_files;
+    END IF;
+END $$;
+

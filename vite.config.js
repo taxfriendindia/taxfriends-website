@@ -9,6 +9,19 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          charts: ['recharts'],
+          ui: ['framer-motion', 'lucide-react'],
+          admin: [
+            './src/pages/Admin/AdminLayout',
+            './src/pages/Admin/AdminDashboard'
+          ]
+        }
+      }
+    }
   }
 })

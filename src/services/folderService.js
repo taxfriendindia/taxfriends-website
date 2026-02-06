@@ -53,7 +53,7 @@ export const FolderService = {
 
             // Get file count
             const { count } = await supabase
-                .from('user_files')
+                .from('service_records')
                 .select('*', { count: 'exact', head: true })
                 .eq('folder_id', folderId)
 
@@ -197,7 +197,7 @@ export const FolderService = {
             if (!recursive) {
                 // Check if folder has files or subfolders
                 const { count: fileCount } = await supabase
-                    .from('user_files')
+                    .from('service_records')
                     .select('*', { count: 'exact', head: true })
                     .eq('folder_id', folderId)
 
@@ -233,7 +233,7 @@ export const FolderService = {
     async getFilesInFolder(folderId, userId) {
         try {
             let query = supabase
-                .from('user_files')
+                .from('service_records')
                 .select('*')
                 .eq('user_id', userId)
                 .order('created_at', { ascending: false })
@@ -284,7 +284,7 @@ export const FolderService = {
 
             // Create file record
             const { data, error } = await supabase
-                .from('user_files')
+                .from('service_records')
                 .insert([{
                     user_id: userId,
                     folder_id: folderId,
@@ -321,7 +321,7 @@ export const FolderService = {
     async moveFile(fileId, targetFolderId) {
         try {
             const { data, error } = await supabase
-                .from('user_files')
+                .from('service_records')
                 .update({ folder_id: targetFolderId })
                 .eq('id', fileId)
                 .select()
@@ -344,7 +344,7 @@ export const FolderService = {
     async moveMultipleFiles(fileIds, targetFolderId) {
         try {
             const { data, error } = await supabase
-                .from('user_files')
+                .from('service_records')
                 .update({ folder_id: targetFolderId })
                 .in('id', fileIds)
                 .select()
@@ -370,7 +370,7 @@ export const FolderService = {
             }
 
             const { data, error } = await supabase
-                .from('user_files')
+                .from('service_records')
                 .update({ file_name: newName.trim() })
                 .eq('id', fileId)
                 .select()
@@ -393,7 +393,7 @@ export const FolderService = {
     async updateFileTags(fileId, tags) {
         try {
             const { data, error } = await supabase
-                .from('user_files')
+                .from('service_records')
                 .update({ tags })
                 .eq('id', fileId)
                 .select()
@@ -429,7 +429,7 @@ export const FolderService = {
 
             // Delete from database
             const { error } = await supabase
-                .from('user_files')
+                .from('service_records')
                 .delete()
                 .eq('id', fileId)
 
@@ -451,7 +451,7 @@ export const FolderService = {
             const searchTerm = `%${query.toLowerCase()}%`
 
             const { data, error } = await supabase
-                .from('user_files')
+                .from('service_records')
                 .select('*')
                 .eq('user_id', userId)
                 .or(`file_name.ilike.${searchTerm},description.ilike.${searchTerm}`)

@@ -1,474 +1,440 @@
 import React, { useState, useEffect } from 'react'
-import { FileText, Eye, CheckCircle, XCircle, Clock, ExternalLink, Filter, Search, X, ChevronRight, Folder, FolderOpen, Mail, Phone, MoreVertical, ShieldCheck, List, Briefcase, Smartphone, Download, Trash2 } from 'lucide-react'
+import { FileText, CheckCircle, ExternalLink, Search, X, ChevronRight, Folder, FolderOpen, Mail, ShieldCheck, Briefcase, Download, Trash2, Layers, User, Phone, ArrowRight } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { DocumentService } from '../../services/documentService'
-import { UserService } from '../../services/userService'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useOutletContext } from 'react-router-dom'
 import StatusModal from '../../components/StatusModal'
 import ConfirmationModal from '../../components/ConfirmationModal'
 import { useAuth } from '../../contexts/AuthContext'
+import SimpleFileManager from '../../components/Documents/SimpleFileManager'
 
 const AdminRequests = () => {
     const { user } = useAuth()
     const { setSidebarOpen } = useOutletContext() || { setSidebarOpen: () => { } }
-    const [allDocuments, setAllDocuments] = useState([])
+
+    // --- MODE STATE: 'requests' | 'vault' ---
+    const [activeMode, setActiveMode] = useState('requests')
+
+    // --- Data States ---
+    const [allDocuments, setAllDocuments] = useState([]) // For Requests
+    const [recentVaultUsers, setRecentVaultUsers] = useState([]) // For Vault History
     const [loading, setLoading] = useState(true)
 
-    // Filter States
-    const [searchTerm, setSearchTerm] = useState('')
-    const [statusFilter, setStatusFilter] = useState('has_pending') // Default to 'has_pending' to show actionable items first
-    const [sortBy, setSortBy] = useState('newest') // 'newest', 'oldest'
+    // --- Search & Filter ---
+    const [searchTerm, setSearchTerm] = useState('') // Shared, but behaves differently
+    const [vaultSearchResults, setVaultSearchResults] = useState([]) // For Vault Global Search
+    const [isSearchingVault, setIsSearchingVault] = useState(false)
+    const [statusFilter, setStatusFilter] = useState('has_pending')
+    const [sortBy, setSortBy] = useState('newest')
 
-    // Modal State
-    const [selectedUserId, setSelectedUserId] = useState(null)
+    // --- Modal State ---
+    const [selectedUser, setSelectedUser] = useState(null) // Object with { id, full_name, email, ... }
     const [processingId, setProcessingId] = useState(null)
     const [statusModal, setStatusModal] = useState({ isOpen: false, type: 'info', title: '', message: '' })
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => { } })
 
     useEffect(() => {
-        setStatusFilter('all') // Reset to all on mount or keep previous preference
-        fetchRequests()
-    }, [])
+        fetchData()
+    }, [activeMode])
 
     useEffect(() => {
-        // Auto-close sidebar when modal opens to maximize space per user request
-        if (selectedUserId) {
-            setSidebarOpen(false)
+        if (activeMode === 'vault' && searchTerm.length > 2) {
+            const timer = setTimeout(searchVaultUsers, 500)
+            return () => clearTimeout(timer)
+        } else {
+            setVaultSearchResults([])
         }
-    }, [selectedUserId, setSidebarOpen])
+    }, [searchTerm, activeMode])
 
-    const fetchRequests = async () => {
+    useEffect(() => { if (selectedUser) setSidebarOpen(false) }, [selectedUser, setSidebarOpen])
+
+    const fetchData = async () => {
+        setLoading(true)
         try {
-            setLoading(true)
-
-            // 1. Fetch Documents
-            const { data: docs, error } = await supabase
-                .from('user_documents')
-                .select('*')
-                .order('created_at', { ascending: false })
-
-            if (error) {
-                console.warn("Error fetching documents:", error)
-                setAllDocuments([])
-                return
-            }
-
-            if (docs && docs.length > 0) {
-                const userIds = [...new Set(docs.map(d => d.user_id).filter(Boolean))]
-
-                const { data: profiles, error: pError } = await supabase
-                    .from('profiles')
-                    .select('id, full_name, email, mobile_number, organization, role')
-                    .in('id', userIds)
-
-                if (pError) {
-                    console.error("Error fetching profiles for documents:", pError)
-                }
-
-                const profileMap = (profiles || []).reduce((acc, p) => ({ ...acc, [p.id.toLowerCase()]: p }), {})
-
-                // 3. Join documents with profile data
-                const joinedDocs = docs.map(doc => {
-                    const uid = doc.user_id?.toLowerCase()
-                    const userProfile = profileMap[uid]
-
-                    return {
-                        ...doc,
-                        profiles: userProfile || { id: doc.user_id, full_name: null, email: 'ID: ' + doc.user_id?.slice(0, 8) }
-                    }
-                })
-
-                setAllDocuments(joinedDocs)
+            if (activeMode === 'requests') {
+                await fetchRequests()
             } else {
-                setAllDocuments([])
+                await fetchRecentVaults()
             }
-
-        } catch (err) {
-            console.error(err)
+        } catch (e) {
+            console.error(e)
         } finally {
             setLoading(false)
         }
     }
 
-    const handleStatusUpdate = async (id, newStatus) => {
+    // --- FETCH: REQUESTS MODE ---
+    const fetchRequests = async () => {
+        // 1. Fetch Documents
+        const { data: docs, error } = await supabase
+            .from('client_supporting_docs')
+            .select('*')
+            .order('created_at', { ascending: false })
+
+        if (error) throw error
+
+        // 2. Fetch User Profiles
+        const userIds = [...new Set(docs.map(d => d.user_id))]
+        if (userIds.length === 0) {
+            setAllDocuments([])
+            return
+        }
+
+        const { data: users } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, mobile_number, organization')
+            .in('id', userIds)
+
+        const userMap = (users || []).reduce((acc, u) => ({ ...acc, [u.id]: u }), {})
+
+        // 3. Attach User Data
+        const enrichedDocs = docs.map(d => ({
+            ...d,
+            user: userMap[d.user_id] || { full_name: 'Unknown User', email: 'N/A' }
+        }))
+
+        setAllDocuments(enrichedDocs)
+    }
+
+    // --- FETCH: VAULT MODE ---
+    const fetchRecentVaults = async () => {
+        // Find users who have folders
+        const { data: folders, error } = await supabase
+            .from('user_folders')
+            .select('user_id, created_at')
+            .order('created_at', { ascending: false })
+            .limit(50) // Last 50 active users
+
+        if (error) throw error
+
+        const userIds = [...new Set(folders.map(f => f.user_id))]
+
+        if (userIds.length === 0) {
+            setRecentVaultUsers([])
+            return
+        }
+
+        const { data: users } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, organization, mobile_number')
+            .in('id', userIds)
+
+        setRecentVaultUsers(users || [])
+    }
+
+    const searchVaultUsers = async () => {
+        setIsSearchingVault(true)
         try {
-            setProcessingId(id)
-            const { error } = await supabase
-                .from('user_documents')
-                .update({
-                    status: newStatus,
-                    handled_by: user?.id
-                })
-                .eq('id', id)
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,organization.ilike.%${searchTerm}%,mobile_number.ilike.%${searchTerm}%`)
+                .limit(10)
 
             if (error) throw error
+            setVaultSearchResults(data || [])
+        } catch (e) {
+            console.error('Search failed', e)
+        } finally {
+            setIsSearchingVault(false)
+        }
+    }
 
-            setAllDocuments(prev => prev.map(doc =>
-                doc.id === id ? { ...doc, status: newStatus } : doc
-            ))
-        } catch (error) {
-            console.error('Error updating status:', error)
-            setStatusModal({
-                isOpen: true,
-                type: 'error',
-                title: 'Operation Failed',
-                message: 'Failed to update document status.'
-            })
+    // --- HELPERS ---
+    const handleStatusUpdate = async (id, newStatus) => {
+        setProcessingId(id)
+        try {
+            const { error } = await supabase
+                .from('client_supporting_docs')
+                .update({ status: newStatus })
+                .eq('id', id)
+            if (error) throw error
+            setAllDocuments(prev => prev.map(d => d.id === id ? { ...d, status: newStatus } : d))
+            if (newStatus === 'rejected') setStatusModal({ isOpen: true, type: 'success', title: 'Updated', message: 'Rejected.' })
+        } catch (e) {
+            setStatusModal({ isOpen: true, type: 'error', title: 'Error', message: 'Update failed.' })
         } finally {
             setProcessingId(null)
         }
     }
 
     const handleVerifyAll = async (userId) => {
-        setConfirmModal({
-            isOpen: true,
-            title: 'Verify All Documents',
-            message: 'Are you sure you want to verify ALL pending documents for this user?',
-            onConfirm: () => executeVerifyAll(userId)
-        })
-    }
-
-    const executeVerifyAll = async (userId) => {
-
-        const userDocs = allDocuments.filter(d => d.user_id === userId && d.status !== 'verified')
-        if (userDocs.length === 0) return
-
+        setProcessingId('verify-all')
         try {
-            setProcessingId('verify-all')
+            const userDocs = allDocuments.filter(d => d.user_id === userId && d.status !== 'verified')
             const docIds = userDocs.map(d => d.id)
+            if (docIds.length === 0) return
 
-            const { error } = await supabase
-                .from('user_documents')
-                .update({
-                    status: 'verified',
-                    handled_by: user?.id
-                })
-                .in('id', docIds)
-
+            const { error } = await supabase.from('client_supporting_docs').update({ status: 'verified' }).in('id', docIds)
             if (error) throw error
-
-            setAllDocuments(prev => prev.map(doc =>
-                docIds.includes(doc.id) ? { ...doc, status: 'verified' } : doc
-            ))
-
-            setStatusModal({
-                isOpen: true,
-                type: 'success',
-                title: 'Batch Action Success',
-                message: `Successfully verified ${docIds.length} documents.`
-            })
-        } catch (error) {
-            console.error('Error verifying all:', error)
-            setStatusModal({
-                isOpen: true,
-                type: 'error',
-                title: 'Batch Action Failed',
-                message: 'Failed to verify all documents.'
-            })
+            setAllDocuments(prev => prev.map(d => docIds.includes(d.id) ? { ...d, status: 'verified' } : d))
+            setStatusModal({ isOpen: true, type: 'success', title: 'Success', message: 'All verified.' })
+        } catch (e) {
+            setStatusModal({ isOpen: true, type: 'error', title: 'Error', message: 'Batch verify failed.' })
         } finally {
             setProcessingId(null)
         }
     }
 
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'verified': return 'bg-emerald-100 text-emerald-700 border-emerald-200'
-            case 'rejected': return 'bg-red-100 text-red-700 border-red-200'
-            default: return 'bg-amber-100 text-amber-700 border-amber-200'
-        }
-    }
-
-    const isValidUrl = (string) => {
-        try {
-            return Boolean(new URL(string));
-        }
-        catch (e) {
-            return false;
-        }
-    }
-
-    // Group Documents by User
+    // --- Grouping for Requests Mode ---
     const groupedUsers = React.useMemo(() => {
+        if (activeMode !== 'requests') return []
         const groups = {}
-
         allDocuments.forEach(doc => {
             if (!groups[doc.user_id]) {
                 groups[doc.user_id] = {
-                    user: doc.profiles,
                     userId: doc.user_id,
+                    user: doc.user,
                     documents: [],
-                    stats: { pending: 0, verified: 0, rejected: 0, total: 0 },
-                    latestUpload: null
+                    stats: { total: 0, pending: 0, verified: 0, rejected: 0 }
                 }
             }
             groups[doc.user_id].documents.push(doc)
-            groups[doc.user_id].stats.total++
-            groups[doc.user_id].stats[doc.status || 'pending'] = (groups[doc.user_id].stats[doc.status || 'pending'] || 0) + 1
-
-            // Track latest upload
-            const docDate = new Date(doc.created_at)
-            if (!groups[doc.user_id].latestUpload || docDate > groups[doc.user_id].latestUpload) {
-                groups[doc.user_id].latestUpload = docDate
-            }
+            groups[doc.user_id].stats.total += 1
+            groups[doc.user_id].stats[doc.status || 'pending'] += 1
         })
+        let result = Object.values(groups)
 
-        return Object.values(groups)
-            .filter(group => {
-                // 1. Text Search
-                const term = searchTerm.toLowerCase()
-                const matchesSearch = !searchTerm || (
-                    group.user.full_name?.toLowerCase().includes(term) ||
-                    group.user.email?.toLowerCase().includes(term) ||
-                    group.user.organization?.toLowerCase().includes(term)
-                )
-                if (!matchesSearch) return false
+        // Local filtering for requests
+        if (statusFilter === 'has_pending') result = result.filter(g => g.stats.pending > 0)
+        else if (statusFilter === 'verified') result = result.filter(g => g.stats.pending === 0)
 
-                // 2. Status Filter
-                if (statusFilter === 'all') return true
-                if (statusFilter === 'has_pending') return group.stats.pending > 0
-                if (statusFilter === 'has_rejected') return group.stats.rejected > 0
-                if (statusFilter === 'all_verified') return (group.stats.pending === 0 && group.stats.rejected === 0 && group.stats.verified > 0)
+        // Local search for requests
+        if (searchTerm && activeMode === 'requests') {
+            const lower = searchTerm.toLowerCase()
+            result = result.filter(g =>
+                g.user.full_name?.toLowerCase().includes(lower) ||
+                g.user.email?.toLowerCase().includes(lower)
+            )
+        }
 
-                return true
-            })
-            .sort((a, b) => {
-                // Sort by latest upload
-                const timeA = a.latestUpload ? a.latestUpload.getTime() : 0
-                const timeB = b.latestUpload ? b.latestUpload.getTime() : 0
-                return sortBy === 'newest' ? timeB - timeA : timeA - timeB
-            })
-    }, [allDocuments, searchTerm, statusFilter, sortBy])
+        result.sort((a, b) => { // Newest doc sort
+            const dateA = new Date(Math.max(...a.documents.map(d => new Date(d.created_at))))
+            const dateB = new Date(Math.max(...b.documents.map(d => new Date(d.created_at))))
+            return sortBy === 'newest' ? dateB - dateA : dateA - dateB
+        })
+        return result
+    }, [allDocuments, searchTerm, statusFilter, sortBy, activeMode])
 
-    const selectedGroup = selectedUserId ? groupedUsers.find(g => g.userId === selectedUserId) : null
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'verified': return 'bg-emerald-50 text-emerald-600 border-emerald-200'
+            case 'rejected': return 'bg-red-50 text-red-600 border-red-200'
+            default: return 'bg-amber-50 text-amber-600 border-amber-200'
+        }
+    }
 
     return (
-        <div className="space-y-8 font-sans text-slate-900">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-6 pb-20">
+            {/* --- TOP TOGGLE --- */}
+            <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-4 border-b border-slate-200 pb-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Client Documents</h1>
-                    <p className="text-slate-500 mt-1">Review documents grouped by client.</p>
+                    <h1 className="text-3xl font-bold text-slate-800">
+                        {activeMode === 'requests' ? 'Inbound Requests' : 'Outbound Vault'}
+                    </h1>
+                    <p className="text-slate-500 mt-1">
+                        {activeMode === 'requests'
+                            ? 'Review and verify documents submitted by clients.'
+                            : 'Manage files and folders you share with clients.'}
+                    </p>
+                </div>
+
+                <div className="bg-slate-100 p-1 rounded-xl flex gap-1 items-center shrink-0">
+                    <button
+                        onClick={() => { setActiveMode('requests'); setSearchTerm(''); }}
+                        className={`px-4 py-2 rounded-lg text-sm font-black uppercase tracking-wide transition-all ${activeMode === 'requests' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                    >
+                        Client Requests
+                    </button>
+                    <button
+                        onClick={() => { setActiveMode('vault'); setSearchTerm(''); }}
+                        className={`px-4 py-2 rounded-lg text-sm font-black uppercase tracking-wide transition-all ${activeMode === 'vault' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                    >
+                        My Vault
+                    </button>
                 </div>
             </div>
 
-            {/* Controls Bar */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 md:flex md:items-center md:gap-4 space-y-4 md:space-y-0">
-                {/* Search */}
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            {/* --- CONTROLS --- */}
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-center sticky top-0 z-20">
+                {/* Search Container */}
+                <div className="relative w-full md:w-96 group">
+                    <Search className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isSearchingVault ? 'text-emerald-500 animate-pulse' : 'text-slate-400 group-focus-within:text-indigo-500'}`} size={18} />
                     <input
                         type="text"
-                        placeholder="Search by client, company, or email..."
+                        placeholder={activeMode === 'requests' ? "Filter list by name..." : "Search ANY client to open Vault..."}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                        className={`w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-sm font-medium focus:ring-2 outline-none transition-all ${activeMode === 'vault' ? 'focus:ring-emerald-500' : 'focus:ring-indigo-500'}`}
                     />
+                    {/* VAULT SEARCH DROPDOWN */}
+                    {activeMode === 'vault' && searchTerm.length > 0 && <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden max-h-80 overflow-y-auto z-50">
+                        {vaultSearchResults.length > 0 ? (
+                            vaultSearchResults.map(user => (
+                                <div key={user.id} onClick={() => { setSelectedUser(user); setSearchTerm(''); }} className="p-3 hover:bg-emerald-50 cursor-pointer flex items-center gap-3 border-b border-slate-50 last:border-0 transition-colors">
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">{(user.full_name?.[0] || 'U').toUpperCase()}</div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-bold text-slate-800 text-sm truncate">{user.full_name}</div>
+                                        <div className="text-xs text-slate-500 truncate">{user.email}</div>
+                                    </div>
+                                    <ArrowRight size={14} className="text-emerald-300" />
+                                </div>
+                            ))
+                        ) : (
+                            <div className="p-4 text-center text-xs text-slate-400 italic">
+                                {isSearchingVault ? 'Searching...' : 'No users found.'}
+                            </div>
+                        )}
+                    </div>}
                 </div>
 
-                {/* Filters */}
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex flex-col">
-                        <label className="text-[10px] uppercase font-bold text-slate-400 pl-1 mb-0.5">Filter</label>
+                {activeMode === 'requests' && (
+                    <div className="flex w-full md:w-auto gap-3 overflow-x-auto">
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer min-w-[160px]"
+                            className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none cursor-pointer"
                         >
-                            <option value="all">Show All</option>
-                            <option value="has_pending">Has Pending Action</option>
-                            <option value="has_rejected">Has Rejected Docs</option>
-                            <option value="all_verified">All Verified</option>
+                            <option value="all">All Status</option>
+                            <option value="has_pending">Pending Only</option>
+                            <option value="verified">Verified Only</option>
                         </select>
-                    </div>
-
-                    <div className="flex flex-col">
-                        <label className="text-[10px] uppercase font-bold text-slate-400 pl-1 mb-0.5">Sort</label>
                         <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
-                            className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer min-w-[140px]"
+                            className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none cursor-pointer"
                         >
-                            <option value="newest">Newest First</option>
-                            <option value="oldest">Oldest First</option>
+                            <option value="newest">Newest</option>
+                            <option value="oldest">Oldest</option>
                         </select>
                     </div>
-                </div>
+                )}
             </div>
 
-            {/* List View of Clients */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            {/* --- CONTENT AREA --- */}
+            <div className="min-h-[400px]">
                 {loading ? (
-                    <div className="p-12 text-center text-slate-500">
-                        <div className="animate-spin inline-block w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full mb-2"></div>
-                        <p>Loading clients...</p>
-                    </div>
-                ) : groupedUsers.length === 0 ? (
-                    <div className="p-20 text-center text-slate-500">
-                        <FolderOpen size={48} className="mx-auto mb-4 text-slate-300" />
-                        <p>No client documents found matching your search.</p>
-                        {(statusFilter !== 'all' || searchTerm) && (
-                            <button
-                                onClick={() => { setStatusFilter('all'); setSearchTerm('') }}
-                                className="mt-4 text-indigo-600 hover:text-indigo-800 text-sm font-medium"
-                            >
-                                Clear filters
-                            </button>
-                        )}
-                    </div>
-                ) : (
-                    <>
-                        {/* Table View (Desktop) */}
-                        <div className="hidden md:block overflow-x-auto">
+                    <div className="p-12 text-center text-slate-400 animate-pulse">Loading data...</div>
+                ) : activeMode === 'requests' ? (
+                    /* === REQUESTS VIEW === */
+                    groupedUsers.length === 0 ? (
+                        <div className="p-12 text-center flex flex-col items-center opacity-50">
+                            <Folder className="w-16 h-16 text-slate-300 mb-4" />
+                            <p className="font-medium">No pending requests found.</p>
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hidden md:block">
                             <table className="w-full text-left border-collapse">
-                                <thead className="bg-slate-50/50 border-b border-slate-200">
+                                <thead className="bg-slate-50/50 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                     <tr>
-                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Client Identity</th>
-                                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Affiliation</th>
-                                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact Node</th>
-                                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Verification Status</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
+                                        <th className="px-6 py-4">Client</th>
+                                        <th className="px-6 py-4">Status</th>
+                                        <th className="px-8 py-4 text-right">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100 bg-white">
+                                <tbody className="divide-y divide-slate-50">
                                     {groupedUsers.map(group => (
-                                        <tr
-                                            key={group.userId}
-                                            className="hover:bg-indigo-50/20 transition-all cursor-pointer group"
-                                            onClick={() => setSelectedUserId(group.userId)}
-                                        >
-                                            <td className="px-8 py-5">
+                                        <tr key={group.userId} className="hover:bg-indigo-50/30 transition-colors group">
+                                            <td className="px-6 py-5">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 text-emerald-600 flex items-center justify-center font-black shadow-sm shrink-0 group-hover:scale-105 transition-transform duration-300">
-                                                        {(group.user.full_name?.[0] || group.user.email?.[0] || 'U').toUpperCase()}
+                                                    <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
+                                                        {(group.user.full_name?.[0] || 'C').toUpperCase()}
                                                     </div>
                                                     <div>
-                                                        <p className="font-black text-slate-900 text-[14px] tracking-tight leading-tight group-hover:text-emerald-600 transition-colors">
-                                                            {group.user.full_name || (group.user.email?.includes('@') ? group.user.email.split('@')[0] : group.user.email) || 'Unnamed Client'}
-                                                        </p>
-                                                        <p className="text-[11px] font-semibold text-slate-400 mt-1 flex items-center gap-1">
-                                                            <Mail size={10} /> {group.user.email || 'No Email Sync'}
-                                                        </p>
+                                                        <div className="font-bold text-slate-800 text-sm">{group.user.full_name}</div>
+                                                        <div className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                                                            <Mail size={10} /> {group.user.email}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </td>
-                                            <td className="px-6 py-5">
-                                                {group.user.organization ? (
-                                                    <div className="flex flex-col">
-                                                        <div className="flex items-center font-black text-slate-700 text-[10px] uppercase tracking-wider">
-                                                            {group.user.organization}
-                                                        </div>
-                                                        <div className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-widest">Registered Entity</div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex flex-col">
-                                                        <span className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Individual</span>
-                                                        <span className="text-[9px] text-slate-300 italic">No Organization</span>
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-5">
-                                                {group.user.mobile_number ? (
-                                                    <div className="flex flex-col">
-                                                        <div className="flex items-center text-slate-600 text-[11px] font-black font-mono">
-                                                            {group.user.mobile_number}
-                                                        </div>
-                                                        <div className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-widest">Direct Line</div>
-                                                    </div>
-                                                ) : <span className="text-slate-300 text-[10px] italic">Not Provided</span>}
                                             </td>
                                             <td className="px-6 py-5">
                                                 <div className="flex items-center gap-3">
                                                     {group.stats.pending > 0 ? (
-                                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 text-[9px] font-black uppercase rounded-lg border border-amber-200/50 shadow-sm animate-pulse-slow">
+                                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 text-[9px] font-black uppercase rounded-lg border border-amber-200/50 animate-pulse-slow">
                                                             <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                                                             {group.stats.pending} Pending
                                                         </div>
-                                                    ) : group.stats.verified > 0 ? (
-                                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase rounded-lg border border-emerald-200/50">
-                                                            <CheckCircle size={10} className="text-emerald-500" />
-                                                            Fully Verified
-                                                        </div>
                                                     ) : (
-                                                        <span className="text-[9px] font-black text-slate-300 uppercase bg-slate-50 px-2 py-1 rounded">No Records</span>
+                                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase rounded-lg border border-emerald-200/50">
+                                                            <CheckCircle size={10} /> Verified
+                                                        </div>
                                                     )}
-                                                    <div className="w-6 h-6 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-[9px] font-black text-slate-400 shadow-inner">
-                                                        {group.stats.total}
-                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="px-8 py-5 text-right">
-                                                <button className="inline-flex items-center gap-2 px-5 py-3 bg-slate-900 hover:bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-900/10 hover:shadow-emerald-600/20 transition-all active:scale-95 group/btn">
-                                                    <span>View Docs</span>
-                                                    <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+                                                <button onClick={() => setSelectedUser({ ...group.user, documents: group.documents, type: 'request_view' })} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-indigo-600 text-white rounded-lg text-xs font-bold transition-all">
+                                                    View Docs <ChevronRight size={14} />
                                                 </button>
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
-                        </div>
-
-                        {/* Card View (Mobile) */}
-                        <div className="md:hidden divide-y divide-slate-100">
-                            {groupedUsers.map(group => (
-                                <div
-                                    key={group.userId}
-                                    className="p-4 space-y-4 hover:bg-slate-50 transition-colors cursor-pointer"
-                                    onClick={() => setSelectedUserId(group.userId)}
-                                >
-                                    <div className="flex justify-between items-start gap-4">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
+                            {/* Mobile Requests View */}
+                            <div className="md:hidden space-y-3 p-4">
+                                {groupedUsers.map(group => (
+                                    <div key={group.userId} onClick={() => setSelectedUser({ ...group.user, documents: group.documents, type: 'request_view' })} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
                                                 {(group.user.full_name?.[0] || 'C').toUpperCase()}
                                             </div>
-                                            <div className="min-w-0">
-                                                <div className="font-bold text-slate-900 leading-tight truncate">
-                                                    {group.user.full_name || 'New Client'}
-                                                </div>
-                                                <div className="text-[10px] text-slate-500 font-medium truncate">
-                                                    {group.user.email}
-                                                </div>
+                                            <div>
+                                                <div className="font-bold text-slate-800 text-sm">{group.user.full_name}</div>
+                                                {group.stats.pending > 0 && <span className="text-[10px] text-amber-600 font-bold">{group.stats.pending} Pending</span>}
                                             </div>
                                         </div>
-                                        {group.stats.pending > 0 ? (
-                                            <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 text-amber-700 text-[8px] font-black uppercase rounded-lg border border-amber-200/50 shrink-0">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                                {group.stats.pending}
-                                            </div>
-                                        ) : (
-                                            <div className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[8px] font-black uppercase rounded-lg border border-emerald-200/50 shrink-0">
-                                                Verified
-                                            </div>
-                                        )}
+                                        <ChevronRight size={18} className="text-slate-300" />
                                     </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex-1 bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center justify-between">
-                                            <div className="flex flex-col">
-                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Documents</span>
-                                                <span className="text-xs font-black text-slate-700">{group.stats.total} Total</span>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Organization</span>
-                                                <span className="block text-[10px] font-bold text-slate-600 truncate max-w-[120px]">
-                                                    {group.user.organization || 'Individual'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-emerald-600/20 shrink-0">
-                                            <ChevronRight size={20} />
-                                        </div>
+                                ))}
+                            </div>
+                        </div>
+                    )
+                ) : (
+                    /* === VAULT VIEW (Recent History) === */
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="col-span-full mb-4">
+                            <h3 className="font-bold text-slate-700 flex items-center gap-2">
+                                <Layers size={18} className="text-emerald-500" /> Recently Active Vaults
+                            </h3>
+                        </div>
+                        {recentVaultUsers.map(user => (
+                            <div key={user.id} onClick={() => setSelectedUser(user)} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-200 cursor-pointer transition-all group">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
+                                        {(user.full_name?.[0] || 'U').toUpperCase()}
+                                    </div>
+                                    <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                        <FolderOpen size={14} />
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    </>
+                                <h4 className="font-bold text-slate-800 truncate">{user.full_name}</h4>
+                                <div className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+                                    <Mail size={12} /> {user.email}
+                                </div>
+                                {user.organization && (
+                                    <div className="mt-3 inline-block px-2 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold uppercase rounded tracking-wide">
+                                        {user.organization}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        {recentVaultUsers.length === 0 && (
+                            <div className="col-span-full p-12 text-center border-2 border-dashed border-slate-200 rounded-2xl">
+                                <p className="text-slate-400 font-medium">No recent vault activity.</p>
+                                <p className="text-slate-300 text-sm mt-1">Search for a client above to start uploading.</p>
+                            </div>
+                        )}
+                    </div>
                 )}
             </div>
 
-            {/* User Documents Modal */}
+            {/* --- MODALS --- */}
             <AnimatePresence>
-                {selectedGroup && (
+                {selectedUser && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -478,122 +444,103 @@ const AdminRequests = () => {
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Modal Header */}
-                            <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between items-start bg-slate-50">
-                                <div className="flex items-center gap-3 md:gap-5">
-                                    <div className="w-12 h-12 md:w-16 md:h-16 bg-white text-indigo-600 rounded-xl md:rounded-2xl shadow-sm flex items-center justify-center border border-slate-100 shrink-0">
-                                        <FolderOpen size={window.innerWidth < 768 ? 24 : 32} />
+                            <div className={`p-4 md:p-6 border-b border-slate-100 flex justify-between items-start ${activeMode === 'vault' || selectedUser.type !== 'request_view' ? 'bg-emerald-50/50' : 'bg-slate-50'}`}>
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm border border-white/50 ${activeMode === 'vault' || selectedUser.type !== 'request_view' ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-indigo-600'}`}>
+                                        {activeMode === 'vault' || selectedUser.type !== 'request_view' ? <Layers size={24} /> : <Download size={24} />}
                                     </div>
-                                    <div className="overflow-hidden">
-                                        <h2 className="text-lg md:text-2xl font-bold text-slate-900 truncate">
-                                            {selectedGroup.user.full_name || selectedGroup.user.email?.split('@')[0] || 'Client Profile'}
-                                        </h2>
-                                        <div className="flex flex-wrap items-center text-[10px] md:text-sm text-slate-500 gap-2 md:gap-4 mt-1">
-                                            {selectedGroup.user.organization && (
-                                                <span className="flex items-center gap-1 font-medium text-slate-700 bg-slate-200/50 px-1.5 py-0.5 rounded">
-                                                    <Briefcase size={12} /> {selectedGroup.user.organization}
-                                                </span>
-                                            )}
-                                            <span className="flex items-center gap-1"><Mail size={12} /> {selectedGroup.user.email}</span>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h2 className="text-xl font-bold text-slate-900">{selectedUser.full_name}</h2>
+                                            {activeMode === 'vault' ?
+                                                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase rounded-full tracking-wide">Vault Access</span> :
+                                                <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-[10px] font-bold uppercase rounded-full tracking-wide">Client Uploads</span>
+                                            }
                                         </div>
+                                        <p className="text-sm text-slate-500 font-medium">{selectedUser.email}</p>
                                     </div>
                                 </div>
-                                <button onClick={() => setSelectedUserId(null)} className="p-2 hover:bg-slate-200/80 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+                                <button onClick={() => setSelectedUser(null)} className="p-2 hover:bg-slate-200 rounded-full text-slate-400 transition-colors">
                                     <X size={20} />
                                 </button>
                             </div>
 
-                            {/* Toolbar */}
-                            <div className="px-4 md:px-6 py-3 md:py-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center bg-white sticky top-0 z-20 gap-3">
-                                <div className="text-[10px] md:text-sm font-medium text-slate-500 uppercase tracking-widest">
-                                    <strong>{selectedGroup.documents.length}</strong> DOCUMENTS DOWNLOADABLE
-                                </div>
-                                <div className="flex w-full md:w-auto gap-2">
-                                    <button
-                                        onClick={() => DocumentService.downloadAsZip(selectedGroup.documents, `${selectedGroup.user.full_name}_docs`)}
-                                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs md:text-sm font-bold transition-all"
-                                    >
-                                        <Download size={16} />
-                                        ZIP
-                                    </button>
-
-                                    {selectedGroup.stats.pending > 0 && (
-                                        <button
-                                            onClick={() => handleVerifyAll(selectedGroup.userId)}
-                                            disabled={processingId === 'verify-all'}
-                                            className="flex-[2] md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs md:text-sm font-bold shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50"
-                                        >
-                                            <ShieldCheck size={16} />
-                                            {processingId === 'verify-all' ? '...' : 'Verify All'}
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Documents List */}
-                            <div className="overflow-y-auto flex-1 p-0 bg-slate-50/50">
-                                <div className="hidden md:block">
-                                    <table className="w-full text-left border-collapse">
-                                        <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                            <tr>
-                                                <th className="px-6 py-3">Document</th>
-                                                <th className="px-6 py-3">Uploaded</th>
-                                                <th className="px-6 py-3">Status</th>
-                                                <th className="px-6 py-3 text-right">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 bg-white">
-                                            {selectedGroup.documents.map(doc => (
-                                                <tr key={doc.id} className="hover:bg-indigo-50/30 transition-colors">
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex items-center text-slate-800 font-medium">
-                                                            <FileText size={20} className="mr-3 text-indigo-400" />
-                                                            <span className="truncate max-w-[200px]" title={doc.name}>{doc.name}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-slate-500 text-sm">
-                                                        {new Date(doc.created_at).toLocaleDateString()}
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${getStatusColor(doc.status)}`}>
-                                                            {doc.status || 'pending'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right space-x-1">
-                                                        <DocActions doc={doc} processingId={processingId} onUpdate={handleStatusUpdate} onRefresh={fetchRequests} userId={selectedGroup.userId} />
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                {/* Mobile Cards for Documents */}
-                                <div className="md:hidden divide-y divide-slate-100 bg-white">
-                                    {selectedGroup.documents.map(doc => (
-                                        <div key={doc.id} className="p-4 space-y-3">
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex items-center gap-2 max-w-[70%]">
-                                                    <FileText size={18} className="text-indigo-500 shrink-0" />
-                                                    <span className="text-xs font-bold text-slate-800 truncate">{doc.name}</span>
-                                                </div>
-                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${getStatusColor(doc.status)} uppercase`}>
-                                                    {doc.status || 'pending'}
-                                                </span>
+                            {/* Modal Content */}
+                            <div className="flex-1 overflow-hidden flex flex-col bg-white relative">
+                                {activeMode === 'vault' || selectedUser.type !== 'request_view' ? (
+                                    /* === VAULT MODAL CONTENT === */
+                                    <div className="flex-1 p-0 overflow-y-auto">
+                                        <SimpleFileManager userId={selectedUser.id} />
+                                    </div>
+                                ) : (
+                                    /* === REQUESTS MODAL CONTENT === */
+                                    <div className="flex-1 flex flex-col h-full">
+                                        {/* Toolbar */}
+                                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
+                                            <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                                                {selectedUser.documents?.length || 0} Files
                                             </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-[10px] text-slate-400">{new Date(doc.created_at).toLocaleDateString()}</span>
-                                                <div className="flex gap-2">
-                                                    <DocActions doc={doc} processingId={processingId} onUpdate={handleStatusUpdate} onRefresh={fetchRequests} userId={selectedGroup.userId} />
-                                                </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => DocumentService.downloadAsZip(selectedUser.documents, `${selectedUser.full_name}_docs`)}
+                                                    className="flex items-center gap-2 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-all"
+                                                >
+                                                    <Download size={14} /> ZIP ALL
+                                                </button>
+                                                {selectedUser.documents?.some(d => d.status !== 'verified') && (
+                                                    <button
+                                                        onClick={() => handleVerifyAll(selectedUser.id)}
+                                                        disabled={processingId === 'verify-all'}
+                                                        className="flex items-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm transition-all"
+                                                    >
+                                                        <ShieldCheck size={14} /> Verify All
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
+
+                                        {/* Doc List */}
+                                        <div className="flex-1 overflow-y-auto p-0">
+                                            <table className="w-full text-left">
+                                                <thead className="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase sticky top-0">
+                                                    <tr>
+                                                        <th className="px-6 py-3">File Name</th>
+                                                        <th className="px-6 py-3">Date</th>
+                                                        <th className="px-6 py-3">Status</th>
+                                                        <th className="px-6 py-3 text-right">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-50">
+                                                    {selectedUser.documents?.map(doc => (
+                                                        <tr key={doc.id} className="hover:bg-slate-50">
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <FileText className="text-indigo-400" size={18} />
+                                                                    <span className="font-medium text-slate-700 text-sm truncate max-w-[200px]" title={doc.file_name}>{doc.file_name}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-xs text-slate-500">{new Date(doc.created_at).toLocaleDateString()}</td>
+                                                            <td className="px-6 py-4">
+                                                                <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase border ${getStatusColor(doc.status)}`}>
+                                                                    {doc.status || 'pending'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right">
+                                                                <DocActions doc={doc} processingId={processingId} onUpdate={handleStatusUpdate} userId={selectedUser.id} />
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
                     </div>
                 )}
             </AnimatePresence>
+
             <StatusModal
                 isOpen={statusModal.isOpen}
                 onClose={() => setStatusModal({ ...statusModal, isOpen: false })}
@@ -601,60 +548,37 @@ const AdminRequests = () => {
                 title={statusModal.title}
                 message={statusModal.message}
             />
-
-            <ConfirmationModal
-                isOpen={confirmModal.isOpen}
-                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-                onConfirm={confirmModal.onConfirm}
-                title={confirmModal.title}
-                message={confirmModal.message}
-                danger={true}
-                confirmLabel="Yes, Process"
-            />
-        </div >
+        </div>
     )
 }
 
-export default AdminRequests
-
-const DocActions = ({ doc, processingId, onUpdate, onRefresh, userId }) => {
-    const isValidUrl = (string) => {
-        try { return Boolean(new URL(string)); } catch (e) { return false; }
-    }
+const DocActions = ({ doc, processingId, onUpdate }) => {
+    const isValidUrl = (string) => { try { return Boolean(new URL(string)); } catch (e) { return false; } }
 
     return (
         <div className="flex items-center justify-end gap-1">
             {doc.file_url && isValidUrl(doc.file_url) ? (
-                <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg" title="View">
-                    <ExternalLink size={18} />
+                <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-all">
+                    <ExternalLink size={16} />
                 </a>
-            ) : (
-                <span className="p-2 text-slate-200 cursor-not-allowed"><ExternalLink size={18} /></span>
-            )}
+            ) : <span className="p-1.5 text-slate-200"><ExternalLink size={16} /></span>}
 
             {doc.status !== 'verified' && (
                 <button
                     onClick={() => onUpdate(doc.id, 'verified')}
                     disabled={processingId === doc.id}
-                    className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                >
-                    {processingId === doc.id ? <div className="animate-spin w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full" /> : <CheckCircle size={18} />}
+                    className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-all">
+                    {processingId === doc.id ? <div className="animate-spin w-3 h-3 border-2 border-emerald-600 border-t-transparent rounded-full" /> : <CheckCircle size={16} />}
                 </button>
             )}
 
             <button
-                onClick={async () => {
-                    if (!confirm("Delete this document?")) return;
-                    try {
-                        await DocumentService.deleteDocument(doc.id, doc.file_url);
-                        onRefresh();
-                    } catch (e) { console.error(e) }
-                }}
-                disabled={processingId === doc.id}
-                className="p-2 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all"
-            >
-                <Trash2 size={18} />
+                onClick={() => { if (confirm("Delete?")) onUpdate(doc.id, 'deleted') }}
+                className="p-1.5 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded transition-all">
+                <Trash2 size={16} />
             </button>
         </div>
     )
 }
+
+export default AdminRequests
