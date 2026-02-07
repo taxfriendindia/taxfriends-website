@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { DocumentService } from '../../services/DocumentService'
+import { DocumentService } from '../../services/documentService'
 import { Upload, FileText, CheckCircle, XCircle, Clock, AlertCircle, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
