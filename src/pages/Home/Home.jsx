@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../../components/Shared/Navbar'
 import Footer from '../../components/Shared/Footer'
 import TestimonialCarousel from '../../components/Home/TestimonialCarousel'
+import AdSense from '../../components/AdSense'
 
 const Home = () => {
   const { user, signOut } = useAuth()
@@ -295,6 +296,18 @@ const Home = () => {
       </section>
 
       <TestimonialCarousel />
+
+      {/* AdSense Ad */}
+      <section className="py-8 bg-gray-50 dark:bg-gray-800">
+        <div className="max-w-7xl mx-auto px-4">
+          <AdSense
+            adSlot="1234567890"
+            adFormat="horizontal"
+            fullWidthResponsive={true}
+            className="max-w-4xl mx-auto"
+          />
+        </div>
+      </section>
 
       <Footer />
     </div>
