@@ -67,16 +67,30 @@ const AdScriptManager = () => {
         } catch (e) {
             console.error("Ad injection error", e);
         }
+
+        // 5. Load In-Page Push (Banner)
+        if (!document.getElementById('monetag-inpage-push')) {
+            try {
+                const pushScript = document.createElement('script');
+                pushScript.id = 'monetag-inpage-push';
+                pushScript.innerHTML = `(function(s){s.dataset.zone='10584666',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`;
+                document.body.appendChild(pushScript);
+            } catch (e) {
+                console.error("In-Page Push injection error", e);
+            }
+        }
     }
 
     const removeAdScripts = () => {
-        // Remove the loader script we added
-        const loader = document.getElementById('monetag-loader')
-        if (loader) loader.remove()
+        // Remove the loader scripts we added
+        const loaders = ['monetag-loader', 'monetag-inpage-push']
+        loaders.forEach(id => {
+            const el = document.getElementById(id)
+            if (el) el.remove()
+        })
 
-        // Remove the actual script injected by the loader if possible (harder since it's dynamic)
-        // We can try to find scripts with specific src
-        const scripts = document.querySelectorAll('script[src*="gizokraijaw.net"]')
+        // Remove the actual scripts injected by the loaders
+        const scripts = document.querySelectorAll('script[src*="gizokraijaw.net"], script[src*="nap5k.com"]')
         scripts.forEach(s => s.remove())
 
         // Also clean up any potential ad containers or styles injected by the ad script if known
