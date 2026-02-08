@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../../components/Shared/Navbar'
 import Footer from '../../components/Shared/Footer'
 import TestimonialCarousel from '../../components/Home/TestimonialCarousel'
+import AdContainer from '../../components/Shared/AdContainer'
 
 const Home = () => {
   const { user, signOut } = useAuth()
@@ -219,6 +220,9 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Ad Slot - After Hero */}
+      <AdContainer slotId="home-after-hero" label="Sponsored Content" />
+
       {/* Services Section */}
       <section id="services" className="py-32 bg-indigo-50/30 dark:bg-indigo-950/20 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -271,6 +275,9 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      {/* Ad Slot - After Services */}
+      <AdContainer slotId="home-after-services" label="Advertisement" />
 
       {/* Why Choose Us */}
       <section className="py-32 bg-white dark:bg-gray-900">
